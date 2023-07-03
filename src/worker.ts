@@ -1,4 +1,5 @@
 import type { DataMessage, Message, QueryMessage, Sqlite3, Sqlite3Db, WorkerConfig } from './types';
+// @ts-ignore
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 let sqlite3: Sqlite3 | undefined;
