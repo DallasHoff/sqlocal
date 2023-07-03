@@ -1,0 +1,37 @@
+{
+	"name": "sqlocal",
+	"version": "0.0.0",
+	"author": "Dallas Hoffman",
+	"description": "SQLocal makes it simple to run the WebAssembly build of SQLite3 in the browser, backed by the origin private file system.",
+	"keywords": [
+		"sqlocal",
+		"browser",
+		"sqlite",
+		"sql",
+		"database",
+		"wasm",
+		"opfs",
+		"worker"
+	],
+	"type": "module",
+	"main": "./dist/index.umd.cjs",
+	"module": "./dist/index.js",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"prepublishOnly": "npm run build"
+	},
+	"dependencies": {
+		"@sqlite.org/sqlite-wasm": "^3.42.0-build2",
+		"uuid": "^9.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.3.3",
+		"prettier": "^2.8.8",
+		"typescript": "^5.1.6",
+		"vite": "^4.3.9"
+	}
+}

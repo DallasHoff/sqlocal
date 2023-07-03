@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>SQLocal</title>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	</head>
+	<body>
+		<script type="module">
+			import { createClient } from '/src/index.ts';
+
+			export const { sql } = createClient('/test.sqlite3');
+			const now = new Date().getTime();
+
+			const creation = await sql`CREATE TABLE IF NOT EXISTS test(id integer UNIQUE, label text)`;
+			console.log('CREATION', creation);
+			const insertion = await sql`INSERT INTO test VALUES (${now}, ${btoa(now)})`;
+			console.log('INSERTION', insertion);
+			const selection = await sql`SELECT * FROM test`;
+			console.log('SELECTION', selection);
+		</script>
+	</body>
+</html>
