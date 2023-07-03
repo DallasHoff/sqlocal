@@ -9,17 +9,16 @@ export type WorkerConfig = {
 
 export type QueryMessage = {
 	type: 'query';
-	database: string;
-	key: QueryKey;
+	queryKey: QueryKey;
 	sql: string;
 	params: any[];
 	method: Sqlite3Method;
 };
 export type DataMessage = {
 	type: 'data';
-	key: QueryKey;
-	rows: any[];
+	queryKey: QueryKey;
 	columns: string[];
+	rows: any[];
 };
 export type ConfigMessage = {
 	type: 'config';
@@ -28,7 +27,7 @@ export type ConfigMessage = {
 };
 export type ErrorMessage = {
 	type: 'error';
-	key: QueryKey | null;
+	queryKey: QueryKey | null;
 	error: unknown;
 };
 export type Message = QueryMessage | DataMessage | ConfigMessage | ErrorMessage;

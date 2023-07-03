@@ -10,7 +10,7 @@
 	"scripts": {
 		"build": "vite build",
 		"test": "vitest",
-		"prepublishOnly": "npm run build"
+		"prepublishOnly": "npm run build && npm run test"
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.42.0-build2",
@@ -27,9 +27,8 @@
 		"webdriverio": "^8.11.2"
 	},
 	"author": "Dallas Hoffman",
-	"description": "SQLocal makes it simple to run the WebAssembly build of SQLite3 in the browser, backed by the origin private file system.",
+	"description": "SQLocal makes it simple to run SQLite3 in the browser, backed by the origin private file system.",
 	"keywords": [
-		"sqlocal",
 		"browser",
 		"sqlite",
 		"sql",

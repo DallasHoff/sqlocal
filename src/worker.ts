@@ -1,10 +1,9 @@
 import type { DataMessage, Message, QueryMessage, Sqlite3, Sqlite3Db, WorkerConfig } from './types';
-// @ts-ignore
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 let sqlite3: Sqlite3 | undefined;
-const queuedQueries: QueryMessage[] = [];
 const config: WorkerConfig = {};
+const queuedQueries: QueryMessage[] = [];
 
 self.onmessage = ({ data }: { data: Message }) => {
 	switch (data.type) {
@@ -22,26 +21,24 @@ function res(message: Message) {
 }
 
 function execQuery(message: QueryMessage) {
-	if (!sqlite3) {
+	if (!sqlite3 || !config.database) {
 		queuedQueries.push(message);
 		return;
 	}
-
-	console.log('QUERY', message);
 
 	let db: Sqlite3Db | undefined;
 
 	try {
 		if ('opfs' in sqlite3) {
-			db = new sqlite3.oo1.OpfsDb(message.database);
+			db = new sqlite3.oo1.OpfsDb(config.database);
 		} else {
-			db = new sqlite3.oo1.DB(message.database);
+			db = new sqlite3.oo1.DB(config.database);
 			console.warn(
-				`The origin private file system is not available, so ${message.database} will not be persisted.`
+				`The origin private file system is not available, so ${config.database} will not be persisted.`
 			);
 		}
 
-		const columns = [] as string[];
+		const columns: string[] = [];
 		const rows = db.exec({
 			sql: message.sql,
 			bind: message.params,
@@ -52,10 +49,11 @@ function execQuery(message: QueryMessage) {
 
 		const response: DataMessage = {
 			type: 'data',
+			queryKey: message.queryKey,
 			rows: [],
 			columns,
-			key: message.key,
 		};
+
 		switch (message.method) {
 			case 'run':
 				break;
@@ -67,9 +65,14 @@ function execQuery(message: QueryMessage) {
 				response.rows = rows;
 				break;
 		}
+
 		res(response);
 	} catch (error) {
-		res({ type: 'error', error, key: message.key });
+		res({
+			type: 'error',
+			error,
+			queryKey: message.queryKey,
+		});
 	} finally {
 		db?.close();
 	}
@@ -86,10 +89,13 @@ function flushQueue() {
 async function init() {
 	try {
 		sqlite3 = await sqlite3InitModule();
-		console.log('SQLite Ready');
 		flushQueue();
 	} catch (error) {
-		res({ type: 'error', error, key: null });
+		res({
+			type: 'error',
+			error,
+			queryKey: null,
+		});
 	}
 }
 

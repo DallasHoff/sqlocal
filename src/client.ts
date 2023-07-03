@@ -13,7 +13,7 @@ export function createClient(database: string) {
 	const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 	const queriesInProgress = new Map<
 		QueryKey,
-		[(value: DataMessage) => void, (error: ErrorMessage) => void]
+		[resolve: (message: DataMessage) => void, reject: (message: ErrorMessage) => void]
 	>();
 
 	const setDbMessage: ConfigMessage = { type: 'config', key: 'database', value: database };
@@ -23,14 +23,14 @@ export function createClient(database: string) {
 		switch (data.type) {
 			case 'data':
 			case 'error':
-				if (data.key && queriesInProgress.has(data.key)) {
-					const [resolve, reject] = queriesInProgress.get(data.key)!;
+				if (data.queryKey && queriesInProgress.has(data.queryKey)) {
+					const [resolve, reject] = queriesInProgress.get(data.queryKey)!;
 					if (data.type === 'error') {
 						reject(data);
 					} else {
 						resolve(data);
 					}
-					queriesInProgress.delete(data.key);
+					queriesInProgress.delete(data.queryKey);
 				} else if (data.type === 'error') {
 					console.error(data.error);
 				}
@@ -38,23 +38,23 @@ export function createClient(database: string) {
 		}
 	});
 
-	const getQueryKey = (): QueryKey => {
-		return uuidv4();
-	};
-
-	const query = async (sql: string, params: any[], method: Sqlite3Method) => {
-		const key = getQueryKey();
+	const exec = async (sql: string, params: any[], method: Sqlite3Method) => {
+		const queryKey = uuidv4();
 		const query = new Promise<DataMessage>((resolve, reject) => {
-			queriesInProgress.set(key, [resolve, reject]);
+			queriesInProgress.set(queryKey, [resolve, reject]);
 		});
-		const message: QueryMessage = { type: 'query', database, key, sql, params, method };
+
+		const message: QueryMessage = { type: 'query', queryKey, sql, params, method };
 		worker.postMessage(message);
+
 		const { rows, columns } = await query;
 		return { rows, columns };
 	};
 
-	const sql = async (queryTemplate: TemplateStringsArray, ...bind: any[]) => {
-		const { rows, columns } = await query(queryTemplate.join('?'), bind, 'all');
+	const sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+		const query = queryTemplate.join('?');
+		const { rows, columns } = await exec(query, params, 'all');
+
 		return rows.map((row) => {
 			const rowObj: Record<string, any> = {};
 			columns.forEach((column, columnIndex) => {
@@ -64,5 +64,5 @@ export function createClient(database: string) {
 		});
 	};
 
-	return { query, sql };
+	return { exec, sql };
 }
