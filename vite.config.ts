@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
@@ -7,6 +8,16 @@ export default defineConfig({
 			name: 'SQLocal',
 			entry: [resolve(__dirname, 'src/index.ts')],
 		},
+	},
+	test: {
+		browser: {
+			enabled: true,
+			headless: true,
+			name: 'chrome',
+		},
+	},
+	optimizeDeps: {
+		exclude: ['@sqlite.org/sqlite-wasm'],
 	},
 	plugins: [
 		{
@@ -20,7 +31,4 @@ export default defineConfig({
 			},
 		},
 	],
-	optimizeDeps: {
-		exclude: ['@sqlite.org/sqlite-wasm'],
-	},
 });

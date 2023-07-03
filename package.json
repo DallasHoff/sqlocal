@@ -8,8 +8,8 @@
 		"dist"
 	],
 	"scripts": {
-		"dev": "vite",
 		"build": "vite build",
+		"test": "vitest",
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
@@ -18,9 +18,12 @@
 	},
 	"devDependencies": {
 		"@types/node": "^20.3.3",
+		"@vitest/browser": "^0.32.4",
 		"prettier": "^2.8.8",
 		"typescript": "^5.1.6",
-		"vite": "^4.3.9"
+		"vite": "^4.3.9",
+		"vitest": "^0.32.4",
+		"webdriverio": "^8.11.2"
 	},
 	"author": "Dallas Hoffman",
 	"description": "SQLocal makes it simple to run the WebAssembly build of SQLite3 in the browser, backed by the origin private file system.",
