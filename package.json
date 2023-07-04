@@ -34,6 +34,7 @@
 		"webdriverio": "^8.11.2"
 	},
 	"author": "Dallas Hoffman",
+	"license": "MIT",
 	"description": "SQLocal makes it simple to run SQLite3 in the browser, backed by the origin private file system.",
 	"keywords": [
 		"browser",
