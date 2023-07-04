@@ -17,7 +17,7 @@
 	"scripts": {
 		"build": "vite build && tsc",
 		"test": "vitest",
-		"prepublishOnly": "npm run build && npm run test"
+		"prepublishOnly": "npm run build && vitest run"
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.42.0-build2",
