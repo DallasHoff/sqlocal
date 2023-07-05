@@ -48,6 +48,12 @@ Install the SQLocal package in your application.
 npm install sqlocal
 ```
 
+### Required Files
+
+Currently, you need to copy the contents of this package's `dist/assets` directory and serve them in your application from an `assets` path at the root of your site.
+
+A solution so that this step is not needed is being investigated.
+
 ### Cross-Origin Isolation
 
 Since this package depends on the origin private file system API, the page you use it on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
