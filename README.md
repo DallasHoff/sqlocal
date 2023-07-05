@@ -10,12 +10,6 @@ SQLocal makes it simple to run SQLite3 in the browser, backed by the origin priv
 - 🔒 Each user gets their own private database instance
 - 🔥 Simple API; just create a database and start running SQL queries
 
-## Install
-
-```sh
-npm install sqlocal
-```
-
 ## Example
 
 ```typescript
@@ -44,4 +38,19 @@ console.log(groceries);
   { id: 3, name: 'rice' }
 ]
 */
+```
+
+## Install
+
+Install the SQLocal package in your application.
+
+```sh
+npm install sqlocal
+```
+
+Since this package depends on the origin private file system API, the page you use it on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
+
+```
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Opener-Policy: same-origin
 ```

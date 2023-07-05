@@ -35,7 +35,7 @@ function execQuery(message: QueryMessage) {
 		} else {
 			db = new sqlite3.oo1.DB(config.database);
 			console.warn(
-				`The origin private file system is not available, so ${config.database} will not be persisted.`
+				`The origin private file system is not available, so ${config.database} will not be persisted. Make sure your web server is configured to use the correct HTTP headers (See https://www.npmjs.com/package/sqlocal#Install).`
 			);
 		}
 
