@@ -8,17 +8,27 @@ const queuedQueries: QueryMessage[] = [];
 
 self.onmessage = ({ data }: { data: Message }) => {
 	switch (data.type) {
+		case 'config':
+			editConfig(data.key, data.value);
+			break;
 		case 'query':
 			execQuery(data);
-			break;
-		case 'config':
-			config[data.key] = data.value;
 			break;
 	}
 };
 
 function res(message: Message) {
 	postMessage(message);
+}
+
+function editConfig<T extends keyof WorkerConfig>(key: T, value: WorkerConfig[T]) {
+	if (config[key] === value) return;
+
+	config[key] = value;
+
+	if (key === 'database') {
+		flushQueue();
+	}
 }
 
 function execQuery(message: QueryMessage) {

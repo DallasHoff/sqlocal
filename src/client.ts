@@ -64,7 +64,7 @@ export function createClient(database: string) {
 		});
 	};
 
-	const getDatabaseFile = async (): Promise<File> => {
+	const getDatabaseFile = async () => {
 		const opfs = await navigator.storage.getDirectory();
 		const filehandle = await opfs.getFileHandle(database);
 		return await filehandle.getFile();
