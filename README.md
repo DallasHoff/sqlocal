@@ -7,7 +7,7 @@ SQLocal makes it simple to run SQLite3 in the browser, backed by the origin priv
 - 🔎 Locally executes any query that SQLite3 supports
 - 🧵 Runs the SQLite engine in a web worker so queries do not block the main thread
 - 📂 Persists data to the origin private file system, which is optimized for fast file I/O
-- 🔒 Each user gets their own private database instance
+- 🔒 Each user can have their own private database instance
 - 🔥 Simple API; just create a database and start running SQL queries
 
 ## Example
@@ -48,12 +48,6 @@ Install the SQLocal package in your application.
 npm install sqlocal
 ```
 
-### Required Files
-
-Currently, you need to copy the contents of this package's `dist/assets` directory and serve them in your application from an `assets` path at the root of your site.
-
-A solution so that this step is not needed is being investigated.
-
 ### Cross-Origin Isolation
 
 Since this package depends on the origin private file system API, the page you use it on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
@@ -67,15 +61,25 @@ If your development server uses Vite, you can do this by adding the following to
 
 ```javascript
 plugins: [
-	{
-		name: 'configure-response-headers',
-		configureServer: (server) => {
-			server.middlewares.use((_req, res, next) => {
-				res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-				res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-				next();
-			});
-		},
-	},
+  {
+    name: 'configure-response-headers',
+    configureServer: (server) => {
+      server.middlewares.use((_req, res, next) => {
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        next();
+      });
+    },
+  },
 ],
+```
+
+### Vite
+
+Vite currently has an issue that prevents it from loading WebAssembly files correctly with the default configuration. If you use Vite, please add the below to your Vite configuration to fix this.
+
+```javascript
+optimizeDeps: {
+  exclude: ['@sqlite.org/sqlite-wasm'],
+}
 ```

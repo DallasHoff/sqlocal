@@ -10,7 +10,7 @@ import type {
 } from './types';
 
 export function createClient(database: string) {
-	const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+	const worker = new Worker(new URL('./worker', import.meta.url), { type: 'module' });
 	const queriesInProgress = new Map<
 		QueryKey,
 		[resolve: (message: DataMessage) => void, reject: (message: ErrorMessage) => void]
