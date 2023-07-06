@@ -81,5 +81,5 @@ Vite currently has an issue that prevents it from loading WebAssembly files corr
 ```javascript
 optimizeDeps: {
   exclude: ['@sqlite.org/sqlite-wasm'],
-}
+},
 ```
