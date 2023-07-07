@@ -66,8 +66,13 @@ export class SQLocal {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
 		});
 
-		const message: QueryMessage = { type: 'query', queryKey, sql, params, method };
-		this.worker.postMessage(message);
+		this.worker.postMessage({
+			type: 'query',
+			queryKey,
+			sql,
+			params,
+			method,
+		} as QueryMessage);
 
 		const { rows, columns } = await query;
 		return { rows, columns };

@@ -7,6 +7,7 @@ export type WorkerConfig = {
 	database?: string;
 };
 
+export type Message = QueryMessage | DataMessage | ConfigMessage | ErrorMessage;
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
@@ -30,4 +31,3 @@ export type ErrorMessage = {
 	queryKey: QueryKey | null;
 	error: unknown;
 };
-export type Message = QueryMessage | DataMessage | ConfigMessage | ErrorMessage;
