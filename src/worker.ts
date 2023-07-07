@@ -1,10 +1,18 @@
-import type { DataMessage, Message, QueryMessage, Sqlite3, Sqlite3Db, WorkerConfig } from './types';
+import type {
+	DataMessage,
+	Message,
+	QueryMessage,
+	Sqlite3,
+	Sqlite3Db,
+	TransactionMessage,
+	WorkerConfig,
+} from './types';
 // @ts-ignore
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 let sqlite3: Sqlite3 | undefined;
 const config: WorkerConfig = {};
-const queuedQueries: QueryMessage[] = [];
+const queuedQueries: (QueryMessage | TransactionMessage)[] = [];
 
 self.onmessage = ({ data }: { data: Message }) => {
 	switch (data.type) {
@@ -12,6 +20,7 @@ self.onmessage = ({ data }: { data: Message }) => {
 			editConfig(data.key, data.value);
 			break;
 		case 'query':
+		case 'transaction':
 			execQuery(data);
 			break;
 	}
@@ -31,7 +40,7 @@ function editConfig<T extends keyof WorkerConfig>(key: T, value: WorkerConfig[T]
 	}
 }
 
-function execQuery(message: QueryMessage) {
+function execQuery(message: QueryMessage | TransactionMessage) {
 	if (!sqlite3 || !config.database) {
 		queuedQueries.push(message);
 		return;
@@ -49,31 +58,45 @@ function execQuery(message: QueryMessage) {
 			);
 		}
 
-		const columns: string[] = [];
-		const rows = db.exec({
-			sql: message.sql,
-			bind: message.params,
-			returnValue: 'resultRows',
-			rowMode: 'array',
-			columnNames: columns,
-		});
-
 		const response: DataMessage = {
 			type: 'data',
 			queryKey: message.queryKey,
 			rows: [],
-			columns,
+			columns: [],
 		};
 
-		switch (message.method) {
-			case 'run':
+		switch (message.type) {
+			case 'query':
+				const rows = db.exec({
+					sql: message.sql,
+					bind: message.params,
+					returnValue: 'resultRows',
+					rowMode: 'array',
+					columnNames: response.columns,
+				});
+
+				switch (message.method) {
+					case 'run':
+						break;
+					case 'get':
+						response.rows = rows[0];
+						break;
+					case 'all':
+					default:
+						response.rows = rows;
+						break;
+				}
 				break;
-			case 'get':
-				response.rows = rows[0];
-				break;
-			case 'all':
-			default:
-				response.rows = rows;
+
+			case 'transaction':
+				db.transaction((db: Sqlite3Db) => {
+					for (let statement of message.statements) {
+						db.exec({
+							sql: statement.sql,
+							bind: statement.params,
+						});
+					}
+				});
 				break;
 		}
 

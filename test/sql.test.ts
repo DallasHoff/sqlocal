@@ -1,14 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index';
 
 describe('sql', () => {
-	const { sql } = new SQLocal('test.sqlite3');
+	const { sql } = new SQLocal('sql-test.sqlite3');
+
+	beforeAll(async () => {
+		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
+	});
+
+	afterEach(async () => {
+		await sql`DELETE FROM groceries`;
+	});
 
 	it('should execute SQL', async () => {
-		const create1 =
-			await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
-		expect(create1).toEqual([]);
-
 		const items = ['bread', 'milk', 'rice'];
 		for (let item of items) {
 			const insert = await sql`INSERT INTO groceries (name) VALUES (${item})`;

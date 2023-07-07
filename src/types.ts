@@ -7,13 +7,26 @@ export type WorkerConfig = {
 	database?: string;
 };
 
-export type Message = QueryMessage | DataMessage | ConfigMessage | ErrorMessage;
+export type Message =
+	| QueryMessage
+	| TransactionMessage
+	| DataMessage
+	| ConfigMessage
+	| ErrorMessage;
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
 	sql: string;
 	params: any[];
 	method: Sqlite3Method;
+};
+export type TransactionMessage = {
+	type: 'transaction';
+	queryKey: QueryKey;
+	statements: {
+		sql: string;
+		params: any[];
+	}[];
 };
 export type DataMessage = {
 	type: 'data';

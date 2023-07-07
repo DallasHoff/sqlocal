@@ -7,6 +7,7 @@ import type {
 	QueryKey,
 	QueryMessage,
 	Sqlite3Method,
+	TransactionMessage,
 } from './types';
 
 export class SQLocal {
@@ -47,9 +48,26 @@ export class SQLocal {
 		});
 	}
 
+	private createQuery = () => {
+		const queryKey = uuidv4();
+		return {
+			key: queryKey,
+			data: new Promise<DataMessage>((resolve, reject) => {
+				this.queriesInProgress.set(queryKey, [resolve, reject]);
+			}),
+		};
+	};
+
+	private convertSqlTemplate = (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+		return {
+			sql: queryTemplate.join('?'),
+			params,
+		};
+	};
+
 	sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
-		const query = queryTemplate.join('?');
-		const { rows, columns } = await this.driver(query, params, 'all');
+		const statement = this.convertSqlTemplate(queryTemplate, ...params);
+		const { rows, columns } = await this.driver(statement.sql, statement.params, 'all');
 
 		return rows.map((row) => {
 			const rowObj: Record<string, any> = {};
@@ -60,27 +78,41 @@ export class SQLocal {
 		});
 	};
 
-	async driver(sql: string, params: any[], method: Sqlite3Method) {
-		const queryKey = uuidv4();
-		const query = new Promise<DataMessage>((resolve, reject) => {
-			this.queriesInProgress.set(queryKey, [resolve, reject]);
-		});
+	driver = async (sql: string, params: any[], method: Sqlite3Method) => {
+		const query = this.createQuery();
 
 		this.worker.postMessage({
 			type: 'query',
-			queryKey,
+			queryKey: query.key,
 			sql,
 			params,
 			method,
-		} as QueryMessage);
+		} satisfies QueryMessage);
 
-		const { rows, columns } = await query;
+		const { rows, columns } = await query.data;
 		return { rows, columns };
-	}
+	};
 
-	async getDatabaseFile() {
+	transaction = async (
+		passStatements: (
+			sql: SQLocal['convertSqlTemplate']
+		) => ReturnType<SQLocal['convertSqlTemplate']>[]
+	) => {
+		const statements = passStatements(this.convertSqlTemplate);
+		const query = this.createQuery();
+
+		this.worker.postMessage({
+			type: 'transaction',
+			queryKey: query.key,
+			statements,
+		} satisfies TransactionMessage);
+
+		await query.data;
+	};
+
+	getDatabaseFile = async () => {
 		const opfs = await navigator.storage.getDirectory();
 		const filehandle = await opfs.getFileHandle(this.database);
 		return await filehandle.getFile();
-	}
+	};
 }
