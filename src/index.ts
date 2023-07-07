@@ -1,1 +1,1 @@
-export { createClient } from './client';
+export { SQLocal } from './client';

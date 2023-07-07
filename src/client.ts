@@ -9,51 +9,47 @@ import type {
 	Sqlite3Method,
 } from './types';
 
-export function createClient(database: string) {
-	const worker = new Worker(new URL('./worker', import.meta.url), { type: 'module' });
-	const queriesInProgress = new Map<
+export class SQLocal {
+	worker: Worker;
+	database: string;
+	queriesInProgress = new Map<
 		QueryKey,
 		[resolve: (message: DataMessage) => void, reject: (message: ErrorMessage) => void]
 	>();
 
-	const setDbMessage: ConfigMessage = { type: 'config', key: 'database', value: database };
-	worker.postMessage(setDbMessage);
+	constructor(database: string) {
+		this.worker = new Worker(new URL('./worker', import.meta.url), { type: 'module' });
 
-	worker.addEventListener('message', ({ data }: { data: Message }) => {
-		switch (data.type) {
-			case 'data':
-			case 'error':
-				if (data.queryKey && queriesInProgress.has(data.queryKey)) {
-					const [resolve, reject] = queriesInProgress.get(data.queryKey)!;
-					if (data.type === 'error') {
-						reject(data);
-					} else {
-						resolve(data);
+		this.database = database;
+		this.worker.postMessage({
+			type: 'config',
+			key: 'database',
+			value: database,
+		} as ConfigMessage);
+
+		this.worker.addEventListener('message', ({ data: message }: { data: Message }) => {
+			switch (message.type) {
+				case 'data':
+				case 'error':
+					if (message.queryKey && this.queriesInProgress.has(message.queryKey)) {
+						const [resolve, reject] = this.queriesInProgress.get(message.queryKey)!;
+						if (message.type === 'error') {
+							reject(message);
+						} else {
+							resolve(message);
+						}
+						this.queriesInProgress.delete(message.queryKey);
+					} else if (message.type === 'error') {
+						console.error(message.error);
 					}
-					queriesInProgress.delete(data.queryKey);
-				} else if (data.type === 'error') {
-					console.error(data.error);
-				}
-				break;
-		}
-	});
-
-	const exec = async (sql: string, params: any[], method: Sqlite3Method) => {
-		const queryKey = uuidv4();
-		const query = new Promise<DataMessage>((resolve, reject) => {
-			queriesInProgress.set(queryKey, [resolve, reject]);
+					break;
+			}
 		});
+	}
 
-		const message: QueryMessage = { type: 'query', queryKey, sql, params, method };
-		worker.postMessage(message);
-
-		const { rows, columns } = await query;
-		return { rows, columns };
-	};
-
-	const sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+	sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
 		const query = queryTemplate.join('?');
-		const { rows, columns } = await exec(query, params, 'all');
+		const { rows, columns } = await this.driver(query, params, 'all');
 
 		return rows.map((row) => {
 			const rowObj: Record<string, any> = {};
@@ -64,11 +60,22 @@ export function createClient(database: string) {
 		});
 	};
 
-	const getDatabaseFile = async () => {
-		const opfs = await navigator.storage.getDirectory();
-		const filehandle = await opfs.getFileHandle(database);
-		return await filehandle.getFile();
-	};
+	async driver(sql: string, params: any[], method: Sqlite3Method) {
+		const queryKey = uuidv4();
+		const query = new Promise<DataMessage>((resolve, reject) => {
+			this.queriesInProgress.set(queryKey, [resolve, reject]);
+		});
 
-	return { exec, sql, getDatabaseFile };
+		const message: QueryMessage = { type: 'query', queryKey, sql, params, method };
+		this.worker.postMessage(message);
+
+		const { rows, columns } = await query;
+		return { rows, columns };
+	}
+
+	async getDatabaseFile() {
+		const opfs = await navigator.storage.getDirectory();
+		const filehandle = await opfs.getFileHandle(this.database);
+		return await filehandle.getFile();
+	}
 }

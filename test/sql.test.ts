@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createClient } from '../src/index';
+import { SQLocal } from '../src/index';
 
 describe('sql', () => {
-	const { sql } = createClient('test.sqlite3');
+	const { sql } = new SQLocal('test.sqlite3');
 
 	it('should execute SQL', async () => {
 		const create1 =

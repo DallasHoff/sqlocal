@@ -13,10 +13,10 @@ SQLocal makes it simple to run SQLite3 in the browser, backed by the origin priv
 ## Example
 
 ```typescript
-import { createClient } from 'sqlocal';
+import { SQLocal } from 'sqlocal';
 
 // Create a client with a name for the SQLite file to save in the origin private file system
-const { sql } = createClient('database.sqlite3');
+const { sql } = new SQLocal('database.sqlite3');
 
 // Use the "sql" tagged template to execute a SQL statement against the SQLite database
 await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
