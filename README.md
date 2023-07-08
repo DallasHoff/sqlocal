@@ -25,7 +25,7 @@ await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEX
 // Execute a prepared statement just by inserting parameters in the SQL string
 const items = ['bread', 'milk', 'rice'];
 for (let item of items) {
-	await sql`INSERT INTO groceries (name) VALUES (${item})`;
+  await sql`INSERT INTO groceries (name) VALUES (${item})`;
 }
 
 // SELECT queries and queries with the RETURNING clause will return the
@@ -55,16 +55,16 @@ const db = drizzle(driver);
 
 // Define your schema
 const groceries = sqliteTable('groceries', {
-	id: int('id').primaryKey({ autoIncrement: true }),
-	name: text('name').notNull(),
+  id: int('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
 });
 
 // Make type-safe queries!
 const data = await db
-	.select({ name: groceries.name })
-	.from(groceries)
-	.orderBy(groceries.name)
-	.all();
+  .select({ name: groceries.name })
+  .from(groceries)
+  .orderBy(groceries.name)
+  .all();
 console.log(data);
 ```
 
