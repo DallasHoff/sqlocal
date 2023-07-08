@@ -22,10 +22,9 @@
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.42.0-build2",
-		"uuid": "^9.0.0"
+		"nanoid": "^4.0.2"
 	},
 	"devDependencies": {
-		"@types/uuid": "^9.0.2",
 		"@vitest/browser": "^0.32.4",
 		"prettier": "^2.8.8",
 		"typescript": "^5.1.6",

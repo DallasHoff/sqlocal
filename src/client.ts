@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
 import type {
 	ConfigMessage,
 	DataMessage,
@@ -54,7 +54,7 @@ export class SQLocal {
 	private createQuery = (
 		passMessage: (queryKey: QueryKey) => QueryMessage | TransactionMessage
 	) => {
-		const queryKey = uuidv4();
+		const queryKey = nanoid();
 		const message = passMessage(queryKey);
 
 		this.worker.postMessage(message);
