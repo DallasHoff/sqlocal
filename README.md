@@ -11,7 +11,7 @@ SQLocal makes it simple to run SQLite3 in the browser, backed by the origin priv
 - 🔥 Simple API; just create a database and start running SQL queries
 - 💧 Works with Drizzle ORM for making type-safe queries
 
-## Example
+## Examples
 
 ```typescript
 import { SQLocal } from 'sqlocal';
