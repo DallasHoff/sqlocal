@@ -36,13 +36,13 @@ function editConfig<T extends keyof WorkerConfig>(key: T, value: WorkerConfig[T]
 
 	config[key] = value;
 
-	if (key === 'database') {
+	if (key === 'databasePath') {
 		flushQueue();
 	}
 }
 
 function execQuery(message: QueryMessage | TransactionMessage) {
-	if (!sqlite3 || !config.database) {
+	if (!sqlite3 || !config.databasePath) {
 		queuedQueries.push(message);
 		return;
 	}
@@ -51,11 +51,11 @@ function execQuery(message: QueryMessage | TransactionMessage) {
 
 	try {
 		if ('opfs' in sqlite3) {
-			db = new sqlite3.oo1.OpfsDb(config.database);
+			db = new sqlite3.oo1.OpfsDb(config.databasePath);
 		} else {
-			db = new sqlite3.oo1.DB(config.database);
+			db = new sqlite3.oo1.DB(config.databasePath);
 			console.warn(
-				`The origin private file system is not available, so ${config.database} will not be persisted. Make sure your web server is configured to use the correct HTTP headers (See https://www.npmjs.com/package/sqlocal#Install).`
+				`The origin private file system is not available, so ${config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP headers (See https://www.npmjs.com/package/sqlocal#Install).`
 			);
 		}
 

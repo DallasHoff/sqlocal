@@ -4,7 +4,7 @@ export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type QueryKey = string;
 
 export type WorkerConfig = {
-	database?: string;
+	databasePath?: string;
 };
 
 export type Message =

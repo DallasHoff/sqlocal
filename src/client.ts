@@ -12,22 +12,22 @@ import type {
 
 export class SQLocal {
 	private worker: Worker;
-	private database: string;
+	private databasePath: string;
 	private queriesInProgress = new Map<
 		QueryKey,
 		[resolve: (message: DataMessage) => void, reject: (message: ErrorMessage) => void]
 	>();
 
-	constructor(database: string) {
+	constructor(databasePath: string) {
 		this.worker = new Worker(new URL('./worker', import.meta.url), { type: 'module' });
 
 		this.worker.addEventListener('message', this.processMessageEvent);
 
-		this.database = database;
+		this.databasePath = databasePath;
 		this.worker.postMessage({
 			type: 'config',
-			key: 'database',
-			value: database,
+			key: 'databasePath',
+			value: databasePath,
 		} satisfies ConfigMessage);
 	}
 
@@ -117,7 +117,7 @@ export class SQLocal {
 
 	getDatabaseFile = async () => {
 		const opfs = await navigator.storage.getDirectory();
-		const filehandle = await opfs.getFileHandle(this.database);
+		const filehandle = await opfs.getFileHandle(this.databasePath);
 		return await filehandle.getFile();
 	};
 }
