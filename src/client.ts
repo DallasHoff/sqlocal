@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type {
 	ConfigMessage,
 	DataMessage,
-	ErrorMessage,
 	Message,
 	QueryKey,
 	QueryMessage,
@@ -15,7 +14,7 @@ export class SQLocal {
 	private databasePath: string;
 	private queriesInProgress = new Map<
 		QueryKey,
-		[resolve: (message: DataMessage) => void, reject: (message: ErrorMessage) => void]
+		[resolve: (message: DataMessage) => void, reject: (error: unknown) => void]
 	>();
 
 	constructor(databasePath: string) {
@@ -40,7 +39,7 @@ export class SQLocal {
 				if (message.queryKey && this.queriesInProgress.has(message.queryKey)) {
 					const [resolve, reject] = this.queriesInProgress.get(message.queryKey)!;
 					if (message.type === 'error') {
-						reject(message);
+						reject(message.error);
 					} else {
 						resolve(message);
 					}
