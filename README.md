@@ -27,7 +27,7 @@ for (let item of items) {
 	await sql`INSERT INTO groceries (name) VALUES (${item})`;
 }
 
-// SELECT queries return the matched records as an array of objects
+// SELECT queries and queries with the RETURNING clause will return the matched records as an array of objects
 const groceries = await sql`SELECT * FROM groceries`;
 console.log(groceries);
 
