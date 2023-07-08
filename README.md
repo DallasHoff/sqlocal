@@ -9,6 +9,7 @@ SQLocal makes it simple to run SQLite3 in the browser, backed by the origin priv
 - 📂 Persists data to the origin private file system, which is optimized for fast file I/O
 - 🔒 Each user can have their own private database instance
 - 🔥 Simple API; just create a database and start running SQL queries
+- 💧 Works with Drizzle ORM for making type-safe queries
 
 ## Example
 
@@ -27,9 +28,10 @@ for (let item of items) {
 	await sql`INSERT INTO groceries (name) VALUES (${item})`;
 }
 
-// SELECT queries and queries with the RETURNING clause will return the matched records as an array of objects
-const groceries = await sql`SELECT * FROM groceries`;
-console.log(groceries);
+// SELECT queries and queries with the RETURNING clause will return the
+// matched records as an array of objects
+const data = await sql`SELECT * FROM groceries`;
+console.log(data);
 
 /* Log:
 [
@@ -38,6 +40,32 @@ console.log(groceries);
   { id: 3, name: 'rice' }
 ]
 */
+```
+
+Or use SQLocal as a driver for Drizzle ORM to get fully-typed results from your queries.
+
+```typescript
+import { SQLocal } from 'sqlocal';
+import { drizzle } from 'drizzle-orm/sqlite-proxy';
+import { sqliteTable, int, text } from 'drizzle-orm/sqlite-core';
+
+// Initialize SQLocal and pass the driver to Drizzle
+const { driver } = new SQLocal('database.sqlite3');
+const db = drizzle(driver);
+
+// Define your schema
+const groceries = sqliteTable('groceries', {
+	id: int('id').primaryKey({ autoIncrement: true }),
+	name: text('name').notNull(),
+});
+
+// Make type-safe queries!
+const data = await db
+	.select({ name: groceries.name })
+	.from(groceries)
+	.orderBy(groceries.name)
+	.all();
+console.log(data);
 ```
 
 ## Install
