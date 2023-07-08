@@ -25,7 +25,6 @@
 		"uuid": "^9.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^20.3.3",
 		"@types/uuid": "^9.0.2",
 		"@vitest/browser": "^0.32.4",
 		"prettier": "^2.8.8",

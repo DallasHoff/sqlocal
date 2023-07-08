@@ -1,5 +1,6 @@
 import type {
 	DataMessage,
+	ErrorMessage,
 	Message,
 	QueryMessage,
 	Sqlite3,
@@ -7,27 +8,27 @@ import type {
 	TransactionMessage,
 	WorkerConfig,
 } from './types';
-// @ts-ignore
+// @ts-expect-error
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 let sqlite3: Sqlite3 | undefined;
 const config: WorkerConfig = {};
 const queuedQueries: (QueryMessage | TransactionMessage)[] = [];
 
-self.onmessage = ({ data }: { data: Message }) => {
-	switch (data.type) {
+self.onmessage = processMessageEvent;
+
+function processMessageEvent(event: MessageEvent<Message>) {
+	const message = event.data;
+
+	switch (message.type) {
 		case 'config':
-			editConfig(data.key, data.value);
+			editConfig(message.key, message.value);
 			break;
 		case 'query':
 		case 'transaction':
-			execQuery(data);
+			execQuery(message);
 			break;
 	}
-};
-
-function res(message: Message) {
-	postMessage(message);
 }
 
 function editConfig<T extends keyof WorkerConfig>(key: T, value: WorkerConfig[T]) {
@@ -100,13 +101,13 @@ function execQuery(message: QueryMessage | TransactionMessage) {
 				break;
 		}
 
-		res(response);
+		postMessage(response satisfies DataMessage);
 	} catch (error) {
-		res({
+		postMessage({
 			type: 'error',
 			error,
 			queryKey: message.queryKey,
-		});
+		} satisfies ErrorMessage);
 	} finally {
 		db?.close();
 	}
@@ -125,11 +126,11 @@ async function init() {
 		sqlite3 = await sqlite3InitModule();
 		flushQueue();
 	} catch (error) {
-		res({
+		postMessage({
 			type: 'error',
 			error,
 			queryKey: null,
-		});
+		} satisfies ErrorMessage);
 	}
 }
 

@@ -11,9 +11,9 @@ import type {
 } from './types';
 
 export class SQLocal {
-	worker: Worker;
-	database: string;
-	queriesInProgress = new Map<
+	private worker: Worker;
+	private database: string;
+	private queriesInProgress = new Map<
 		QueryKey,
 		[resolve: (message: DataMessage) => void, reject: (message: ErrorMessage) => void]
 	>();
@@ -21,35 +21,40 @@ export class SQLocal {
 	constructor(database: string) {
 		this.worker = new Worker(new URL('./worker', import.meta.url), { type: 'module' });
 
+		this.worker.addEventListener('message', this.processMessageEvent);
+
 		this.database = database;
 		this.worker.postMessage({
 			type: 'config',
 			key: 'database',
 			value: database,
-		} as ConfigMessage);
-
-		this.worker.addEventListener('message', ({ data: message }: { data: Message }) => {
-			switch (message.type) {
-				case 'data':
-				case 'error':
-					if (message.queryKey && this.queriesInProgress.has(message.queryKey)) {
-						const [resolve, reject] = this.queriesInProgress.get(message.queryKey)!;
-						if (message.type === 'error') {
-							reject(message);
-						} else {
-							resolve(message);
-						}
-						this.queriesInProgress.delete(message.queryKey);
-					} else if (message.type === 'error') {
-						console.error(message.error);
-					}
-					break;
-			}
-		});
+		} satisfies ConfigMessage);
 	}
+
+	private processMessageEvent = (event: MessageEvent<Message>) => {
+		const message = event.data;
+
+		switch (message.type) {
+			case 'data':
+			case 'error':
+				if (message.queryKey && this.queriesInProgress.has(message.queryKey)) {
+					const [resolve, reject] = this.queriesInProgress.get(message.queryKey)!;
+					if (message.type === 'error') {
+						reject(message);
+					} else {
+						resolve(message);
+					}
+					this.queriesInProgress.delete(message.queryKey);
+				} else if (message.type === 'error') {
+					throw message.error;
+				}
+				break;
+		}
+	};
 
 	private createQuery = () => {
 		const queryKey = uuidv4();
+
 		return {
 			key: queryKey,
 			data: new Promise<DataMessage>((resolve, reject) => {
