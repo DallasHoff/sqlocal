@@ -114,7 +114,16 @@ export class SQLocal {
 
 	getDatabaseFile = async () => {
 		const opfs = await navigator.storage.getDirectory();
-		const filehandle = await opfs.getFileHandle(this.databasePath);
-		return await filehandle.getFile();
+		const fileHandle = await opfs.getFileHandle(this.databasePath);
+		return await fileHandle.getFile();
+	};
+
+	overwriteDatabaseFile = async (databaseFile: FileSystemWriteChunkType) => {
+		const opfs = await navigator.storage.getDirectory();
+		const fileHandle = await opfs.getFileHandle(this.databasePath, { create: true });
+		const fileWritable = await fileHandle.createWritable();
+		await fileWritable.truncate(0);
+		await fileWritable.write(databaseFile);
+		await fileWritable.close();
 	};
 }
