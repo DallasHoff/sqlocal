@@ -68,6 +68,8 @@ const data = await db
 console.log(data);
 ```
 
+See the Drizzle ORM documentation for [declaring your schema](https://orm.drizzle.team/docs/sql-schema-declaration) and [making queries](https://orm.drizzle.team/docs/crud).
+
 ## Install
 
 Install the SQLocal package in your application.
