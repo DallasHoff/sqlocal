@@ -1,15 +1,15 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index';
 
 describe('transaction', () => {
 	const { sql, transaction } = new SQLocal('transaction-test.sqlite3');
 
-	beforeAll(async () => {
+	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
 	});
 
 	afterEach(async () => {
-		await sql`DELETE FROM groceries`;
+		await sql`DROP TABLE groceries`;
 	});
 
 	it('should perform successful transaction', async () => {
