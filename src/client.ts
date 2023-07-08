@@ -51,15 +51,17 @@ export class SQLocal {
 		}
 	};
 
-	private createQuery = () => {
+	private createQuery = (
+		passMessage: (queryKey: QueryKey) => QueryMessage | TransactionMessage
+	) => {
 		const queryKey = uuidv4();
+		const message = passMessage(queryKey);
 
-		return {
-			key: queryKey,
-			data: new Promise<DataMessage>((resolve, reject) => {
-				this.queriesInProgress.set(queryKey, [resolve, reject]);
-			}),
-		};
+		this.worker.postMessage(message);
+
+		return new Promise<DataMessage>((resolve, reject) => {
+			this.queriesInProgress.set(queryKey, [resolve, reject]);
+		});
 	};
 
 	private convertSqlTemplate = (queryTemplate: TemplateStringsArray, ...params: any[]) => {
@@ -83,17 +85,15 @@ export class SQLocal {
 	};
 
 	driver = async (sql: string, params: any[], method: Sqlite3Method) => {
-		const query = this.createQuery();
-
-		this.worker.postMessage({
+		const query = this.createQuery((queryKey) => ({
 			type: 'query',
-			queryKey: query.key,
+			queryKey,
 			sql,
 			params,
 			method,
-		} satisfies QueryMessage);
+		}));
 
-		const { rows, columns } = await query.data;
+		const { rows, columns } = await query;
 		return { rows, columns };
 	};
 
@@ -103,15 +103,13 @@ export class SQLocal {
 		) => ReturnType<SQLocal['convertSqlTemplate']>[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
-		const query = this.createQuery();
-
-		this.worker.postMessage({
+		const query = this.createQuery((queryKey) => ({
 			type: 'transaction',
-			queryKey: query.key,
+			queryKey,
 			statements,
-		} satisfies TransactionMessage);
+		}));
 
-		await query.data;
+		await query;
 	};
 
 	getDatabaseFile = async () => {
