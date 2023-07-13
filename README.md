@@ -106,10 +106,10 @@ plugins: [
 
 ### Vite
 
-Vite currently has an issue that prevents it from loading WebAssembly files correctly with the default configuration. If you use Vite, please add the below to your Vite configuration to fix this.
+Vite currently has an issue that prevents it from loading web worker files correctly with the default configuration. If you use Vite, please add the below to your Vite configuration to fix this.
 
 ```javascript
 optimizeDeps: {
-  exclude: ['@sqlite.org/sqlite-wasm'],
+  exclude: ['sqlocal'],
 },
 ```
