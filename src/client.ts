@@ -85,17 +85,22 @@ export class SQLocal {
 		return { rows, columns };
 	};
 
-	sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+	sql = async <T extends Record<string, any>[]>(
+		queryTemplate: TemplateStringsArray,
+		...params: any[]
+	) => {
 		const statement = this.convertSqlTemplate(queryTemplate, ...params);
 		const { rows, columns } = await this.exec(statement.sql, statement.params, 'all');
 
-		return rows.map((row) => {
+		const data = rows.map((row) => {
 			const rowObj: Record<string, any> = {};
 			columns.forEach((column, columnIndex) => {
 				rowObj[column] = row[columnIndex];
 			});
 			return rowObj;
-		});
+		}) satisfies Record<string, any>[];
+
+		return data as T;
 	};
 
 	transaction = async (
