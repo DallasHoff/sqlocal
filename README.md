@@ -45,12 +45,12 @@ console.log(data);
 Or use SQLocal as a driver for Drizzle ORM to get fully-typed results from your queries.
 
 ```typescript
-import { SQLocal } from 'sqlocal';
+import { SQLocalDrizzle } from 'sqlocal/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { sqliteTable, int, text } from 'drizzle-orm/sqlite-core';
 
-// Initialize SQLocal and pass the driver to Drizzle
-const { driver } = new SQLocal('database.sqlite3');
+// Initialize SQLocalDrizzle and pass the driver to Drizzle
+const { driver } = new SQLocalDrizzle('database.sqlite3');
 const db = drizzle(driver);
 
 // Define your schema

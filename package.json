@@ -10,6 +10,11 @@
 			"types": "./dist/index.d.ts",
 			"browser": "./dist/index.js",
 			"import": "./dist/index.js"
+		},
+		"./drizzle": {
+			"types": "./dist/drizzle/index.d.ts",
+			"browser": "./dist/drizzle/index.js",
+			"import": "./dist/drizzle/index.js"
 		}
 	},
 	"files": [
@@ -36,7 +41,7 @@
 	},
 	"author": "Dallas Hoffman",
 	"license": "MIT",
-	"description": "SQLocal makes it simple to run SQLite3 in the browser, backed by the origin private file system.",
+	"description": "SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system.",
 	"keywords": [
 		"browser",
 		"sqlite",

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocalDrizzle } from '../../src/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { desc, eq } from 'drizzle-orm';
 
-describe('driver', () => {
-	const { sql, driver } = new SQLocal('driver-test.sqlite3');
+describe('drizzle driver', () => {
+	const { sql, driver } = new SQLocalDrizzle('drizzle-driver-test.sqlite3');
 	const db = drizzle(driver);
 
 	const groceries = sqliteTable('groceries', {

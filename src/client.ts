@@ -10,9 +10,9 @@ import type {
 } from './types';
 
 export class SQLocal {
-	private worker: Worker;
-	private databasePath: string;
-	private queriesInProgress = new Map<
+	protected worker: Worker;
+	protected databasePath: string;
+	protected queriesInProgress = new Map<
 		QueryKey,
 		[resolve: (message: DataMessage) => void, reject: (error: unknown) => void]
 	>();
@@ -30,7 +30,7 @@ export class SQLocal {
 		} satisfies ConfigMessage);
 	}
 
-	private processMessageEvent = (event: MessageEvent<Message>) => {
+	protected processMessageEvent = (event: MessageEvent<Message>) => {
 		const message = event.data;
 
 		switch (message.type) {
@@ -51,7 +51,7 @@ export class SQLocal {
 		}
 	};
 
-	private createQuery = (
+	protected createQuery = (
 		message: Omit<QueryMessage, 'queryKey'> | Omit<TransactionMessage, 'queryKey'>
 	) => {
 		const queryKey = nanoid() satisfies QueryKey;
@@ -66,27 +66,14 @@ export class SQLocal {
 		});
 	};
 
-	private convertSqlTemplate = (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+	protected convertSqlTemplate = (queryTemplate: TemplateStringsArray, ...params: any[]) => {
 		return {
 			sql: queryTemplate.join('?'),
 			params,
 		};
 	};
 
-	sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
-		const statement = this.convertSqlTemplate(queryTemplate, ...params);
-		const { rows, columns } = await this.driver(statement.sql, statement.params, 'all');
-
-		return rows.map((row) => {
-			const rowObj: Record<string, any> = {};
-			columns.forEach((column, columnIndex) => {
-				rowObj[column] = row[columnIndex];
-			});
-			return rowObj;
-		});
-	};
-
-	driver = async (sql: string, params: any[], method: Sqlite3Method) => {
+	protected exec = async (sql: string, params: any[], method: Sqlite3Method) => {
 		const query = this.createQuery({
 			type: 'query',
 			sql,
@@ -96,6 +83,19 @@ export class SQLocal {
 
 		const { rows, columns } = await query;
 		return { rows, columns };
+	};
+
+	sql = async (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+		const statement = this.convertSqlTemplate(queryTemplate, ...params);
+		const { rows, columns } = await this.exec(statement.sql, statement.params, 'all');
+
+		return rows.map((row) => {
+			const rowObj: Record<string, any> = {};
+			columns.forEach((column, columnIndex) => {
+				rowObj[column] = row[columnIndex];
+			});
+			return rowObj;
+		});
 	};
 
 	transaction = async (
