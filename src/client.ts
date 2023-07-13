@@ -52,12 +52,14 @@ export class SQLocal {
 	};
 
 	private createQuery = (
-		passMessage: (queryKey: QueryKey) => QueryMessage | TransactionMessage
+		message: Omit<QueryMessage, 'queryKey'> | Omit<TransactionMessage, 'queryKey'>
 	) => {
-		const queryKey = nanoid();
-		const message = passMessage(queryKey);
+		const queryKey = nanoid() satisfies QueryKey;
 
-		this.worker.postMessage(message);
+		this.worker.postMessage({
+			...message,
+			queryKey,
+		} satisfies QueryMessage | TransactionMessage);
 
 		return new Promise<DataMessage>((resolve, reject) => {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
@@ -85,13 +87,12 @@ export class SQLocal {
 	};
 
 	driver = async (sql: string, params: any[], method: Sqlite3Method) => {
-		const query = this.createQuery((queryKey) => ({
+		const query = this.createQuery({
 			type: 'query',
-			queryKey,
 			sql,
 			params,
 			method,
-		}));
+		});
 
 		const { rows, columns } = await query;
 		return { rows, columns };
@@ -103,11 +104,10 @@ export class SQLocal {
 		) => ReturnType<SQLocal['convertSqlTemplate']>[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
-		const query = this.createQuery((queryKey) => ({
+		const query = this.createQuery({
 			type: 'transaction',
-			queryKey,
 			statements,
-		}));
+		});
 
 		await query;
 	};
