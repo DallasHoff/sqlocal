@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocalDrizzle } from '../../src/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, placeholder } from 'drizzle-orm';
 
 describe('drizzle driver', () => {
 	const { sql, driver } = new SQLocalDrizzle('drizzle-driver-test.sqlite3');
@@ -22,13 +22,15 @@ describe('drizzle driver', () => {
 	});
 
 	it('should execute queries', async () => {
+		const insert1Prepared = db
+			.insert(groceries)
+			.values({ name: placeholder('name') })
+			.returning({ name: groceries.name })
+			.prepare();
 		const items = ['bread', 'milk', 'rice'];
+
 		for (let item of items) {
-			const insert1 = await db
-				.insert(groceries)
-				.values({ name: item })
-				.returning({ name: groceries.name })
-				.get();
+			const insert1 = await insert1Prepared.get({ name: item });
 			expect(insert1).toEqual({ name: item });
 		}
 
@@ -58,5 +60,28 @@ describe('drizzle driver', () => {
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
-	// TODO: add tests for transactions
+	it('should perform successful transaction', async () => {
+		await db.transaction(async (trx) => {
+			await trx.insert(groceries).values({ name: 'apples' }).run();
+			await trx.insert(groceries).values({ name: 'bananas' }).run();
+		});
+
+		const data = await db.select().from(groceries).all();
+		expect(data.length).toBe(2);
+	});
+
+	it('should rollback failed transaction', async () => {
+		await db
+			.transaction(async (trx) => {
+				await trx.insert(groceries).values({ name: 'apples' }).run();
+				await trx
+					.insert(groceries)
+					.values({ nam: 'bananas' } as any)
+					.run();
+			})
+			.catch(() => {});
+
+		const data = await db.select().from(groceries).all();
+		expect(data.length).toBe(0);
+	});
 });
