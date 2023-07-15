@@ -57,4 +57,29 @@ describe('kysely dialect', () => {
 		const select2 = await db.selectFrom('groceries').select('name').orderBy('id', 'desc').execute();
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
+
+	it('should introspect the database with Kysely', async () => {
+		const schemas = await db.introspection.getSchemas();
+		expect(schemas).toEqual([]);
+
+		const tables = await db.introspection.getTables();
+		const { name: tableName, columns } = tables[0];
+		expect(tableName).toBe('groceries');
+		expect(columns).toEqual([
+			{
+				name: 'id',
+				dataType: 'INTEGER',
+				hasDefaultValue: false,
+				isAutoIncrementing: true,
+				isNullable: true,
+			},
+			{
+				name: 'name',
+				dataType: 'TEXT',
+				hasDefaultValue: false,
+				isAutoIncrementing: false,
+				isNullable: false,
+			},
+		]);
+	});
 });
