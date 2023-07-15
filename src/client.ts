@@ -11,8 +11,9 @@ import type {
 } from './types';
 
 export class SQLocal {
-	protected worker: Worker;
 	protected databasePath: string;
+	protected worker: Worker;
+	protected isWorkerDestroyed: boolean = false;
 	protected queriesInProgress = new Map<
 		QueryKey,
 		[resolve: (message: Message) => void, reject: (error: unknown) => void]
@@ -64,6 +65,12 @@ export class SQLocal {
 	protected createQuery = (
 		message: OmitQueryKey<QueryMessage | TransactionMessage | DestroyMessage>
 	) => {
+		if (this.isWorkerDestroyed === true) {
+			throw new Error(
+				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
+			);
+		}
+
 		const queryKey = nanoid() satisfies QueryKey;
 
 		this.worker.postMessage({
@@ -155,5 +162,6 @@ export class SQLocal {
 		this.worker.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();
 		this.worker.terminate();
+		this.isWorkerDestroyed = true;
 	};
 }
