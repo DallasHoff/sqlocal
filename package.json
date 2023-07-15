@@ -15,6 +15,11 @@
 			"types": "./dist/drizzle/index.d.ts",
 			"browser": "./dist/drizzle/index.js",
 			"import": "./dist/drizzle/index.js"
+		},
+		"./kysely": {
+			"types": "./dist/kysely/index.d.ts",
+			"browser": "./dist/kysely/index.js",
+			"import": "./dist/kysely/index.js"
 		}
 	},
 	"files": [
@@ -28,6 +33,7 @@
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.42.0-build2",
+		"kysely": "^0.26.1",
 		"nanoid": "^4.0.2"
 	},
 	"devDependencies": {
@@ -49,7 +55,9 @@
 		"database",
 		"wasm",
 		"opfs",
-		"worker"
+		"worker",
+		"drizzle",
+		"kysely"
 	],
 	"repository": {
 		"type": "git",
