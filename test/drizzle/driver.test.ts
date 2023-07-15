@@ -10,11 +10,11 @@ describe('drizzle driver', () => {
 
 	const groceries = sqliteTable('groceries', {
 		id: int('id').primaryKey({ autoIncrement: true }),
-		name: text('name'),
+		name: text('name').notNull(),
 	});
 
 	beforeEach(async () => {
-		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
+		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
 	});
 
 	afterEach(async () => {

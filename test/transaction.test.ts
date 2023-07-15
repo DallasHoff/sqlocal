@@ -5,7 +5,7 @@ describe('transaction', () => {
 	const { sql, transaction } = new SQLocal('transaction-test.sqlite3');
 
 	beforeEach(async () => {
-		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
+		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
 	});
 
 	afterEach(async () => {
