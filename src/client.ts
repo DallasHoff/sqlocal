@@ -1,8 +1,9 @@
 import { nanoid } from 'nanoid';
 import type {
 	ConfigMessage,
-	DataMessage,
+	DestroyMessage,
 	Message,
+	OmitQueryKey,
 	QueryKey,
 	QueryMessage,
 	Sqlite3Method,
@@ -14,7 +15,7 @@ export class SQLocal {
 	protected databasePath: string;
 	protected queriesInProgress = new Map<
 		QueryKey,
-		[resolve: (message: DataMessage) => void, reject: (error: unknown) => void]
+		[resolve: (message: Message) => void, reject: (error: unknown) => void]
 	>();
 
 	constructor(databasePath: string) {
@@ -32,36 +33,45 @@ export class SQLocal {
 
 	protected processMessageEvent = (event: MessageEvent<Message>) => {
 		const message = event.data;
+		const queries = this.queriesInProgress;
 
 		switch (message.type) {
 			case 'data':
 			case 'error':
-				if (message.queryKey && this.queriesInProgress.has(message.queryKey)) {
-					const [resolve, reject] = this.queriesInProgress.get(message.queryKey)!;
+				if (message.queryKey && queries.has(message.queryKey)) {
+					const [resolve, reject] = queries.get(message.queryKey)!;
 					if (message.type === 'error') {
 						reject(message.error);
 					} else {
 						resolve(message);
 					}
-					this.queriesInProgress.delete(message.queryKey);
+					queries.delete(message.queryKey);
 				} else if (message.type === 'error') {
 					throw message.error;
+				}
+				break;
+
+			case 'destroy':
+				if (message.queryKey && queries.has(message.queryKey)) {
+					const [resolve] = queries.get(message.queryKey)!;
+					resolve(message);
+					queries.delete(message.queryKey);
 				}
 				break;
 		}
 	};
 
 	protected createQuery = (
-		message: Omit<QueryMessage, 'queryKey'> | Omit<TransactionMessage, 'queryKey'>
+		message: OmitQueryKey<QueryMessage | TransactionMessage | DestroyMessage>
 	) => {
 		const queryKey = nanoid() satisfies QueryKey;
 
 		this.worker.postMessage({
 			...message,
 			queryKey,
-		} satisfies QueryMessage | TransactionMessage);
+		} satisfies QueryMessage | TransactionMessage | DestroyMessage);
 
-		return new Promise<DataMessage>((resolve, reject) => {
+		return new Promise<Message>((resolve, reject) => {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
 		});
 	};
@@ -84,15 +94,24 @@ export class SQLocal {
 	};
 
 	protected exec = async (sql: string, params: any[], method: Sqlite3Method) => {
-		const query = this.createQuery({
+		const message = await this.createQuery({
 			type: 'query',
 			sql,
 			params,
 			method,
 		});
 
-		const { rows, columns } = await query;
-		return { rows, columns };
+		let data = {
+			rows: [] as any[],
+			columns: [] as string[],
+		};
+
+		if (message.type === 'data') {
+			data.rows = message.rows;
+			data.columns = message.columns;
+		}
+
+		return data;
 	};
 
 	sql = async <T extends Record<string, any>[]>(
@@ -129,5 +148,12 @@ export class SQLocal {
 		await fileWritable.truncate(0);
 		await fileWritable.write(databaseFile);
 		await fileWritable.close();
+	};
+
+	destroy = async () => {
+		await this.createQuery({ type: 'destroy' });
+		this.worker.removeEventListener('message', this.processMessageEvent);
+		this.queriesInProgress.clear();
+		this.worker.terminate();
 	};
 }

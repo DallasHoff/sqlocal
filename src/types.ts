@@ -12,7 +12,8 @@ export type Message =
 	| TransactionMessage
 	| DataMessage
 	| ConfigMessage
-	| ErrorMessage;
+	| ErrorMessage
+	| DestroyMessage;
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
@@ -44,3 +45,9 @@ export type ErrorMessage = {
 	queryKey: QueryKey | null;
 	error: unknown;
 };
+export type DestroyMessage = {
+	type: 'destroy';
+	queryKey: QueryKey;
+};
+
+export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;

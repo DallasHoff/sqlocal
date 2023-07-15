@@ -1,5 +1,6 @@
 import type {
 	DataMessage,
+	DestroyMessage,
 	ErrorMessage,
 	Message,
 	QueryMessage,
@@ -28,6 +29,9 @@ function processMessageEvent(event: MessageEvent<Message>) {
 		case 'query':
 		case 'transaction':
 			execQuery(message);
+			break;
+		case 'destroy':
+			destroy(message);
 			break;
 	}
 }
@@ -109,6 +113,16 @@ function flushQueue() {
 	}
 }
 
+function destroy(message: DestroyMessage) {
+	db?.close();
+	db = undefined;
+
+	postMessage({
+		type: 'destroy',
+		queryKey: message.queryKey,
+	} satisfies DestroyMessage);
+}
+
 async function init() {
 	try {
 		sqlite3 = await sqlite3InitModule();
@@ -129,6 +143,7 @@ async function init() {
 		} satisfies ErrorMessage);
 
 		db?.close();
+		db = undefined;
 		return;
 	}
 

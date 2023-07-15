@@ -20,16 +20,18 @@ export class SQLocalKysely extends SQLocal {
 
 	dialect = {
 		createAdapter: () => new SqliteAdapter(),
-		createDriver: () => new SQLocalKyselyDriver(this.executor),
+		createDriver: () => new SQLocalKyselyDriver(this, this.executor),
 		createIntrospector: (db) => new SqliteIntrospector(db),
 		createQueryCompiler: () => new SqliteQueryCompiler(),
 	} satisfies Dialect;
 }
 
 class SQLocalKyselyDriver implements Driver {
+	private client: SQLocalKysely;
 	private executor: SQLocalKysely['executor'];
 
-	constructor(executor: SQLocalKysely['executor']) {
+	constructor(client: SQLocalKysely, executor: SQLocalKysely['executor']) {
+		this.client = client;
 		this.executor = executor;
 	}
 
@@ -49,9 +51,12 @@ class SQLocalKyselyDriver implements Driver {
 		await connection.executeQuery(CompiledQuery.raw('ROLLBACK'));
 	}
 
+	async destroy() {
+		await this.client.destroy();
+	}
+
 	async init() {}
 	async releaseConnection() {}
-	async destroy() {}
 }
 
 class SQLocalKyselyConnection implements DatabaseConnection {
