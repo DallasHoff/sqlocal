@@ -8,8 +8,8 @@ SQLocal makes it easy to run SQLite3 in the browser, backed by the origin privat
 - 🧵 Runs the SQLite engine in a web worker so queries do not block the main thread
 - 📂 Persists data to the origin private file system, which is optimized for fast file I/O
 - 🔒 Each user can have their own private database instance
-- 🔥 Simple API; just create a database and start running SQL queries
-- 💧 Works with Drizzle ORM for making type-safe queries
+- 🚀 Simple API; just create a database and start running SQL queries
+- 🛠️ Works with Kysely and Drizzle ORM for making type-safe queries
 
 ## Examples
 
@@ -42,7 +42,39 @@ console.log(data);
 */
 ```
 
-Or use SQLocal as a driver for Drizzle ORM to get fully-typed results from your queries.
+Or, you can use SQLocal as a driver for [Kysley](https://kysely.dev/) or [Drizzle ORM](https://orm.drizzle.team/) to make fully-typed queries.
+
+### Kysely
+
+```typescript
+import { SQLocalKysely } from 'sqlocal/kysely';
+import { Kysely, Generated } from 'kysely';
+
+// Initialize SQLocalKysely and pass the dialect to Kysely
+const { dialect } = new SQLocalKysely('database.sqlite3');
+const db = new Kysely<DB>({ dialect });
+
+// Define your schema 
+// (passed to the Kysely generic above)
+type DB = {
+  groceries: {
+    id: Generated<number>;
+    name: string;
+  };
+};
+
+// Make type-safe queries
+const data = await db
+  .selectFrom('groceries')
+  .select('name')
+  .orderBy('name', 'asc')
+  .execute();
+console.log(data);
+```
+
+See the Kysely documentation for [getting started](https://kysely.dev/docs/getting-started?dialect=sqlite).
+
+### Drizzle
 
 ```typescript
 import { SQLocalDrizzle } from 'sqlocal/drizzle';
@@ -59,7 +91,7 @@ const groceries = sqliteTable('groceries', {
   name: text('name').notNull(),
 });
 
-// Make type-safe queries!
+// Make type-safe queries
 const data = await db
   .select({ name: groceries.name })
   .from(groceries)
