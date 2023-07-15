@@ -73,6 +73,16 @@ export class SQLocal {
 		};
 	};
 
+	protected convertRowsToObjects = (rows: any[], columns: string[]) => {
+		return rows.map((row) => {
+			const rowObj = {} as Record<string, any>;
+			columns.forEach((column, columnIndex) => {
+				rowObj[column] = row[columnIndex];
+			});
+			return rowObj;
+		});
+	};
+
 	protected exec = async (sql: string, params: any[], method: Sqlite3Method) => {
 		const query = this.createQuery({
 			type: 'query',
@@ -91,16 +101,7 @@ export class SQLocal {
 	) => {
 		const statement = this.convertSqlTemplate(queryTemplate, ...params);
 		const { rows, columns } = await this.exec(statement.sql, statement.params, 'all');
-
-		const data = rows.map((row) => {
-			const rowObj: Record<string, any> = {};
-			columns.forEach((column, columnIndex) => {
-				rowObj[column] = row[columnIndex];
-			});
-			return rowObj;
-		}) satisfies Record<string, any>[];
-
-		return data as T;
+		return this.convertRowsToObjects(rows, columns) as T;
 	};
 
 	transaction = async (
@@ -109,12 +110,10 @@ export class SQLocal {
 		) => ReturnType<SQLocal['convertSqlTemplate']>[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
-		const query = this.createQuery({
+		await this.createQuery({
 			type: 'transaction',
 			statements,
 		});
-
-		await query;
 	};
 
 	getDatabaseFile = async () => {
