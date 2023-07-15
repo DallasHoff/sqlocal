@@ -12,6 +12,7 @@ import type {
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 let sqlite3: Sqlite3 | undefined;
+let db: Sqlite3Db | undefined;
 const config: WorkerConfig = {};
 const queuedQueries: (QueryMessage | TransactionMessage)[] = [];
 
@@ -42,23 +43,12 @@ function editConfig<T extends keyof WorkerConfig>(key: T, value: WorkerConfig[T]
 }
 
 function execQuery(message: QueryMessage | TransactionMessage) {
-	if (!sqlite3 || !config.databasePath) {
+	if (!sqlite3 || !db || !config.databasePath) {
 		queuedQueries.push(message);
 		return;
 	}
 
-	let db: Sqlite3Db | undefined;
-
 	try {
-		if ('opfs' in sqlite3) {
-			db = new sqlite3.oo1.OpfsDb(config.databasePath);
-		} else {
-			db = new sqlite3.oo1.DB(config.databasePath);
-			console.warn(
-				`The origin private file system is not available, so ${config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP headers (See https://www.npmjs.com/package/sqlocal#Install).`
-			);
-		}
-
 		const response: DataMessage = {
 			type: 'data',
 			queryKey: message.queryKey,
@@ -108,8 +98,6 @@ function execQuery(message: QueryMessage | TransactionMessage) {
 			error,
 			queryKey: message.queryKey,
 		} satisfies ErrorMessage);
-	} finally {
-		db?.close();
 	}
 }
 
@@ -124,6 +112,16 @@ function flushQueue() {
 async function init() {
 	try {
 		sqlite3 = await sqlite3InitModule();
+
+		if ('opfs' in sqlite3) {
+			db = new sqlite3.oo1.OpfsDb(config.databasePath);
+		} else {
+			db = new sqlite3.oo1.DB(config.databasePath);
+			console.warn(
+				`The origin private file system is not available, so ${config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://www.npmjs.com/package/sqlocal#Install).`
+			);
+		}
+
 		flushQueue();
 	} catch (error) {
 		postMessage({
@@ -131,6 +129,8 @@ async function init() {
 			error,
 			queryKey: null,
 		} satisfies ErrorMessage);
+
+		db?.close();
 	}
 }
 
