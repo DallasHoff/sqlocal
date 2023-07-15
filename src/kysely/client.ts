@@ -37,10 +37,19 @@ class SQLocalKyselyDriver implements Driver {
 		return new SQLocalKyselyConnection(this.executor);
 	}
 
+	async beginTransaction(connection: DatabaseConnection) {
+		await connection.executeQuery(CompiledQuery.raw('BEGIN'));
+	}
+
+	async commitTransaction(connection: DatabaseConnection) {
+		await connection.executeQuery(CompiledQuery.raw('COMMIT'));
+	}
+
+	async rollbackTransaction(connection: DatabaseConnection) {
+		await connection.executeQuery(CompiledQuery.raw('ROLLBACK'));
+	}
+
 	async init() {}
-	async beginTransaction() {}
-	async commitTransaction() {}
-	async rollbackTransaction() {}
 	async releaseConnection() {}
 	async destroy() {}
 }

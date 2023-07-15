@@ -25,7 +25,7 @@ describe('kysely dialect', () => {
 		await db.schema.dropTable('groceries').execute();
 	});
 
-	it('should execute queries with Kysely', async () => {
+	it('should execute queries', async () => {
 		const items = ['bread', 'milk', 'rice'];
 		for (let item of items) {
 			const insert1 = await db
@@ -58,7 +58,33 @@ describe('kysely dialect', () => {
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
-	it('should introspect the database with Kysely', async () => {
+	it('should perform successful transaction', async () => {
+		await db.transaction().execute(async (trx) => {
+			await trx.insertInto('groceries').values({ name: 'apples' }).execute();
+			await trx.insertInto('groceries').values({ name: 'bananas' }).execute();
+		});
+
+		const data = await db.selectFrom('groceries').selectAll().execute();
+		expect(data.length).toBe(2);
+	});
+
+	it('should rollback failed transaction', async () => {
+		await db
+			.transaction()
+			.execute(async (trx) => {
+				await trx.insertInto('groceries').values({ name: 'carrots' }).execute();
+				await trx
+					.insertInto('groeries' as any)
+					.values({ name: 'lettuce' })
+					.execute();
+			})
+			.catch(() => {});
+
+		const data = await db.selectFrom('groceries').selectAll().execute();
+		expect(data.length).toBe(0);
+	});
+
+	it('should introspect the database', async () => {
 		const schemas = await db.introspection.getSchemas();
 		expect(schemas).toEqual([]);
 

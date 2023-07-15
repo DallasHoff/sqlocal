@@ -121,8 +121,6 @@ async function init() {
 				`The origin private file system is not available, so ${config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://www.npmjs.com/package/sqlocal#Install).`
 			);
 		}
-
-		flushQueue();
 	} catch (error) {
 		postMessage({
 			type: 'error',
@@ -131,7 +129,10 @@ async function init() {
 		} satisfies ErrorMessage);
 
 		db?.close();
+		return;
 	}
+
+	flushQueue();
 }
 
 init();

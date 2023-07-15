@@ -12,7 +12,7 @@ describe('sql', () => {
 		await sql`DROP TABLE groceries`;
 	});
 
-	it('should execute SQL', async () => {
+	it('should execute queries', async () => {
 		const items = ['bread', 'milk', 'rice'];
 		for (let item of items) {
 			const insert1 = await sql`INSERT INTO groceries (name) VALUES (${item}) RETURNING name`;

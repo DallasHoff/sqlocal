@@ -21,7 +21,7 @@ describe('drizzle driver', () => {
 		await sql`DROP TABLE groceries`;
 	});
 
-	it('should execute queries with Drizzle ORM', async () => {
+	it('should execute queries', async () => {
 		const items = ['bread', 'milk', 'rice'];
 		for (let item of items) {
 			const insert1 = await db
@@ -57,4 +57,6 @@ describe('drizzle driver', () => {
 			.all();
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
+
+	// TODO: add tests for transactions
 });
