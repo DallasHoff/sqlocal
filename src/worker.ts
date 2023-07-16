@@ -36,7 +36,10 @@ function processMessageEvent(event: MessageEvent<Message>) {
 	}
 }
 
-function editConfig<T extends keyof WorkerConfig>(key: T, value: WorkerConfig[T]) {
+function editConfig<T extends keyof WorkerConfig>(
+	key: T,
+	value: WorkerConfig[T]
+) {
 	if (config[key] === value) return;
 
 	config[key] = value;

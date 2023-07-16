@@ -41,7 +41,11 @@ describe('drizzle driver', () => {
 			{ id: 3, name: 'rice' },
 		]);
 
-		const delete1 = await db.delete(groceries).where(eq(groceries.id, 2)).returning().get();
+		const delete1 = await db
+			.delete(groceries)
+			.where(eq(groceries.id, 2))
+			.returning()
+			.get();
 		expect(delete1).toEqual({ id: 2, name: 'milk' });
 
 		const update1 = await db

@@ -13,33 +13,38 @@ SQLocal makes it easy to run SQLite3 in the browser, backed by the origin privat
 
 ## Examples
 
-```typescript
+```javascript
 import { SQLocal } from 'sqlocal';
 
-// Create a client with a name for the SQLite file to save in the origin private file system
+// Create a client with a name for the SQLite file to save in
+// the origin private file system
 const { sql } = new SQLocal('database.sqlite3');
 
-// Use the "sql" tagged template to execute a SQL statement against the SQLite database
+// Use the "sql" tagged template to execute a SQL statement
+// against the SQLite database
 await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
 
-// Execute a prepared statement just by inserting parameters in the SQL string
+// Execute a prepared statement just by inserting parameters
+// in the SQL string
 const items = ['bread', 'milk', 'rice'];
 for (let item of items) {
   await sql`INSERT INTO groceries (name) VALUES (${item})`;
 }
 
-// SELECT queries and queries with the RETURNING clause will return the
-// matched records as an array of objects
+// SELECT queries and queries with the RETURNING clause will
+// return the matched records as an array of objects
 const data = await sql`SELECT * FROM groceries`;
 console.log(data);
+```
 
-/* Log:
+Log:
+
+```javascript
 [
   { id: 1, name: 'bread' },
   { id: 2, name: 'milk' },
   { id: 3, name: 'rice' }
 ]
-*/
 ```
 
 Or, you can use SQLocal as a driver for [Kysley](https://kysely.dev/) or [Drizzle ORM](https://orm.drizzle.team/) to make fully-typed queries.
@@ -104,17 +109,23 @@ See the Drizzle ORM documentation for [declaring your schema](https://orm.drizzl
 
 ## Install
 
-Install the SQLocal package in your application.
+Install the SQLocal package in your application using your package manager.
 
 ```sh
 npm install sqlocal
+
+# or...
+yarn add sqlocal
+
+# or...
+pnpm install sqlocal
 ```
 
 ### Cross-Origin Isolation
 
 Since this package depends on the origin private file system API, the page you use it on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
 
-```
+```http
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Opener-Policy: same-origin
 ```
@@ -136,7 +147,7 @@ plugins: [
 ],
 ```
 
-### Vite
+### Vite Configuration
 
 Vite currently has an issue that prevents it from loading web worker files correctly with the default configuration. If you use Vite, please add the below to your Vite configuration to fix this.
 

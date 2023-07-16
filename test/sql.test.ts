@@ -15,7 +15,8 @@ describe('sql', () => {
 	it('should execute queries', async () => {
 		const items = ['bread', 'milk', 'rice'];
 		for (let item of items) {
-			const insert1 = await sql`INSERT INTO groceries (name) VALUES (${item}) RETURNING name`;
+			const insert1 =
+				await sql`INSERT INTO groceries (name) VALUES (${item}) RETURNING name`;
 			expect(insert1).toEqual([{ name: item }]);
 		}
 
@@ -29,7 +30,8 @@ describe('sql', () => {
 		const delete1 = await sql`DELETE FROM groceries WHERE id = 2 RETURNING *`;
 		expect(delete1).toEqual([{ id: 2, name: 'milk' }]);
 
-		const update1 = await sql`UPDATE groceries SET name = 'white rice' WHERE id = 3 RETURNING name`;
+		const update1 =
+			await sql`UPDATE groceries SET name = 'white rice' WHERE id = 3 RETURNING name`;
 		expect(update1).toEqual([{ name: 'white rice' }]);
 
 		const select2 = await sql`SELECT name FROM groceries ORDER BY id DESC`;

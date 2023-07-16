@@ -12,7 +12,11 @@ import {
 
 export class SQLocalKysely extends SQLocal {
 	private executor = async <T>(query: CompiledQuery) => {
-		const { rows, columns } = await this.exec(query.sql, query.parameters as any[], 'all');
+		const { rows, columns } = await this.exec(
+			query.sql,
+			query.parameters as any[],
+			'all'
+		);
 		return {
 			rows: this.convertRowsToObjects(rows, columns) as T[],
 		} satisfies QueryResult<T>;

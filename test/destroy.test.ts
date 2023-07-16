@@ -9,7 +9,8 @@ describe('destroy', () => {
 	});
 
 	it('should destroy the client', async () => {
-		const insert1 = await sql`INSERT INTO groceries (name) VALUES ('pasta') RETURNING name`;
+		const insert1 =
+			await sql`INSERT INTO groceries (name) VALUES ('pasta') RETURNING name`;
 		expect(insert1).toEqual([{ name: 'pasta' }]);
 
 		await destroy();

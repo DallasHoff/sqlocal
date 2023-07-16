@@ -20,7 +20,9 @@ export class SQLocal {
 	>();
 
 	constructor(databasePath: string) {
-		this.worker = new Worker(new URL('./worker', import.meta.url), { type: 'module' });
+		this.worker = new Worker(new URL('./worker', import.meta.url), {
+			type: 'module',
+		});
 
 		this.worker.addEventListener('message', this.processMessageEvent);
 
@@ -83,7 +85,10 @@ export class SQLocal {
 		});
 	};
 
-	protected convertSqlTemplate = (queryTemplate: TemplateStringsArray, ...params: any[]) => {
+	protected convertSqlTemplate = (
+		queryTemplate: TemplateStringsArray,
+		...params: any[]
+	) => {
 		return {
 			sql: queryTemplate.join('?'),
 			params,
@@ -100,7 +105,11 @@ export class SQLocal {
 		});
 	};
 
-	protected exec = async (sql: string, params: any[], method: Sqlite3Method) => {
+	protected exec = async (
+		sql: string,
+		params: any[],
+		method: Sqlite3Method
+	) => {
 		const message = await this.createQuery({
 			type: 'query',
 			sql,
@@ -126,7 +135,11 @@ export class SQLocal {
 		...params: any[]
 	) => {
 		const statement = this.convertSqlTemplate(queryTemplate, ...params);
-		const { rows, columns } = await this.exec(statement.sql, statement.params, 'all');
+		const { rows, columns } = await this.exec(
+			statement.sql,
+			statement.params,
+			'all'
+		);
 		return this.convertRowsToObjects(rows, columns) as T;
 	};
 
@@ -150,7 +163,9 @@ export class SQLocal {
 
 	overwriteDatabaseFile = async (databaseFile: FileSystemWriteChunkType) => {
 		const opfs = await navigator.storage.getDirectory();
-		const fileHandle = await opfs.getFileHandle(this.databasePath, { create: true });
+		const fileHandle = await opfs.getFileHandle(this.databasePath, {
+			create: true,
+		});
 		const fileWritable = await fileHandle.createWritable();
 		await fileWritable.truncate(0);
 		await fileWritable.write(databaseFile);

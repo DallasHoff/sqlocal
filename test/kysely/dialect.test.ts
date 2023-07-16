@@ -43,7 +43,11 @@ describe('kysely dialect', () => {
 			{ id: 3, name: 'rice' },
 		]);
 
-		const delete1 = await db.deleteFrom('groceries').where('id', '=', 2).returningAll().execute();
+		const delete1 = await db
+			.deleteFrom('groceries')
+			.where('id', '=', 2)
+			.returningAll()
+			.execute();
 		expect(delete1).toEqual([{ id: 2, name: 'milk' }]);
 
 		const update1 = await db
@@ -54,7 +58,11 @@ describe('kysely dialect', () => {
 			.execute();
 		expect(update1).toEqual([{ name: 'white rice' }]);
 
-		const select2 = await db.selectFrom('groceries').select('name').orderBy('id', 'desc').execute();
+		const select2 = await db
+			.selectFrom('groceries')
+			.select('name')
+			.orderBy('id', 'desc')
+			.execute();
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
