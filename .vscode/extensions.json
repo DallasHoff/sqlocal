@@ -1,3 +1,7 @@
 {
-	"recommendations": ["esbenp.prettier-vscode", "zixuanchen.vitest-explorer"]
+	"recommendations": [
+		"esbenp.prettier-vscode",
+		"zixuanchen.vitest-explorer",
+		"qufiwefefwoyn.inline-sql-syntax"
+	]
 }
