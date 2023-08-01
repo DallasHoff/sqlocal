@@ -66,5 +66,6 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/DallasHoff/sqlocal"
-	}
+	},
+	"homepage": "https://sqlocal.dallashoffman.com"
 }
