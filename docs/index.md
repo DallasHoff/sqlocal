@@ -1,6 +1,8 @@
 ---
 # https://vitepress.dev/reference/default-theme-home-page
 layout: home
+title: SQLocal
+titleTemplate: false
 
 hero:
   name: 'SQLocal'

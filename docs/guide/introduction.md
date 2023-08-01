@@ -2,9 +2,9 @@
 
 SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system which provides high-performance read/write access to a SQLite database file stored on the user's device.
 
-SQLocal acts as a lightweight wrapper of the [WebAssembly build of SQLite3](https://sqlite.org/wasm/doc/trunk/index.md) and gives you a simple interface to interact with databases running locally. It can also act as a database driver for [Kysley](https://kysely.dev/) or [Drizzle ORM](https://orm.drizzle.team/) to make fully-typed queries.
+SQLocal acts as a lightweight wrapper of the [WebAssembly build of SQLite3](https://sqlite.org/wasm/doc/trunk/index.md) and gives you a simple interface to interact with databases running locally. It can also act as a database driver for [Kysley](/kysely/setup) or [Drizzle ORM](/drizzle/setup) to make fully-typed queries.
 
-Having the ability to store and query relational data on device makes it possible to build powerful, offline-first web apps and games no matter the complexity of your data model.
+Having the ability to store and query relational data on device makes it possible to build powerful, local-first web apps and games no matter the complexity of your data model.
 
 ## Examples
 
