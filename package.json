@@ -29,6 +29,9 @@
 	"scripts": {
 		"build": "tsc",
 		"test": "vitest",
+		"docs:dev": "vitepress dev docs",
+		"docs:build": "vitepress build docs",
+		"docs:preview": "vitepress preview docs",
 		"prepublishOnly": "npm run build && vitest run"
 	},
 	"dependencies": {
@@ -42,6 +45,7 @@
 		"prettier": "^2.8.8",
 		"typescript": "^5.1.6",
 		"vite": "^4.3.9",
+		"vitepress": "^1.0.0-beta.5",
 		"vitest": "^0.32.4",
 		"webdriverio": "^8.11.2"
 	},

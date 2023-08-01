@@ -1,0 +1,7 @@
+:root {
+	--vp-c-brand: hsl(265, 68%, 63%);
+	--vp-c-brand-light: hsl(265, 68%, 71%);
+	--vp-c-brand-lighter: hsl(265, 68%, 79%);
+	--vp-c-brand-dark: hsl(265, 68%, 55%);
+	--vp-c-brand-darker: hsl(265, 68%, 47%);
+}
