@@ -2,6 +2,8 @@
 
 SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system. It wraps the [WebAssembly build of SQLite3](https://sqlite.org/wasm/doc/trunk/index.md) and gives you a simple interface to interact with databases running on device.
 
+[Documentation](https://sqlocal.dallashoffman.com) - [GitHub](https://github.com/DallasHoff/sqlocal) - [NPM](https://www.npmjs.com/package/sqlocal)
+
 ## Features
 
 - 🔎 Locally executes any query that SQLite3 supports
