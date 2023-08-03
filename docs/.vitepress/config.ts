@@ -47,7 +47,10 @@ export default defineConfig({
 			},
 			{
 				text: 'Kysely Query Builder',
-				items: [{ text: 'Kysely Setup', link: '/kysely/setup' }],
+				items: [
+					{ text: 'Kysely Setup', link: '/kysely/setup' },
+					{ text: 'Kysely Migrations', link: '/kysely/migrations' },
+				],
 			},
 			{
 				text: 'Drizzle ORM',

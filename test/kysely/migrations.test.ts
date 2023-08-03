@@ -10,7 +10,7 @@ describe('kysely migrations', () => {
 		db,
 		provider: {
 			async getMigrations() {
-				const { migrations } = await import('./migrations');
+				const { migrations } = await import('./migrations/');
 				return migrations;
 			},
 		},
