@@ -135,7 +135,7 @@ async function init() {
 		} else {
 			db = new sqlite3.oo1.DB(config.databasePath);
 			console.warn(
-				`The origin private file system is not available, so ${config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://www.npmjs.com/package/sqlocal#Install).`
+				`The origin private file system is not available, so ${config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 			);
 		}
 	} catch (error) {
