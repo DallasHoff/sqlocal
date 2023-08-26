@@ -115,10 +115,8 @@ Install the SQLocal package in your application using your package manager.
 
 ```sh
 npm install sqlocal
-
 # or...
 yarn add sqlocal
-
 # or...
 pnpm install sqlocal
 ```
