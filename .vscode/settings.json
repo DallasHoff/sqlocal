@@ -4,5 +4,6 @@
 	"[javascript]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
 	},
-	"testing.automaticallyOpenPeekView": "never"
+	"testing.automaticallyOpenPeekView": "never",
+	"typescript.tsdk": "node_modules/typescript/lib"
 }
