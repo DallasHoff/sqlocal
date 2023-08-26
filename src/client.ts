@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import type {
+	CallbackMessage,
 	ConfigMessage,
 	DestroyMessage,
 	Message,
@@ -18,6 +19,7 @@ export class SQLocal {
 		QueryKey,
 		[resolve: (message: Message) => void, reject: (error: unknown) => void]
 	>();
+	protected userCallbacks = new Map<string, (...args: any[]) => void>();
 
 	constructor(databasePath: string) {
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
@@ -51,6 +53,14 @@ export class SQLocal {
 					queries.delete(message.queryKey);
 				} else if (message.type === 'error') {
 					throw message.error;
+				}
+				break;
+
+			case 'callback':
+				const userCallback = this.userCallbacks.get(message.name);
+
+				if (userCallback) {
+					userCallback(...(message.args ?? []));
 				}
 				break;
 
@@ -155,6 +165,24 @@ export class SQLocal {
 		});
 	};
 
+	createCallbackFunction = (
+		functionName: string,
+		handler: (...args: any[]) => void
+	) => {
+		if (!this.userCallbacks.has(functionName)) {
+			this.userCallbacks.set(functionName, handler);
+		} else {
+			throw new Error(
+				`A callback function with the name "${functionName}" has already been created for this SQLocal instance.`
+			);
+		}
+
+		this.worker.postMessage({
+			type: 'callback',
+			name: functionName,
+		} satisfies CallbackMessage);
+	};
+
 	getDatabaseFile = async () => {
 		const opfs = await navigator.storage.getDirectory();
 		const fileHandle = await opfs.getFileHandle(this.databasePath);
@@ -176,6 +204,7 @@ export class SQLocal {
 		await this.createQuery({ type: 'destroy' });
 		this.worker.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();
+		this.userCallbacks.clear();
 		this.worker.terminate();
 		this.isWorkerDestroyed = true;
 	};

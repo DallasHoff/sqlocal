@@ -2,6 +2,7 @@ import type {
 	DataMessage,
 	DestroyMessage,
 	ErrorMessage,
+	CallbackMessage,
 	Message,
 	QueryMessage,
 	Sqlite3,
@@ -29,6 +30,9 @@ function processMessageEvent(event: MessageEvent<Message>) {
 		case 'query':
 		case 'transaction':
 			execQuery(message);
+			break;
+		case 'callback':
+			createCallbackFunction(message);
 			break;
 		case 'destroy':
 			destroy(message);
@@ -104,6 +108,26 @@ function execQuery(message: QueryMessage | TransactionMessage) {
 			type: 'error',
 			error,
 			queryKey: message.queryKey,
+		} satisfies ErrorMessage);
+	}
+}
+
+function createCallbackFunction(message: CallbackMessage) {
+	const handler = (_: number, ...args: any[]) => {
+		postMessage({
+			type: 'callback',
+			name: message.name,
+			args: args,
+		} satisfies CallbackMessage);
+	};
+
+	try {
+		db.createFunction(message.name, handler, { arity: -1 });
+	} catch (error) {
+		postMessage({
+			type: 'error',
+			error,
+			queryKey: null,
 		} satisfies ErrorMessage);
 	}
 }

@@ -10,6 +10,7 @@ export type WorkerConfig = {
 export type Message =
 	| QueryMessage
 	| TransactionMessage
+	| CallbackMessage
 	| DataMessage
 	| ConfigMessage
 	| ErrorMessage
@@ -28,6 +29,11 @@ export type TransactionMessage = {
 		sql: string;
 		params: any[];
 	}[];
+};
+export type CallbackMessage = {
+	type: 'callback';
+	name: string;
+	args?: any[];
 };
 export type DataMessage = {
 	type: 'data';
