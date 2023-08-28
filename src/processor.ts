@@ -23,8 +23,9 @@ export class SQLocalProcessor {
 	protected db: Sqlite3Db | undefined;
 	protected config: ProcessorConfig = {};
 	protected queuedMessages: Message[] = [];
-	protected messageListeners = new Set<(message: Message) => void>();
 	protected userFunctions = new Map<string, UserFunction>();
+
+	onmessage: ((message: Message) => void) | undefined;
 
 	constructor() {
 		this.init();
@@ -67,7 +68,7 @@ export class SQLocalProcessor {
 		this.flushQueue();
 	};
 
-	processMessage = (message: Message | MessageEvent<Message>) => {
+	postMessage = (message: Message | MessageEvent<Message>) => {
 		if (message instanceof MessageEvent) {
 			message = message.data;
 		}
@@ -94,18 +95,10 @@ export class SQLocalProcessor {
 		}
 	};
 
-	addMessageListener = (listener: (message: Message) => void) => {
-		this.messageListeners.add(listener);
-	};
-
-	removeMessageListener = (listener: (message: Message) => void) => {
-		this.messageListeners.delete(listener);
-	};
-
 	protected emitMessage = (message: Message) => {
-		this.messageListeners.forEach((listener) => {
-			listener(message);
-		});
+		if (this.onmessage) {
+			this.onmessage(message);
+		}
 	};
 
 	protected editConfig = <T extends keyof ProcessorConfig>(
@@ -253,7 +246,7 @@ export class SQLocalProcessor {
 		while (this.queuedMessages.length > 0) {
 			const message = this.queuedMessages.shift();
 			if (message === undefined) continue;
-			this.processMessage(message);
+			this.postMessage(message);
 		}
 	};
 

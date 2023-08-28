@@ -2,5 +2,5 @@ import { SQLocalProcessor } from './processor';
 
 const processor = new SQLocalProcessor();
 
-self.onmessage = processor.processMessage;
-processor.addMessageListener(postMessage);
+self.onmessage = (message) => processor.postMessage(message);
+processor.onmessage = (message) => self.postMessage(message);
