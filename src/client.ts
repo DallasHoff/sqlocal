@@ -1,8 +1,9 @@
 import { nanoid } from 'nanoid';
 import type {
-	CallbackMessage,
+	CallbackUserFunction,
 	ConfigMessage,
 	DestroyMessage,
+	FunctionMessage,
 	Message,
 	OmitQueryKey,
 	QueryKey,
@@ -19,7 +20,7 @@ export class SQLocal {
 		QueryKey,
 		[resolve: (message: Message) => void, reject: (error: unknown) => void]
 	>();
-	protected userCallbacks = new Map<string, (...args: any[]) => void>();
+	protected userCallbacks = new Map<string, CallbackUserFunction['handler']>();
 
 	constructor(databasePath: string) {
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
@@ -41,6 +42,7 @@ export class SQLocal {
 		const queries = this.queriesInProgress;
 
 		switch (message.type) {
+			case 'success':
 			case 'data':
 			case 'error':
 				if (message.queryKey && queries.has(message.queryKey)) {
@@ -63,19 +65,13 @@ export class SQLocal {
 					userCallback(...(message.args ?? []));
 				}
 				break;
-
-			case 'destroy':
-				if (message.queryKey && queries.has(message.queryKey)) {
-					const [resolve] = queries.get(message.queryKey)!;
-					resolve(message);
-					queries.delete(message.queryKey);
-				}
-				break;
 		}
 	};
 
 	protected createQuery = (
-		message: OmitQueryKey<QueryMessage | TransactionMessage | DestroyMessage>
+		message: OmitQueryKey<
+			QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage
+		>
 	) => {
 		if (this.isWorkerDestroyed === true) {
 			throw new Error(
@@ -88,7 +84,7 @@ export class SQLocal {
 		this.worker.postMessage({
 			...message,
 			queryKey,
-		} satisfies QueryMessage | TransactionMessage | DestroyMessage);
+		} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
 
 		return new Promise<Message>((resolve, reject) => {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
@@ -165,22 +161,16 @@ export class SQLocal {
 		});
 	};
 
-	createCallbackFunction = (
+	createCallbackFunction = async (
 		functionName: string,
-		handler: (...args: any[]) => void
+		handler: CallbackUserFunction['handler']
 	) => {
-		if (!this.userCallbacks.has(functionName)) {
-			this.userCallbacks.set(functionName, handler);
-		} else {
-			throw new Error(
-				`A callback function with the name "${functionName}" has already been created for this SQLocal instance.`
-			);
-		}
+		await this.createQuery({
+			type: 'function',
+			functionName,
+		});
 
-		this.worker.postMessage({
-			type: 'callback',
-			name: functionName,
-		} satisfies CallbackMessage);
+		this.userCallbacks.set(functionName, handler);
 	};
 
 	getDatabaseFile = async () => {

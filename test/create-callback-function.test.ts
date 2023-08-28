@@ -18,7 +18,7 @@ describe('createCallbackFunction', () => {
 		let callbackRan = false;
 		let callbackValue = '';
 
-		createCallbackFunction('testCallback', (value: string) => {
+		await createCallbackFunction('testCallback', (value: string) => {
 			callbackRan = true;
 			callbackValue = value;
 		});
@@ -34,5 +34,9 @@ describe('createCallbackFunction', () => {
 
 		expect(callbackRan).toBe(true);
 		expect(callbackValue).toBe('bread');
+
+		const duplicateFunction = async () =>
+			await createCallbackFunction('testCallback', () => {});
+		await expect(duplicateFunction).rejects.toThrowError();
 	});
 });

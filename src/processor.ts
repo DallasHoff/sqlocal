@@ -8,7 +8,12 @@ import type {
 	Sqlite3,
 	Sqlite3Db,
 	TransactionMessage,
-	WorkerConfig,
+	ProcessorConfig,
+	FunctionMessage,
+	UserFunction,
+	ScalarUserFunction,
+	SuccessMessage,
+	CallbackUserFunction,
 } from './types';
 // @ts-expect-error
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
@@ -16,9 +21,10 @@ import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 export class SQLocalProcessor {
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
-	protected config: WorkerConfig = {};
+	protected config: ProcessorConfig = {};
 	protected queuedMessages: Message[] = [];
 	protected messageListeners = new Set<(message: Message) => void>();
+	protected userFunctions = new Map<string, UserFunction>();
 
 	constructor() {
 		this.init();
@@ -57,6 +63,7 @@ export class SQLocalProcessor {
 			return;
 		}
 
+		this.userFunctions.forEach(this.initUserFunction);
 		this.flushQueue();
 	};
 
@@ -78,7 +85,7 @@ export class SQLocalProcessor {
 			case 'transaction':
 				this.exec(message);
 				break;
-			case 'callback':
+			case 'function':
 				this.createCallbackFunction(message);
 				break;
 			case 'destroy':
@@ -101,9 +108,9 @@ export class SQLocalProcessor {
 		});
 	};
 
-	protected editConfig = <T extends keyof WorkerConfig>(
+	protected editConfig = <T extends keyof ProcessorConfig>(
 		key: T,
-		value: WorkerConfig[T]
+		value: ProcessorConfig[T]
 	) => {
 		if (this.config[key] === value) return;
 
@@ -168,24 +175,78 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected createCallbackFunction = (message: CallbackMessage) => {
-		const handler = (_: number, ...args: any[]) => {
+	protected createCallbackFunction = (message: FunctionMessage) => {
+		const { functionName, queryKey } = message;
+		const handler = (...args: any[]) => {
 			this.emitMessage({
 				type: 'callback',
-				name: message.name,
+				name: functionName,
 				args: args,
 			} satisfies CallbackMessage);
 		};
 
+		if (this.userFunctions.has(functionName)) {
+			this.emitMessage({
+				type: 'error',
+				error: new Error(
+					`A user-defined function with the name "${functionName}" has already been created for this SQLocal instance.`
+				),
+				queryKey,
+			} satisfies ErrorMessage);
+			return;
+		}
+
 		try {
-			this.db.createFunction(message.name, handler, { arity: -1 });
+			const callbackFunction = {
+				type: 'callback',
+				name: functionName,
+				handler,
+			} satisfies CallbackUserFunction;
+
+			this.initUserFunction(callbackFunction);
+			this.userFunctions.set(functionName, callbackFunction);
+
+			this.emitMessage({
+				type: 'success',
+				queryKey,
+			} satisfies SuccessMessage);
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
 				error,
-				queryKey: null,
+				queryKey,
 			} satisfies ErrorMessage);
 		}
+	};
+
+	createScalarFunction = (
+		functionName: string,
+		handler: ScalarUserFunction['handler']
+	) => {
+		if (this.userFunctions.has(functionName)) {
+			throw new Error(
+				`A user-defined function with the name "${functionName}" has already been created for this SQLocal instance.`
+			);
+		}
+
+		const scalarFunction = {
+			type: 'scalar',
+			name: functionName,
+			handler,
+		} satisfies ScalarUserFunction;
+
+		this.initUserFunction(scalarFunction);
+		this.userFunctions.set(functionName, scalarFunction);
+	};
+
+	protected initUserFunction = (fn: UserFunction) => {
+		if (!this.db) return;
+
+		this.db.createFunction(
+			fn.name,
+			(_: number, ...args: any[]) => fn.handler(...args),
+			{ arity: -1 }
+		);
 	};
 
 	protected flushQueue = () => {
@@ -201,8 +262,8 @@ export class SQLocalProcessor {
 		this.db = undefined;
 
 		this.emitMessage({
-			type: 'destroy',
+			type: 'success',
 			queryKey: message.queryKey,
-		} satisfies DestroyMessage);
+		} satisfies SuccessMessage);
 	};
 }
