@@ -4,8 +4,8 @@ import type {
 	ConfigMessage,
 	DestroyMessage,
 	FunctionMessage,
-	Message,
 	OmitQueryKey,
+	OutputMessage,
 	QueryKey,
 	QueryMessage,
 	Sqlite3Method,
@@ -16,11 +16,14 @@ export class SQLocal {
 	protected databasePath: string;
 	protected worker: Worker;
 	protected isWorkerDestroyed: boolean = false;
+	protected userCallbacks = new Map<string, CallbackUserFunction['handler']>();
 	protected queriesInProgress = new Map<
 		QueryKey,
-		[resolve: (message: Message) => void, reject: (error: unknown) => void]
+		[
+			resolve: (message: OutputMessage) => void,
+			reject: (error: unknown) => void
+		]
 	>();
-	protected userCallbacks = new Map<string, CallbackUserFunction['handler']>();
 
 	constructor(databasePath: string) {
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
@@ -37,7 +40,7 @@ export class SQLocal {
 		} satisfies ConfigMessage);
 	}
 
-	protected processMessageEvent = (event: MessageEvent<Message>) => {
+	protected processMessageEvent = (event: MessageEvent<OutputMessage>) => {
 		const message = event.data;
 		const queries = this.queriesInProgress;
 
@@ -86,7 +89,7 @@ export class SQLocal {
 			queryKey,
 		} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
 
-		return new Promise<Message>((resolve, reject) => {
+		return new Promise<OutputMessage>((resolve, reject) => {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
 		});
 	};

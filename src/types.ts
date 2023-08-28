@@ -7,25 +7,15 @@ export type ProcessorConfig = {
 	databasePath?: string;
 };
 
-export type Message =
-	| SuccessMessage
-	| ErrorMessage
+export type Message = InputMessage | OutputMessage;
+export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
+
+export type InputMessage =
 	| QueryMessage
 	| TransactionMessage
-	| CallbackMessage
-	| DataMessage
-	| ConfigMessage
 	| FunctionMessage
+	| ConfigMessage
 	| DestroyMessage;
-export type SuccessMessage = {
-	type: 'success';
-	queryKey: QueryKey;
-};
-export type ErrorMessage = {
-	type: 'error';
-	queryKey: QueryKey | null;
-	error: unknown;
-};
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
@@ -41,33 +31,46 @@ export type TransactionMessage = {
 		params: any[];
 	}[];
 };
-export type DataMessage = {
-	type: 'data';
+export type FunctionMessage = {
+	type: 'function';
 	queryKey: QueryKey;
-	columns: string[];
-	rows: any[];
+	functionName: string;
 };
 export type ConfigMessage = {
 	type: 'config';
 	key: keyof ProcessorConfig;
 	value: any;
 };
-export type FunctionMessage = {
-	type: 'function';
+export type DestroyMessage = {
+	type: 'destroy';
 	queryKey: QueryKey;
-	functionName: string;
+};
+
+export type OutputMessage =
+	| SuccessMessage
+	| ErrorMessage
+	| DataMessage
+	| CallbackMessage;
+export type SuccessMessage = {
+	type: 'success';
+	queryKey: QueryKey;
+};
+export type ErrorMessage = {
+	type: 'error';
+	queryKey: QueryKey | null;
+	error: unknown;
+};
+export type DataMessage = {
+	type: 'data';
+	queryKey: QueryKey;
+	columns: string[];
+	rows: any[];
 };
 export type CallbackMessage = {
 	type: 'callback';
 	name: string;
 	args: any[];
 };
-export type DestroyMessage = {
-	type: 'destroy';
-	queryKey: QueryKey;
-};
-
-export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
 
 export type UserFunction = CallbackUserFunction | ScalarUserFunction;
 export type CallbackUserFunction = {

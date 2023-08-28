@@ -1,9 +1,6 @@
 import type {
 	DataMessage,
 	DestroyMessage,
-	ErrorMessage,
-	CallbackMessage,
-	Message,
 	QueryMessage,
 	Sqlite3,
 	Sqlite3Db,
@@ -12,8 +9,9 @@ import type {
 	FunctionMessage,
 	UserFunction,
 	ScalarUserFunction,
-	SuccessMessage,
 	CallbackUserFunction,
+	OutputMessage,
+	InputMessage,
 } from './types';
 // @ts-expect-error
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
@@ -22,10 +20,10 @@ export class SQLocalProcessor {
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
 	protected config: ProcessorConfig = {};
-	protected queuedMessages: Message[] = [];
+	protected queuedMessages: InputMessage[] = [];
 	protected userFunctions = new Map<string, UserFunction>();
 
-	onmessage: ((message: Message) => void) | undefined;
+	onmessage: ((message: OutputMessage) => void) | undefined;
 
 	constructor() {
 		this.init();
@@ -57,7 +55,7 @@ export class SQLocalProcessor {
 				type: 'error',
 				error,
 				queryKey: null,
-			} satisfies ErrorMessage);
+			});
 
 			this.db?.close();
 			this.db = undefined;
@@ -68,7 +66,7 @@ export class SQLocalProcessor {
 		this.flushQueue();
 	};
 
-	postMessage = (message: Message | MessageEvent<Message>) => {
+	postMessage = (message: InputMessage | MessageEvent<InputMessage>) => {
 		if (message instanceof MessageEvent) {
 			message = message.data;
 		}
@@ -95,7 +93,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected emitMessage = (message: Message) => {
+	protected emitMessage = (message: OutputMessage) => {
 		if (this.onmessage) {
 			this.onmessage(message);
 		}
@@ -158,13 +156,13 @@ export class SQLocalProcessor {
 					break;
 			}
 
-			this.emitMessage(response satisfies DataMessage);
+			this.emitMessage(response);
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
 				error,
 				queryKey: message.queryKey,
-			} satisfies ErrorMessage);
+			});
 		}
 	};
 
@@ -175,7 +173,7 @@ export class SQLocalProcessor {
 				type: 'callback',
 				name: functionName,
 				args: args,
-			} satisfies CallbackMessage);
+			});
 		};
 
 		if (this.userFunctions.has(functionName)) {
@@ -185,16 +183,16 @@ export class SQLocalProcessor {
 					`A user-defined function with the name "${functionName}" has already been created for this SQLocal instance.`
 				),
 				queryKey,
-			} satisfies ErrorMessage);
+			});
 			return;
 		}
 
 		try {
-			const callbackFunction = {
+			const callbackFunction: CallbackUserFunction = {
 				type: 'callback',
 				name: functionName,
 				handler,
-			} satisfies CallbackUserFunction;
+			};
 
 			this.initUserFunction(callbackFunction);
 			this.userFunctions.set(functionName, callbackFunction);
@@ -202,13 +200,13 @@ export class SQLocalProcessor {
 			this.emitMessage({
 				type: 'success',
 				queryKey,
-			} satisfies SuccessMessage);
+			});
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
 				error,
 				queryKey,
-			} satisfies ErrorMessage);
+			});
 		}
 	};
 
@@ -222,11 +220,11 @@ export class SQLocalProcessor {
 			);
 		}
 
-		const scalarFunction = {
+		const scalarFunction: ScalarUserFunction = {
 			type: 'scalar',
 			name: functionName,
 			handler,
-		} satisfies ScalarUserFunction;
+		};
 
 		this.initUserFunction(scalarFunction);
 		this.userFunctions.set(functionName, scalarFunction);
@@ -257,6 +255,6 @@ export class SQLocalProcessor {
 		this.emitMessage({
 			type: 'success',
 			queryKey: message.queryKey,
-		} satisfies SuccessMessage);
+		});
 	};
 }
