@@ -72,14 +72,9 @@ export type CallbackMessage = {
 	args: any[];
 };
 
-export type UserFunction = CallbackUserFunction | ScalarUserFunction;
+export type UserFunction = CallbackUserFunction;
 export type CallbackUserFunction = {
 	type: 'callback';
 	name: string;
 	handler: (...args: any[]) => void;
-};
-export type ScalarUserFunction = {
-	type: 'scalar';
-	name: string;
-	handler: (...args: any[]) => any;
 };

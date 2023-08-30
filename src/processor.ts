@@ -8,7 +8,6 @@ import type {
 	ProcessorConfig,
 	FunctionMessage,
 	UserFunction,
-	ScalarUserFunction,
 	CallbackUserFunction,
 	OutputMessage,
 	InputMessage,
@@ -208,26 +207,6 @@ export class SQLocalProcessor {
 				queryKey,
 			});
 		}
-	};
-
-	createScalarFunction = (
-		functionName: string,
-		handler: ScalarUserFunction['handler']
-	) => {
-		if (this.userFunctions.has(functionName)) {
-			throw new Error(
-				`A user-defined function with the name "${functionName}" has already been created for this SQLocal instance.`
-			);
-		}
-
-		const scalarFunction: ScalarUserFunction = {
-			type: 'scalar',
-			name: functionName,
-			handler,
-		};
-
-		this.initUserFunction(scalarFunction);
-		this.userFunctions.set(functionName, scalarFunction);
 	};
 
 	protected initUserFunction = (fn: UserFunction) => {
