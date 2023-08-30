@@ -32,6 +32,10 @@ export default defineConfig({
 						link: '/api/transaction',
 					},
 					{
+						text: 'createCallbackFunction',
+						link: '/api/createcallbackfunction',
+					},
+					{
 						text: 'getDatabaseFile',
 						link: '/api/getdatabasefile',
 					},
