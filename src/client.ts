@@ -26,8 +26,9 @@ export class SQLocal {
 	>();
 
 	constructor(databasePath: string) {
-		const workerPath = new URL('./worker', import.meta.url);
-		this.worker = new Worker(workerPath, { type: 'module' });
+		this.worker = new Worker(new URL('./worker', import.meta.url), {
+			type: 'module',
+		});
 		this.worker.addEventListener('message', this.processMessageEvent);
 
 		this.databasePath = databasePath;
