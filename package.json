@@ -35,7 +35,7 @@
 		"prepublishOnly": "npm run build && vitest run"
 	},
 	"dependencies": {
-		"@sqlite.org/sqlite-wasm": "3.42.0-build2",
+		"@sqlite.org/sqlite-wasm": "^3.43.2-build1",
 		"kysely": "^0.26.1",
 		"nanoid": "^4.0.2"
 	},

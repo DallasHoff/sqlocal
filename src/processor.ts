@@ -12,7 +12,6 @@ import type {
 	OutputMessage,
 	InputMessage,
 } from './types';
-// @ts-expect-error
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 export class SQLocalProcessor {
@@ -42,7 +41,7 @@ export class SQLocalProcessor {
 			}
 
 			if ('opfs' in this.sqlite3) {
-				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath);
+				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath, 'w');
 			} else {
 				this.db = new this.sqlite3.oo1.DB(this.config.databasePath);
 				console.warn(
@@ -112,6 +111,8 @@ export class SQLocalProcessor {
 	};
 
 	protected exec = (message: QueryMessage | TransactionMessage) => {
+		if (!this.db) return;
+
 		try {
 			const response: DataMessage = {
 				type: 'data',

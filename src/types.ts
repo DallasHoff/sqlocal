@@ -1,5 +1,7 @@
-export type Sqlite3 = any;
-export type Sqlite3Db = any;
+import { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
+
+export type Sqlite3 = Sqlite3Static;
+export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type QueryKey = string;
 
