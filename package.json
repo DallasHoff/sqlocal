@@ -29,6 +29,7 @@
 	"scripts": {
 		"build": "tsc",
 		"test": "vitest",
+		"drizzle-kit": "drizzle-kit generate:sqlite --schema=./test/drizzle/migrations/schema.ts --out=./test/drizzle/migrations/drizzle",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs",
@@ -41,6 +42,7 @@
 	},
 	"devDependencies": {
 		"@vitest/browser": "^0.32.4",
+		"drizzle-kit": "^0.19.13",
 		"drizzle-orm": "^0.27.0",
 		"prettier": "^2.8.8",
 		"typescript": "^5.1.6",
