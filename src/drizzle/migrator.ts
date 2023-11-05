@@ -81,24 +81,20 @@ export async function readMigrationFiles(
 	return migrationQueries;
 }
 
-// ref https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/sqlite-proxy/migrator.ts
-export type ProxyMigrator = (migrationQueries: string[]) => Promise<void>;
-
+// ref https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/sqlite-core/dialect.ts#L615
 export async function migrate<TSchema extends Record<string, unknown>>(
 	db: SqliteRemoteDatabase<TSchema>,
-	callback: ProxyMigrator,
 	config: string | MigrationConfig
 ) {
 	const migrations = await readMigrationFiles(config);
 
 	const migrationTableCreate = sql`
-		CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
-			id SERIAL PRIMARY KEY,
-			hash text NOT NULL,
-			created_at numeric
-		)
-	`;
-
+			CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+				id SERIAL PRIMARY KEY,
+				hash text NOT NULL,
+				created_at numeric
+			)
+		`;
 	await db.run(migrationTableCreate);
 
 	const dbMigrations = await db.values<[number, string, string]>(
@@ -106,19 +102,26 @@ export async function migrate<TSchema extends Record<string, unknown>>(
 	);
 
 	const lastDbMigration = dbMigrations[0] ?? undefined;
+	await db.run(sql`BEGIN`);
 
-	const queriesToRun: string[] = [];
-	for (const migration of migrations) {
-		if (
-			!lastDbMigration ||
-			Number(lastDbMigration[2])! < migration.folderMillis
-		) {
-			queriesToRun.push(
-				...migration.sql,
-				`INSERT INTO "__drizzle_migrations" ("hash", "created_at") VALUES('${migration.hash}', '${migration.folderMillis}')`
-			);
+	try {
+		for (const migration of migrations) {
+			if (
+				!lastDbMigration ||
+				Number(lastDbMigration[2])! < migration.folderMillis
+			) {
+				for (const stmt of migration.sql) {
+					await db.run(sql.raw(stmt));
+				}
+				await db.run(
+					sql`INSERT INTO "__drizzle_migrations" ("hash", "created_at") VALUES(${migration.hash}, ${migration.folderMillis})`
+				);
+			}
 		}
-	}
 
-	await callback(queriesToRun);
+		await db.run(sql`COMMIT`);
+	} catch (e) {
+		await db.run(sql`ROLLBACK`);
+		throw e;
+	}
 }

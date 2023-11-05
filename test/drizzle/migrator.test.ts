@@ -1,13 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { readMigrationFiles, migrate } from '../../src/drizzle/migrations';
+import { readMigrationFiles, migrate } from '../../src/drizzle/migrator';
 import { SQLocalDrizzle } from '../../src/drizzle';
 
-//import { sql } from 'drizzle-orm';
 import { MigrationConfig } from 'drizzle-orm/migrator';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 
-describe('migrations', () => {
+describe('migrator', () => {
 	const { driver, sql } = new SQLocalDrizzle('drizzle-driver-test.sqlite3');
 	const db = drizzle(driver);
 	const config: MigrationConfig = {
@@ -16,20 +15,18 @@ describe('migrations', () => {
 
 	it('readMigrationFiles should read files', async () => {
 		const result = await readMigrationFiles(config);
+		expect(result).toBeTruthy();
 	});
 
 	it('should migrate', async () => {
-		await migrate(
-			db,
-			async (queries) => {
-				console.log(queries);
-			},
-			config
-		);
+		await migrate(db, config);
 
-		const result =
-			await sql`SELECT name FROM sqlite_schema WHERE type='table' AND name='__drizzle_migrations'`;
+		const tables = (
+			await sql`SELECT name FROM sqlite_schema WHERE type='table'`
+		).map(({ name }) => name);
 
-		console.log(result);
+		for (const tableName of ['cities', 'countries']) {
+			expect(tables.includes(tableName)).toBeTruthy();
+		}
 	});
 });
