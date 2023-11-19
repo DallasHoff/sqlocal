@@ -41,9 +41,9 @@ export class SQLocalProcessor {
 			}
 
 			if ('opfs' in this.sqlite3) {
-				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath, 'w');
+				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath, 'cw');
 			} else {
-				this.db = new this.sqlite3.oo1.DB(this.config.databasePath);
+				this.db = new this.sqlite3.oo1.DB(this.config.databasePath, 'cw');
 				console.warn(
 					`The origin private file system is not available, so ${this.config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 				);
