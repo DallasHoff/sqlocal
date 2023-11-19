@@ -1,6 +1,6 @@
 {
 	"name": "sqlocal",
-	"version": "0.6.2",
+	"version": "0.6.3",
 	"type": "module",
 	"types": "./dist/index.d.ts",
 	"browser": "./dist/index.js",
