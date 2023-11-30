@@ -6,6 +6,16 @@ export default defineConfig({
 	description:
 		'SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system.',
 	cleanUrls: true,
+	head: [
+		[
+			'script',
+			{
+				defer: '',
+				src: 'https://static.cloudflareinsights.com/beacon.min.js',
+				'data-cf-beacon': '{"token": "a704e6c1c1ce48d785c23648f446abc6"}',
+			},
+		],
+	],
 	themeConfig: {
 		search: { provider: 'local' },
 		nav: [
