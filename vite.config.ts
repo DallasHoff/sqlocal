@@ -14,6 +14,7 @@ export default defineConfig({
 	},
 	plugins: [
 		{
+			enforce: 'pre',
 			name: 'configure-response-headers',
 			configureServer: (server) => {
 				server.middlewares.use((_req, res, next) => {
