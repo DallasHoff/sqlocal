@@ -10,6 +10,7 @@ import type {
 	QueryMessage,
 	Sqlite3Method,
 	TransactionMessage,
+	ImportDbMessage,
 } from './types';
 
 export class SQLocal {
@@ -72,7 +73,7 @@ export class SQLocal {
 
 	protected createQuery = (
 		message: OmitQueryKey<
-			QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage
+			QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage | ImportDbMessage
 		>
 	) => {
 		if (this.isWorkerDestroyed === true) {
@@ -83,10 +84,27 @@ export class SQLocal {
 
 		const queryKey = nanoid() satisfies QueryKey;
 
-		this.worker.postMessage({
-			...message,
-			queryKey,
-		} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
+		if (message)
+
+		switch (message.type) {
+			case 'query':
+			case 'destroy':
+			case 'function':
+			case 'transaction':
+				this.worker.postMessage({
+					...message,
+					queryKey,
+				} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
+				break;
+			case 'importDb':
+				this.worker.postMessage({
+					...message,
+					queryKey,
+				} satisfies ImportDbMessage,
+				[message.payload]);
+				break;
+		}
+
 
 		return new Promise<OutputMessage>((resolve, reject) => {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
@@ -190,6 +208,11 @@ export class SQLocal {
 		await fileWritable.truncate(0);
 		await fileWritable.write(databaseFile);
 		await fileWritable.close();
+	};
+
+	importDatabaseFile = async (databaseFile: File) => {
+		const payload = await databaseFile.arrayBuffer();
+		await this.createQuery({ type: 'importDb', payload });
 	};
 
 	destroy = async () => {
