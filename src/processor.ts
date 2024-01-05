@@ -11,6 +11,7 @@ import type {
 	CallbackUserFunction,
 	OutputMessage,
 	InputMessage,
+	ImportDbMessage,
 } from './types';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
@@ -87,6 +88,9 @@ export class SQLocalProcessor {
 				break;
 			case 'destroy':
 				this.destroy(message);
+				break;
+			case 'importDb':
+				this.importDb(message);
 				break;
 		}
 	};
@@ -235,6 +239,19 @@ export class SQLocalProcessor {
 		this.emitMessage({
 			type: 'success',
 			queryKey: message.queryKey,
+		});
+	};
+
+	protected importDb = async (message: ImportDbMessage) => {
+		if (!this.config.databasePath) return;
+		if (!this.sqlite3) {
+			this.sqlite3 = await sqlite3InitModule();
+		}
+		await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, message.payload);
+
+		this.emitMessage({
+				type: 'success',
+				queryKey: message.queryKey,
 		});
 	};
 }

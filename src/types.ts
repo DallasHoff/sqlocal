@@ -17,7 +17,8 @@ export type InputMessage =
 	| TransactionMessage
 	| FunctionMessage
 	| ConfigMessage
-	| DestroyMessage;
+	| DestroyMessage
+	| ImportDbMessage;
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
@@ -47,7 +48,11 @@ export type DestroyMessage = {
 	type: 'destroy';
 	queryKey: QueryKey;
 };
-
+export type ImportDbMessage = {
+	type: 'importDb';
+	queryKey: QueryKey;
+	payload: ArrayBuffer
+};
 export type OutputMessage =
 	| SuccessMessage
 	| ErrorMessage
