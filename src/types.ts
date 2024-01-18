@@ -17,6 +17,7 @@ export type InputMessage =
 	| TransactionMessage
 	| FunctionMessage
 	| ConfigMessage
+	| ImportMessage
 	| DestroyMessage;
 export type QueryMessage = {
 	type: 'query';
@@ -42,6 +43,11 @@ export type ConfigMessage = {
 	type: 'config';
 	key: keyof ProcessorConfig;
 	value: any;
+};
+export type ImportMessage = {
+	type: 'import';
+	queryKey: QueryKey;
+	database: ArrayBuffer | Uint8Array;
 };
 export type DestroyMessage = {
 	type: 'destroy';
