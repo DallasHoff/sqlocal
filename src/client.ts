@@ -200,14 +200,11 @@ export class SQLocal {
 	};
 
 	overwriteDatabaseFile = async (
-		databaseFile: ArrayBuffer | Uint8Array | File | Blob | string
+		databaseFile: File | Blob | ArrayBuffer | Uint8Array
 	) => {
 		let database: ArrayBuffer | Uint8Array;
 
-		if (typeof databaseFile === 'string') {
-			const encoder = new TextEncoder();
-			database = encoder.encode(databaseFile);
-		} else if (databaseFile instanceof Blob) {
+		if (databaseFile instanceof Blob) {
 			database = await databaseFile.arrayBuffer();
 		} else {
 			database = databaseFile;
