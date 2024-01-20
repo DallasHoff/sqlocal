@@ -116,7 +116,7 @@ export class SQLocal {
 	protected exec = async (
 		sql: string,
 		params: any[],
-		method: Sqlite3Method
+		method: Sqlite3Method = 'all'
 	) => {
 		const message = await this.createQuery({
 			type: 'query',
