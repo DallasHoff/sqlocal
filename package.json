@@ -40,14 +40,14 @@
 		"nanoid": "^4.0.2"
 	},
 	"devDependencies": {
-		"@vitest/browser": "^1.0.4",
+		"@vitest/browser": "^1.2.1",
 		"drizzle-orm": "^0.29.1",
 		"prettier": "^2.8.8",
 		"typescript": "^5.3.3",
-		"vite": "^5.0.7",
+		"vite": "^5.0.12",
 		"vitepress": "^1.0.0-beta.5",
-		"vitest": "^1.0.4",
-		"webdriverio": "^8.26.0"
+		"vitest": "^1.2.1",
+		"webdriverio": "^8.28.8"
 	},
 	"author": "Dallas Hoffman",
 	"license": "MIT",

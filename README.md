@@ -123,7 +123,7 @@ pnpm install sqlocal
 
 ### Cross-Origin Isolation
 
-Since this package depends on the origin private file system API, the page you use it on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
+In order to persist data to the origin private file system, this package relies on APIs that require cross-origin isolation, so the page you use this package on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
 
 ```http
 Cross-Origin-Embedder-Policy: require-corp
@@ -133,18 +133,12 @@ Cross-Origin-Opener-Policy: same-origin
 If your development server uses Vite, you can do this by adding the following to your Vite configuration.
 
 ```javascript
-plugins: [
-  {
-    name: 'configure-response-headers',
-    configureServer: (server) => {
-      server.middlewares.use((_req, res, next) => {
-        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-        next();
-      });
-    },
+server: {
+  headers: {
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Cross-Origin-Opener-Policy': 'same-origin',
   },
-],
+},
 ```
 
 ### Vite Configuration
