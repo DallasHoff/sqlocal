@@ -68,10 +68,16 @@ optimizeDeps: {
 To enable cross-origin isolation (required for origin private file system persistence) for the Vite development server, you can add this to your Vite configuration. Just don't forget to also configure your _production_ web server to use the same HTTP headers.
 
 ```javascript
-server: {
-  headers: {
-    'Cross-Origin-Embedder-Policy': 'require-corp',
-    'Cross-Origin-Opener-Policy': 'same-origin',
+plugins: [
+  {
+    name: 'configure-response-headers',
+    configureServer: (server) => {
+      server.middlewares.use((_req, res, next) => {
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        next();
+      });
+    },
   },
-},
+],
 ```
