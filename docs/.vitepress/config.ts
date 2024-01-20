@@ -84,6 +84,13 @@ export default defineConfig({
 				link: 'https://www.npmjs.com/package/sqlocal',
 				ariaLabel: 'NPM',
 			},
+			{
+				icon: {
+					svg: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><path fill="currentColor" d="M13.91 7.75c-1.17 2.25-4.3 5.31-6.07 6.94a.5.5 0 0 1-.67 0C5.39 13.06 2.26 10 1.09 7.75C-1.48 2.8 5-.5 7.5 4.45C10-.5 16.48 2.8 13.91 7.75"/></svg>',
+				},
+				link: 'https://www.paypal.com/biz/fund?id=U3ZNM2Q26WJY8',
+				ariaLabel: 'Fund',
+			},
 		],
 		footer: {
 			message: 'Released under the MIT License',

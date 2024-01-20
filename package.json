@@ -67,5 +67,9 @@
 		"type": "git",
 		"url": "https://github.com/DallasHoff/sqlocal"
 	},
-	"homepage": "https://sqlocal.dallashoffman.com"
+	"homepage": "https://sqlocal.dallashoffman.com",
+	"funding": {
+		"type": "paypal",
+		"url": "https://www.paypal.com/biz/fund?id=U3ZNM2Q26WJY8"
+	}
 }
