@@ -4,6 +4,7 @@ import type {
 	ConfigMessage,
 	DestroyMessage,
 	FunctionMessage,
+	ImportMessage,
 	OmitQueryKey,
 	OutputMessage,
 	QueryKey,
@@ -72,7 +73,11 @@ export class SQLocal {
 
 	protected createQuery = (
 		message: OmitQueryKey<
-			QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage
+			| QueryMessage
+			| TransactionMessage
+			| DestroyMessage
+			| FunctionMessage
+			| ImportMessage
 		>
 	) => {
 		if (this.isWorkerDestroyed === true) {
@@ -83,10 +88,23 @@ export class SQLocal {
 
 		const queryKey = nanoid() satisfies QueryKey;
 
-		this.worker.postMessage({
-			...message,
-			queryKey,
-		} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
+		switch (message.type) {
+			case 'import':
+				this.worker.postMessage(
+					{
+						...message,
+						queryKey,
+					} satisfies ImportMessage,
+					[message.database]
+				);
+				break;
+			default:
+				this.worker.postMessage({
+					...message,
+					queryKey,
+				} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
+				break;
+		}
 
 		return new Promise<OutputMessage>((resolve, reject) => {
 			this.queriesInProgress.set(queryKey, [resolve, reject]);
@@ -181,15 +199,21 @@ export class SQLocal {
 		return await fileHandle.getFile();
 	};
 
-	overwriteDatabaseFile = async (databaseFile: FileSystemWriteChunkType) => {
-		const opfs = await navigator.storage.getDirectory();
-		const fileHandle = await opfs.getFileHandle(this.databasePath, {
-			create: true,
+	overwriteDatabaseFile = async (
+		databaseFile: File | Blob | ArrayBuffer | Uint8Array
+	) => {
+		let database: ArrayBuffer | Uint8Array;
+
+		if (databaseFile instanceof Blob) {
+			database = await databaseFile.arrayBuffer();
+		} else {
+			database = databaseFile;
+		}
+
+		await this.createQuery({
+			type: 'import',
+			database,
 		});
-		const fileWritable = await fileHandle.createWritable();
-		await fileWritable.truncate(0);
-		await fileWritable.write(databaseFile);
-		await fileWritable.close();
 	};
 
 	destroy = async () => {

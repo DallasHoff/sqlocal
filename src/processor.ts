@@ -11,6 +11,7 @@ import type {
 	CallbackUserFunction,
 	OutputMessage,
 	InputMessage,
+	ImportMessage,
 } from './types';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
@@ -84,6 +85,9 @@ export class SQLocalProcessor {
 				break;
 			case 'function':
 				this.createCallbackFunction(message);
+				break;
+			case 'import':
+				this.importDb(message);
 				break;
 			case 'destroy':
 				this.destroy(message);
@@ -218,6 +222,40 @@ export class SQLocalProcessor {
 			(_: number, ...args: any[]) => fn.handler(...args),
 			{ arity: -1 }
 		);
+	};
+
+	protected importDb = async (message: ImportMessage) => {
+		if (!this.sqlite3 || !this.config.databasePath) return;
+
+		const { queryKey, database } = message;
+
+		if (!('opfs' in this.sqlite3)) {
+			this.emitMessage({
+				type: 'error',
+				error: new Error(
+					'The origin private file system is not available, so a database cannot be imported. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).'
+				),
+				queryKey,
+			});
+			return;
+		}
+
+		try {
+			await this.sqlite3.oo1.OpfsDb.importDb(
+				this.config.databasePath,
+				database
+			);
+			this.emitMessage({
+				type: 'success',
+				queryKey,
+			});
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				error,
+				queryKey,
+			});
+		}
 	};
 
 	protected flushQueue = () => {
