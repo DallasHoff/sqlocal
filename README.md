@@ -49,7 +49,7 @@ Log:
 ]
 ```
 
-Or, you can use SQLocal as a driver for [Kysley](https://kysely.dev/) or [Drizzle ORM](https://orm.drizzle.team/) to make fully-typed queries.
+Or, you can use SQLocal as a driver for [Kysely](https://kysely.dev/) or [Drizzle ORM](https://orm.drizzle.team/) to make fully-typed queries.
 
 ### Kysely
 
