@@ -29,6 +29,7 @@
 	"scripts": {
 		"build": "tsc",
 		"test": "vitest",
+		"format": "prettier . --write",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs",
@@ -36,7 +37,7 @@
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.45.1-build1",
-		"nanoid": "^4.0.2"
+		"nanoid": "^5.0.5"
 	},
 	"devDependencies": {
 		"@vitest/browser": "^1.2.1",
