@@ -48,5 +48,8 @@ describe('kysely migrations', () => {
 		await migrator.migrateUp();
 		expect(await getTableNames()).toEqual(['groceries']);
 		expect(await getColumnNames('groceries')).toEqual(['id', 'name']);
+
+		await migrator.migrateDown();
+		expect(await getTableNames()).toEqual([]);
 	});
 });

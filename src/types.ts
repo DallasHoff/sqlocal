@@ -4,6 +4,8 @@ export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type QueryKey = string;
+export type WorkerProxy = ProxyHandler<Worker> &
+	Record<string, (...args: any) => any>;
 
 export type ProcessorConfig = {
 	databasePath?: string;
@@ -38,6 +40,7 @@ export type FunctionMessage = {
 	type: 'function';
 	queryKey: QueryKey;
 	functionName: string;
+	functionType: UserFunction['type'];
 };
 export type ConfigMessage = {
 	type: 'config';
@@ -80,9 +83,14 @@ export type CallbackMessage = {
 	args: any[];
 };
 
-export type UserFunction = CallbackUserFunction;
+export type UserFunction = CallbackUserFunction | ScalarUserFunction;
 export type CallbackUserFunction = {
 	type: 'callback';
 	name: string;
-	handler: (...args: any[]) => void;
+	func: (...args: any[]) => void;
+};
+export type ScalarUserFunction = {
+	type: 'scalar';
+	name: string;
+	func: (...args: any[]) => any;
 };
