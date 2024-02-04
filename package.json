@@ -36,18 +36,30 @@
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.44.2-build1",
-		"kysely": "^0.26.3",
 		"nanoid": "^4.0.2"
 	},
 	"devDependencies": {
 		"@vitest/browser": "^1.2.1",
-		"drizzle-orm": "^0.29.1",
+		"drizzle-orm": "^0.29.3",
+		"kysely": "^0.27.2",
 		"prettier": "^2.8.8",
 		"typescript": "^5.3.3",
 		"vite": "^5.0.12",
 		"vitepress": "^1.0.0-beta.5",
 		"vitest": "^1.2.1",
 		"webdriverio": "^8.28.8"
+	},
+	"peerDependencies": {
+		"drizzle-orm": "*",
+		"kysely": "*"
+	},
+	"peerDependenciesMeta": {
+		"kysely": {
+			"optional": true
+		},
+		"drizzle-orm": {
+			"optional": true
+		}
 	},
 	"author": "Dallas Hoffman",
 	"license": "MIT",
