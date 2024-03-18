@@ -38,3 +38,17 @@ Example result:
 	{ id: 3, name: 'Bread', quantity: 2 },
 ];
 ```
+
+Multiple statements can be passed in the query, but note that the results returned will only include results from the first value-returning statement. Also, only one statement in the query can have parameter bindings. Because of these restrictions, it is recommended to pass only one SQL statement per call to `sql`.
+
+```javascript
+// Warning: only returns the row with id 1.
+const result = await sql`
+	SELECT * FROM foo WHERE id = 1; 
+	SELECT * FROM foo WHERE id = 2;
+`;
+
+// Recommended: one statement per query
+const result1 = await sql`SELECT * FROM foo WHERE id = 1;`;
+const result2 = await sql`SELECT * FROM foo WHERE id = 2;`;
+```
