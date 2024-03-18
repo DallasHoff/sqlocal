@@ -22,7 +22,7 @@ export class SQLocal {
 		QueryKey,
 		[
 			resolve: (message: OutputMessage) => void,
-			reject: (error: unknown) => void
+			reject: (error: unknown) => void,
 		]
 	>();
 
@@ -102,7 +102,11 @@ export class SQLocal {
 				this.worker.postMessage({
 					...message,
 					queryKey,
-				} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
+				} satisfies
+					| QueryMessage
+					| TransactionMessage
+					| DestroyMessage
+					| FunctionMessage);
 				break;
 		}
 
