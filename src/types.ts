@@ -1,4 +1,4 @@
-import { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
+import type { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 
 export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;

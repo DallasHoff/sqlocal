@@ -1,1 +1,1 @@
-export { SQLocal } from './client';
+export { SQLocal } from './client.js';

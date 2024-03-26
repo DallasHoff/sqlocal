@@ -12,7 +12,7 @@ import type {
 	OutputMessage,
 	InputMessage,
 	ImportMessage,
-} from './types';
+} from './types.js';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 export class SQLocalProcessor {

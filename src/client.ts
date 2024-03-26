@@ -11,7 +11,7 @@ import type {
 	QueryMessage,
 	Sqlite3Method,
 	TransactionMessage,
-} from './types';
+} from './types.js';
 
 export class SQLocal {
 	protected databasePath: string;

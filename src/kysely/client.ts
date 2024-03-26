@@ -1,4 +1,4 @@
-import { SQLocal } from '..';
+import { SQLocal } from '../index.js';
 import {
 	CompiledQuery,
 	DatabaseConnection,

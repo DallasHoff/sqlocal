@@ -1,13 +1,13 @@
 {
 	"compilerOptions": {
 		"target": "ES2020",
-		"module": "ESNext",
+		"module": "NodeNext",
 		"lib": ["ES2020", "WebWorker"],
 		"useDefineForClassFields": true,
 		"skipLibCheck": true,
 
 		/* Bundler mode */
-		"moduleResolution": "bundler",
+		"moduleResolution": "NodeNext",
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
