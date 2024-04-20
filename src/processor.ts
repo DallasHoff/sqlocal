@@ -224,7 +224,7 @@ export class SQLocalProcessor {
 				});
 			};
 		} else {
-			func = this.proxy[`_user_func_${functionName}`];
+			func = this.proxy[`_sqlocal_func_${functionName}`];
 		}
 
 		try {

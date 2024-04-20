@@ -254,7 +254,7 @@ export class SQLocal {
 			functionType: 'scalar',
 		});
 
-		this.proxy[`_user_func_${funcName}`] = func;
+		this.proxy[`_sqlocal_func_${funcName}`] = func;
 	};
 
 	getDatabaseFile = async () => {

@@ -14,7 +14,7 @@ describe('createScalarFunction', () => {
 		await sql`DROP TABLE nums`;
 	});
 
-	it('should create and use scalar function', async () => {
+	it('should create and use scalar function in columns clause', async () => {
 		await createScalarFunction('double', (num: number) => num * 2);
 
 		const createBadFn = async () =>
@@ -31,5 +31,17 @@ describe('createScalarFunction', () => {
 			{ num: 3.5, doubled: 7 },
 			{ num: -11.11, doubled: -22.22 },
 		]);
+	});
+
+	it('should create and use scalar function in where clause', async () => {
+		await createScalarFunction('isEven', (num: number) => num % 2 === 0);
+
+		await sql`INSERT INTO nums (num) VALUES (2), (3), (4), (5), (6)`;
+
+		const results1 = await sql`SELECT num FROM nums WHERE isEven(num)`;
+		expect(results1).toEqual([{ num: 2 }, { num: 4 }, { num: 6 }]);
+
+		const results2 = await sql`SELECT * FROM nums WHERE isEven(num) != TRUE`;
+		expect(results2).toEqual([{ num: 3 }, { num: 5 }]);
 	});
 });
