@@ -4,7 +4,7 @@ import type {
 	QueryMessage,
 	Sqlite3,
 	Sqlite3Db,
-	TransactionMessage,
+	BatchMessage,
 	ProcessorConfig,
 	FunctionMessage,
 	UserFunction,
@@ -12,6 +12,7 @@ import type {
 	OutputMessage,
 	InputMessage,
 	ImportMessage,
+	RawResultData,
 } from './types.js';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
@@ -80,7 +81,7 @@ export class SQLocalProcessor {
 				this.editConfig(message.key, message.value);
 				break;
 			case 'query':
-			case 'transaction':
+			case 'batch':
 				this.exec(message);
 				break;
 			case 'function':
@@ -114,47 +115,73 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected exec = (message: QueryMessage | TransactionMessage) => {
+	protected exec = (message: QueryMessage | BatchMessage) => {
 		if (!this.db) return;
 
 		try {
 			const response: DataMessage = {
 				type: 'data',
 				queryKey: message.queryKey,
-				rows: [],
-				columns: [],
+				data: [],
 			};
 
 			switch (message.type) {
 				case 'query':
+					const statementData: RawResultData = {
+						rows: [],
+						columns: [],
+					};
 					const rows = this.db.exec({
 						sql: message.sql,
-						bind: message.params,
+						bind: message.params as any[],
 						returnValue: 'resultRows',
 						rowMode: 'array',
-						columnNames: response.columns,
+						columnNames: statementData.columns,
 					});
 
 					switch (message.method) {
 						case 'run':
 							break;
 						case 'get':
-							response.rows = rows[0];
+							statementData.rows = rows[0];
 							break;
 						case 'all':
 						default:
-							response.rows = rows;
+							statementData.rows = rows;
 							break;
 					}
+
+					response.data.push(statementData);
 					break;
 
-				case 'transaction':
-					this.db.transaction((db: Sqlite3Db) => {
+				case 'batch':
+					this.db.transaction((tx: Sqlite3Db) => {
 						for (let statement of message.statements) {
-							db.exec({
+							const statementData: RawResultData = {
+								rows: [],
+								columns: [],
+							};
+							const rows = tx.exec({
 								sql: statement.sql,
-								bind: statement.params,
+								bind: statement.params as any[],
+								returnValue: 'resultRows',
+								rowMode: 'array',
+								columnNames: statementData.columns,
 							});
+
+							switch (statement.method) {
+								case 'run':
+									break;
+								case 'get':
+									statementData.rows = rows[0];
+									break;
+								case 'all':
+								default:
+									statementData.rows = rows;
+									break;
+							}
+
+							response.data.push(statementData);
 						}
 					});
 					break;
@@ -172,7 +199,7 @@ export class SQLocalProcessor {
 
 	protected createCallbackFunction = (message: FunctionMessage) => {
 		const { functionName, queryKey } = message;
-		const handler = (...args: any[]) => {
+		const handler = (...args: unknown[]) => {
 			this.emitMessage({
 				type: 'callback',
 				name: functionName,
@@ -219,7 +246,7 @@ export class SQLocalProcessor {
 
 		this.db.createFunction(
 			fn.name,
-			(_: number, ...args: any[]) => fn.handler(...args),
+			(_: number, ...args: unknown[]) => fn.handler(...args),
 			{ arity: -1 }
 		);
 	};

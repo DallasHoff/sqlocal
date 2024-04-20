@@ -1,24 +1,48 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocalDrizzle } from '../../src/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
-import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { desc, eq, placeholder } from 'drizzle-orm';
+import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { desc, eq, placeholder, relations } from 'drizzle-orm';
 
 describe('drizzle driver', () => {
-	const { sql, driver } = new SQLocalDrizzle('drizzle-driver-test.sqlite3');
-	const db = drizzle(driver);
+	const { sql, driver, batchDriver } = new SQLocalDrizzle(
+		'drizzle-driver-test.sqlite3'
+	);
 
 	const groceries = sqliteTable('groceries', {
 		id: int('id').primaryKey({ autoIncrement: true }),
 		name: text('name').notNull(),
 	});
 
+	const groceriesRelations = relations(groceries, ({ many }) => ({
+		prices: many(prices),
+	}));
+
+	const prices = sqliteTable('prices', {
+		id: int('id').primaryKey({ autoIncrement: true }),
+		groceryId: int('groceryId').notNull(),
+		usd: real('usd').notNull(),
+	});
+
+	const pricesRelations = relations(prices, ({ one }) => ({
+		grocery: one(groceries, {
+			fields: [prices.groceryId],
+			references: [groceries.id],
+		}),
+	}));
+
+	const db = drizzle(driver, batchDriver, {
+		schema: { groceries, groceriesRelations, prices, pricesRelations },
+	});
+
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
+		await sql`CREATE TABLE prices (id INTEGER PRIMARY KEY AUTOINCREMENT, groceryId INTEGER NOT NULL, usd REAL NOT NULL)`;
 	});
 
 	afterEach(async () => {
 		await sql`DROP TABLE groceries`;
+		await sql`DROP TABLE prices`;
 	});
 
 	it('should execute queries', async () => {
@@ -87,5 +111,66 @@ describe('drizzle driver', () => {
 
 		const data = await db.select().from(groceries).all();
 		expect(data.length).toBe(0);
+	});
+
+	it('should accept batched queries', async () => {
+		const data = await db.batch([
+			db.insert(groceries).values({ name: 'bread' }),
+			db
+				.insert(groceries)
+				.values({ name: 'rice' })
+				.returning({ name: groceries.name }),
+			db.insert(groceries).values({ name: 'milk' }).returning(),
+			db.select().from(groceries),
+		]);
+
+		expect(data).toEqual([
+			{ rows: [], columns: [] },
+			[{ name: 'rice' }],
+			[{ id: 3, name: 'milk' }],
+			[
+				{ id: 1, name: 'bread' },
+				{ id: 2, name: 'rice' },
+				{ id: 3, name: 'milk' },
+			],
+		]);
+	});
+
+	it('should execute relational queries', async () => {
+		await db.batch([
+			db.insert(groceries).values({ name: 'chicken' }),
+			db.insert(groceries).values({ name: 'beef' }),
+			db.insert(prices).values([
+				{ groceryId: 1, usd: 3.29 },
+				{ groceryId: 1, usd: 2.99 },
+				{ groceryId: 1, usd: 3.79 },
+				{ groceryId: 2, usd: 5.29 },
+				{ groceryId: 2, usd: 4.49 },
+			]),
+		]);
+
+		const data = await db.query.groceries.findMany({
+			columns: {
+				name: true,
+			},
+			with: {
+				prices: {
+					columns: {
+						usd: true,
+					},
+				},
+			},
+		});
+
+		expect(data).toEqual([
+			{
+				name: 'chicken',
+				prices: [{ usd: 3.29 }, { usd: 2.99 }, { usd: 3.79 }],
+			},
+			{
+				name: 'beef',
+				prices: [{ usd: 5.29 }, { usd: 4.49 }],
+			},
+		]);
 	});
 });

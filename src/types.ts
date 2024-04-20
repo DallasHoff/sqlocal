@@ -4,6 +4,10 @@ export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type QueryKey = string;
+export type RawResultData = {
+	rows: unknown[] | unknown[][];
+	columns: string[];
+};
 
 export type ProcessorConfig = {
 	databasePath?: string;
@@ -14,7 +18,7 @@ export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
 
 export type InputMessage =
 	| QueryMessage
-	| TransactionMessage
+	| BatchMessage
 	| FunctionMessage
 	| ConfigMessage
 	| ImportMessage
@@ -23,15 +27,16 @@ export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
 	sql: string;
-	params: any[];
+	params: unknown[];
 	method: Sqlite3Method;
 };
-export type TransactionMessage = {
-	type: 'transaction';
+export type BatchMessage = {
+	type: 'batch';
 	queryKey: QueryKey;
 	statements: {
 		sql: string;
-		params: any[];
+		params: unknown[];
+		method?: Sqlite3Method;
 	}[];
 };
 export type FunctionMessage = {
@@ -71,18 +76,20 @@ export type ErrorMessage = {
 export type DataMessage = {
 	type: 'data';
 	queryKey: QueryKey;
-	columns: string[];
-	rows: any[];
+	data: {
+		columns: string[];
+		rows: unknown[] | unknown[][];
+	}[];
 };
 export type CallbackMessage = {
 	type: 'callback';
 	name: string;
-	args: any[];
+	args: unknown[];
 };
 
 export type UserFunction = CallbackUserFunction;
 export type CallbackUserFunction = {
 	type: 'callback';
 	name: string;
-	handler: (...args: any[]) => void;
+	handler: (...args: unknown[]) => void;
 };
