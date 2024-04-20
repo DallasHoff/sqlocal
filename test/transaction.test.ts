@@ -13,23 +13,27 @@ describe('transaction', () => {
 	});
 
 	it('should perform successful transaction', async () => {
-		await transaction((sql) => [
-			sql`INSERT INTO groceries (name) VALUES ('apples')`,
+		const txData = await transaction((sql) => [
+			sql`INSERT INTO groceries (name) VALUES ('apples') RETURNING *`,
 			sql`INSERT INTO groceries (name) VALUES ('bananas')`,
 		]);
 
-		const data = await sql`SELECT * FROM groceries`;
-		expect(data.length).toBe(2);
+		expect(txData).toEqual([[{ id: 1, name: 'apples' }], []]);
+
+		const selectData = await sql`SELECT * FROM groceries`;
+		expect(selectData.length).toBe(2);
 	});
 
 	it('should rollback failed transaction', async () => {
-		await transaction((sql) => [
-			sql`INSERT INTO groceries (name) VALUES ('carrots')`,
-			sql`INSERT INT groceries (name) VALUES ('lettuce')`,
-		]).catch(() => {});
+		const txData = await transaction((sql) => [
+			sql`INSERT INTO groceries (name) VALUES ('carrots') RETURNING *`,
+			sql`INSERT INT groceries (name) VALUES ('lettuce') RETURNING *`,
+		]).catch(() => [[], []]);
 
-		const data = await sql`SELECT * FROM groceries`;
-		expect(data.length).toBe(0);
+		expect(txData).toEqual([[], []]);
+
+		const selectData = await sql`SELECT * FROM groceries`;
+		expect(selectData.length).toBe(0);
 	});
 
 	it('should perform successful manual transaction', async () => {

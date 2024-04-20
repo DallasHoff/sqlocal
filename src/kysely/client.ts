@@ -1,4 +1,4 @@
-import { SQLocal } from '..';
+import { SQLocal } from '../index.js';
 import {
 	CompiledQuery,
 	DatabaseConnection,
@@ -14,7 +14,7 @@ export class SQLocalKysely extends SQLocal {
 	private executor = async <T>(query: CompiledQuery) => {
 		const { rows, columns } = await this.exec(
 			query.sql,
-			query.parameters as any[],
+			query.parameters as unknown[],
 			'all'
 		);
 		return {

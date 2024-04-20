@@ -1,1 +1,1 @@
-export { SQLocalKysely } from './client';
+export { SQLocalKysely } from './client.js';

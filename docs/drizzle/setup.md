@@ -24,14 +24,14 @@ pnpm install sqlocal drizzle-orm
 
 ## Initialize
 
-SQLocal provides the Drizzle ORM driver from a child class of `SQLocal` called `SQLocalDrizzle` imported from `sqlocal/drizzle`. This class has all the same methods as `SQLocal` and adds `driver` which you pass to the `drizzle` instance.
+SQLocal provides the Drizzle ORM driver from a child class of `SQLocal` called `SQLocalDrizzle` imported from `sqlocal/drizzle`. This class has all the same methods as `SQLocal` but adds `driver` and `batchDriver` which you pass to the `drizzle` instance.
 
 ```typescript
 import { SQLocalDrizzle } from 'sqlocal/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 
-const { driver } = new SQLocalDrizzle('database.sqlite3');
-export const db = drizzle(driver);
+const { driver, batchDriver } = new SQLocalDrizzle('database.sqlite3');
+export const db = drizzle(driver, batchDriver);
 ```
 
 Now, any queries you run through this Drizzle instance will be executed against the database passed to `SQLocalDrizzle`.

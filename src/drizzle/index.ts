@@ -1,1 +1,1 @@
-export { SQLocalDrizzle } from './client';
+export { SQLocalDrizzle } from './client.js';

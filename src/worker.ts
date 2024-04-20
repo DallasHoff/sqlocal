@@ -1,4 +1,4 @@
-import { SQLocalProcessor } from './processor';
+import { SQLocalProcessor } from './processor.js';
 
 const processor = new SQLocalProcessor(self);
 

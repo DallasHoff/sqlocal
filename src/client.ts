@@ -10,11 +10,12 @@ import type {
 	OutputMessage,
 	QueryKey,
 	QueryMessage,
-	ScalarUserFunction,
+	RawResultData,
 	Sqlite3Method,
-	TransactionMessage,
+	BatchMessage,
 	WorkerProxy,
-} from './types';
+	ScalarUserFunction,
+} from './types.js';
 
 export class SQLocal {
 	protected databasePath: string;
@@ -26,7 +27,7 @@ export class SQLocal {
 		QueryKey,
 		[
 			resolve: (message: OutputMessage) => void,
-			reject: (error: unknown) => void
+			reject: (error: unknown) => void,
 		]
 	>();
 
@@ -79,7 +80,7 @@ export class SQLocal {
 	protected createQuery = (
 		message: OmitQueryKey<
 			| QueryMessage
-			| TransactionMessage
+			| BatchMessage
 			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
@@ -107,7 +108,11 @@ export class SQLocal {
 				this.worker.postMessage({
 					...message,
 					queryKey,
-				} satisfies QueryMessage | TransactionMessage | DestroyMessage | FunctionMessage);
+				} satisfies
+					| QueryMessage
+					| BatchMessage
+					| DestroyMessage
+					| FunctionMessage);
 				break;
 		}
 
@@ -118,7 +123,7 @@ export class SQLocal {
 
 	protected convertSqlTemplate = (
 		queryTemplate: TemplateStringsArray,
-		...params: any[]
+		...params: unknown[]
 	) => {
 		return {
 			sql: queryTemplate.join('?'),
@@ -126,19 +131,37 @@ export class SQLocal {
 		};
 	};
 
-	protected convertRowsToObjects = (rows: any[], columns: string[]) => {
-		return rows.map((row) => {
-			const rowObj = {} as Record<string, any>;
+	protected convertRowsToObjects = (
+		rows: unknown[] | unknown[][],
+		columns: string[]
+	) => {
+		let checkedRows: unknown[][];
+
+		const isArrayOfArrays = (
+			rows: unknown[] | unknown[][]
+		): rows is unknown[][] => {
+			return !rows.some((row) => !Array.isArray(row));
+		};
+
+		if (isArrayOfArrays(rows)) {
+			checkedRows = rows;
+		} else {
+			checkedRows = [rows];
+		}
+
+		return checkedRows.map((row) => {
+			const rowObj = {} as Record<string, unknown>;
 			columns.forEach((column, columnIndex) => {
 				rowObj[column] = row[columnIndex];
 			});
+
 			return rowObj;
 		});
 	};
 
 	protected exec = async (
 		sql: string,
-		params: any[],
+		params: unknown[],
 		method: Sqlite3Method = 'all'
 	) => {
 		const message = await this.createQuery({
@@ -148,14 +171,35 @@ export class SQLocal {
 			method,
 		});
 
-		let data = {
-			rows: [] as any[],
-			columns: [] as string[],
+		const data: RawResultData = {
+			rows: [],
+			columns: [],
 		};
 
 		if (message.type === 'data') {
-			data.rows = message.rows;
-			data.columns = message.columns;
+			data.rows = message.data[0].rows;
+			data.columns = message.data[0].columns;
+		}
+
+		return data;
+	};
+
+	protected execBatch = async (
+		statements: ReturnType<SQLocal['convertSqlTemplate']>[]
+	) => {
+		const message = await this.createQuery({
+			type: 'batch',
+			statements,
+		});
+		const data = new Array(statements.length).fill({
+			rows: [],
+			columns: [],
+		}) as RawResultData[];
+
+		if (message.type === 'data') {
+			message.data.forEach((result, resultIndex) => {
+				data[resultIndex] = result;
+			});
 		}
 
 		return data;
@@ -163,7 +207,7 @@ export class SQLocal {
 
 	sql = async <T extends Record<string, any>[]>(
 		queryTemplate: TemplateStringsArray,
-		...params: any[]
+		...params: unknown[]
 	) => {
 		const statement = this.convertSqlTemplate(queryTemplate, ...params);
 		const { rows, columns } = await this.exec(
@@ -180,9 +224,10 @@ export class SQLocal {
 		) => ReturnType<SQLocal['convertSqlTemplate']>[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
-		await this.createQuery({
-			type: 'transaction',
-			statements,
+		const data = await this.execBatch(statements);
+
+		return data.map(({ rows, columns }) => {
+			return this.convertRowsToObjects(rows, columns);
 		});
 	};
 

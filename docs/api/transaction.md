@@ -30,4 +30,4 @@ await transaction((sql) => [
 
 This `sql` tag function works similarly to the [`sql` tag function used for single queries](sql.md), but the queries passed to `transaction` should not be individually `await`ed. Await the call to `transaction`, and each query will be executed against the database in order.
 
-If any of the queries fail, `transaction` will throw an error and the transaction will be rolled back automatically. If all queries succeed, the transaction will be committed.
+If any of the queries fail, `transaction` will throw an error and the transaction will be rolled back automatically. If all queries succeed, the transaction will be committed and the results from each query will be returned.
