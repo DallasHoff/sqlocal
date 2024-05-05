@@ -42,16 +42,20 @@ export default defineConfig({
 						link: '/api/transaction',
 					},
 					{
-						text: 'createCallbackFunction',
-						link: '/api/createcallbackfunction',
-					},
-					{
 						text: 'getDatabaseFile',
 						link: '/api/getdatabasefile',
 					},
 					{
 						text: 'overwriteDatabaseFile',
 						link: '/api/overwritedatabasefile',
+					},
+					{
+						text: 'createCallbackFunction',
+						link: '/api/createcallbackfunction',
+					},
+					{
+						text: 'createScalarFunction',
+						link: '/api/createscalarfunction',
 					},
 					{
 						text: 'destroy',

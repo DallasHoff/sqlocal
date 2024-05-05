@@ -45,4 +45,4 @@ await sql`INSERT INTO groceries (name) VALUES ('bread')`;
 New groceries record created with name: bread
 ```
 
-Note that each callback function that you create will be connection-specific. If you create more than one connection using additional `SQLocal` instances but want to use the same function in queries sent over the other connections as well, you will need to call `createCallbackFunction` on each instance.
+<!-- @include: ../_partials/functions-note.md -->
