@@ -44,4 +44,23 @@ describe('createScalarFunction', () => {
 		const results2 = await sql`SELECT * FROM nums WHERE isEven(num) != TRUE`;
 		expect(results2).toEqual([{ num: 3 }, { num: 5 }]);
 	});
+
+	it('should enable the REGEXP syntax', async () => {
+		await createScalarFunction('regexp', (pattern: string, value: unknown) => {
+			const regexp = new RegExp(pattern);
+			return regexp.test(String(value));
+		});
+
+		await sql`INSERT INTO nums (num) VALUES (29), (328), (4578), (59), (60), (5428)`;
+
+		const results1 = await sql`SELECT num FROM nums WHERE num REGEXP '9$'`;
+		expect(results1).toEqual([{ num: 29 }, { num: 59 }]);
+
+		const results2 = await sql`SELECT num FROM nums WHERE num REGEXP '\\d{3}'`;
+		expect(results2).toEqual([{ num: 328 }, { num: 4578 }, { num: 5428 }]);
+
+		const results3 =
+			await sql`SELECT num FROM nums WHERE num REGEXP '^(4|5).*[89]$'`;
+		expect(results3).toEqual([{ num: 4578 }, { num: 59 }, { num: 5428 }]);
+	});
 });
