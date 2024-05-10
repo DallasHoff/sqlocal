@@ -36,21 +36,21 @@
 		"prepublishOnly": "npm run build && vitest run"
 	},
 	"dependencies": {
-		"@sqlite.org/sqlite-wasm": "^3.45.2-build1",
+		"@sqlite.org/sqlite-wasm": "^3.45.3-build1",
 		"coincident": "^1.2.3",
-		"nanoid": "^5.0.6"
+		"nanoid": "^5.0.7"
 	},
 	"devDependencies": {
-		"@vitest/browser": "^1.4.0",
-		"drizzle-orm": "^0.30.2",
+		"@vitest/browser": "^1.6.0",
+		"drizzle-orm": "^0.30.10",
 		"kysely": "^0.27.3",
 		"prettier": "^3.2.5",
-		"typescript": "^5.4.2",
-		"vite": "^5.1.6",
-		"vitepress": "^1.0.0-rc.45",
-		"vitest": "^1.4.0",
-		"webdriverio": "^8.34.1",
-		"wrangler": "^3.45.0"
+		"typescript": "^5.4.5",
+		"vite": "^5.2.11",
+		"vitepress": "^1.1.4",
+		"vitest": "^1.6.0",
+		"webdriverio": "^8.36.1",
+		"wrangler": "^3.55.0"
 	},
 	"peerDependencies": {
 		"drizzle-orm": "*",
