@@ -8,6 +8,8 @@ export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
 };
+export type WorkerProxy = ProxyHandler<Worker> &
+	Record<string, (...args: any) => any>;
 
 export type ProcessorConfig = {
 	databasePath?: string;
@@ -43,6 +45,7 @@ export type FunctionMessage = {
 	type: 'function';
 	queryKey: QueryKey;
 	functionName: string;
+	functionType: UserFunction['type'];
 };
 export type ConfigMessage = {
 	type: 'config';
@@ -87,9 +90,14 @@ export type CallbackMessage = {
 	args: unknown[];
 };
 
-export type UserFunction = CallbackUserFunction;
+export type UserFunction = CallbackUserFunction | ScalarUserFunction;
 export type CallbackUserFunction = {
 	type: 'callback';
 	name: string;
-	handler: (...args: unknown[]) => void;
+	func: (...args: any[]) => void;
+};
+export type ScalarUserFunction = {
+	type: 'scalar';
+	name: string;
+	func: (...args: any[]) => any;
 };

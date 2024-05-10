@@ -1,3 +1,5 @@
+import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
+import coincident from 'coincident';
 import type {
 	DataMessage,
 	DestroyMessage,
@@ -8,15 +10,15 @@ import type {
 	ProcessorConfig,
 	FunctionMessage,
 	UserFunction,
-	CallbackUserFunction,
 	OutputMessage,
 	InputMessage,
 	ImportMessage,
+	WorkerProxy,
 	RawResultData,
 } from './types.js';
-import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
 export class SQLocalProcessor {
+	protected proxy: WorkerProxy;
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
 	protected config: ProcessorConfig = {};
@@ -25,7 +27,8 @@ export class SQLocalProcessor {
 
 	onmessage: ((message: OutputMessage) => void) | undefined;
 
-	constructor() {
+	constructor(worker: typeof globalThis) {
+		this.proxy = coincident(worker) as WorkerProxy;
 		this.init();
 	}
 
@@ -85,7 +88,7 @@ export class SQLocalProcessor {
 				this.exec(message);
 				break;
 			case 'function':
-				this.createCallbackFunction(message);
+				this.createUserFunction(message);
 				break;
 			case 'import':
 				this.importDb(message);
@@ -197,15 +200,9 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected createCallbackFunction = (message: FunctionMessage) => {
-		const { functionName, queryKey } = message;
-		const handler = (...args: unknown[]) => {
-			this.emitMessage({
-				type: 'callback',
-				name: functionName,
-				args: args,
-			});
-		};
+	protected createUserFunction = (message: FunctionMessage) => {
+		const { functionName, functionType, queryKey } = message;
+		let func;
 
 		if (this.userFunctions.has(functionName)) {
 			this.emitMessage({
@@ -218,16 +215,24 @@ export class SQLocalProcessor {
 			return;
 		}
 
-		try {
-			const callbackFunction: CallbackUserFunction = {
-				type: 'callback',
-				name: functionName,
-				handler,
+		if (functionType === 'callback') {
+			func = (...args: any[]) => {
+				this.emitMessage({
+					type: 'callback',
+					name: functionName,
+					args: args,
+				});
 			};
+		} else {
+			func = this.proxy[`_sqlocal_func_${functionName}`];
+		}
 
-			this.initUserFunction(callbackFunction);
-			this.userFunctions.set(functionName, callbackFunction);
-
+		try {
+			this.initUserFunction({
+				type: functionType,
+				name: functionName,
+				func,
+			});
 			this.emitMessage({
 				type: 'success',
 				queryKey,
@@ -244,11 +249,13 @@ export class SQLocalProcessor {
 	protected initUserFunction = (fn: UserFunction) => {
 		if (!this.db) return;
 
-		this.db.createFunction(
-			fn.name,
-			(_: number, ...args: unknown[]) => fn.handler(...args),
-			{ arity: -1 }
-		);
+		this.db.createFunction({
+			name: fn.name,
+			xFunc: (_: number, ...args: any[]) => fn.func(...args),
+			arity: -1,
+		});
+
+		this.userFunctions.set(fn.name, fn);
 	};
 
 	protected importDb = async (message: ImportMessage) => {

@@ -1,3 +1,4 @@
+import coincident from 'coincident';
 import { nanoid } from 'nanoid';
 import type {
 	CallbackUserFunction,
@@ -12,13 +13,16 @@ import type {
 	RawResultData,
 	Sqlite3Method,
 	BatchMessage,
+	WorkerProxy,
+	ScalarUserFunction,
 } from './types.js';
 
 export class SQLocal {
 	protected databasePath: string;
 	protected worker: Worker;
+	protected proxy: WorkerProxy;
 	protected isWorkerDestroyed: boolean = false;
-	protected userCallbacks = new Map<string, CallbackUserFunction['handler']>();
+	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
 	protected queriesInProgress = new Map<
 		QueryKey,
 		[
@@ -33,6 +37,7 @@ export class SQLocal {
 		});
 		this.worker.addEventListener('message', this.processMessageEvent);
 
+		this.proxy = coincident(this.worker) as WorkerProxy;
 		this.databasePath = databasePath;
 		this.worker.postMessage({
 			type: 'config',
@@ -227,15 +232,29 @@ export class SQLocal {
 	};
 
 	createCallbackFunction = async (
-		functionName: string,
-		handler: CallbackUserFunction['handler']
+		funcName: string,
+		func: CallbackUserFunction['func']
 	) => {
 		await this.createQuery({
 			type: 'function',
-			functionName,
+			functionName: funcName,
+			functionType: 'callback',
 		});
 
-		this.userCallbacks.set(functionName, handler);
+		this.userCallbacks.set(funcName, func);
+	};
+
+	createScalarFunction = async (
+		funcName: string,
+		func: ScalarUserFunction['func']
+	) => {
+		await this.createQuery({
+			type: 'function',
+			functionName: funcName,
+			functionType: 'scalar',
+		});
+
+		this.proxy[`_sqlocal_func_${funcName}`] = func;
 	};
 
 	getDatabaseFile = async () => {

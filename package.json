@@ -37,6 +37,7 @@
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.45.2-build1",
+		"coincident": "^1.2.3",
 		"nanoid": "^5.0.6"
 	},
 	"devDependencies": {

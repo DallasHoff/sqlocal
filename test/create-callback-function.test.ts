@@ -23,6 +23,10 @@ describe('createCallbackFunction', () => {
 			callbackValue = value;
 		});
 
+		const createBadFn = async () =>
+			await createCallbackFunction('testCallback', () => {});
+		await expect(createBadFn).rejects.toThrowError();
+
 		await sql`
       CREATE TEMP TRIGGER 'groceriesInsertTrigger' AFTER INSERT ON groceries
       BEGIN
