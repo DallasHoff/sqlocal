@@ -39,7 +39,7 @@ Example result:
 ];
 ```
 
-Multiple statements can be passed in the query, but note that the results returned will only include results from the first value-returning statement. Also, only one statement in the query can have parameter bindings. Because of these restrictions, it is recommended to pass only one SQL statement per call to `sql`.
+Multiple statements can be passed in the query, but note that the results returned will only include results from the first value-returning statement. Also, only one statement in the query can have parameter bindings. Because of these restrictions, it is recommended to pass only one SQL statement per call to `sql`. To run multiple statements together, use the [`transaction` method](transaction.md).
 
 ```javascript
 // Warning: only returns the row with id 1.
