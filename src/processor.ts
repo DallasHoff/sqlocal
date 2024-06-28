@@ -15,6 +15,7 @@ import type {
 	ImportMessage,
 	WorkerProxy,
 	RawResultData,
+	TransactionMessage,
 } from './types.js';
 
 export class SQLocalProcessor {
@@ -85,6 +86,7 @@ export class SQLocalProcessor {
 				break;
 			case 'query':
 			case 'batch':
+			case 'transaction':
 				this.exec(message);
 				break;
 			case 'function':
@@ -118,7 +120,9 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected exec = (message: QueryMessage | BatchMessage) => {
+	protected exec = (
+		message: QueryMessage | BatchMessage | TransactionMessage
+	) => {
 		if (!this.db) return;
 
 		try {
@@ -185,6 +189,43 @@ export class SQLocalProcessor {
 							}
 
 							response.data.push(statementData);
+						}
+					});
+					break;
+
+				case 'transaction':
+					this.db.transaction((tx: Sqlite3Db) => {
+						const { transactionKey } = message;
+						const step = this.proxy[
+							`_sqlocal_transaction_${transactionKey}`
+						] as (
+							data?: RawResultData
+						) => IteratorResult<{ sql: string; params: unknown[] }, any>;
+
+						let statementResult: RawResultData | undefined;
+
+						while (true) {
+							const yielded = step(statementResult);
+
+							if (yielded.done) {
+								response.data = yielded.value;
+								break;
+							} else {
+								const statement = yielded.value;
+								const statementData: RawResultData = {
+									rows: [],
+									columns: [],
+								};
+								const rows = tx.exec({
+									sql: statement.sql,
+									bind: statement.params as any[],
+									returnValue: 'resultRows',
+									rowMode: 'array',
+									columnNames: statementData.columns,
+								});
+								statementData.rows = rows;
+								statementResult = statementData;
+							}
 						}
 					});
 					break;

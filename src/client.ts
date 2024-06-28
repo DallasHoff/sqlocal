@@ -15,6 +15,7 @@ import type {
 	BatchMessage,
 	WorkerProxy,
 	ScalarUserFunction,
+	TransactionMessage,
 } from './types.js';
 
 export class SQLocal {
@@ -81,6 +82,7 @@ export class SQLocal {
 		message: OmitQueryKey<
 			| QueryMessage
 			| BatchMessage
+			| TransactionMessage
 			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
@@ -111,6 +113,7 @@ export class SQLocal {
 				} satisfies
 					| QueryMessage
 					| BatchMessage
+					| TransactionMessage
 					| DestroyMessage
 					| FunctionMessage);
 				break;
@@ -229,6 +232,36 @@ export class SQLocal {
 		return data.map(({ rows, columns }) => {
 			return this.convertRowsToObjects(rows, columns);
 		});
+	};
+
+	transaction2 = async <T>(
+		transaction: (
+			sql: SQLocal['convertSqlTemplate']
+		) => Generator<
+			ReturnType<SQLocal['convertSqlTemplate']>,
+			T,
+			Record<string, any>[]
+		>
+	) => {
+		const transactionKey = nanoid() satisfies QueryKey;
+		const txGen = transaction(this.convertSqlTemplate);
+		this.proxy[`_sqlocal_transaction_${transactionKey}`] = (
+			data?: RawResultData
+		) => {
+			if (data !== undefined) {
+				const dataRecords = this.convertRowsToObjects(data.rows, data.columns);
+				return txGen.next(dataRecords);
+			} else {
+				return txGen.next();
+			}
+		};
+
+		const message = await this.createQuery({
+			type: 'transaction',
+			transactionKey,
+		});
+
+		return (message.type === 'data' ? message.data : undefined) as T;
 	};
 
 	createCallbackFunction = async (

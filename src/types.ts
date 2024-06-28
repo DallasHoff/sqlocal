@@ -21,6 +21,7 @@ export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
 export type InputMessage =
 	| QueryMessage
 	| BatchMessage
+	| TransactionMessage
 	| FunctionMessage
 	| ConfigMessage
 	| ImportMessage
@@ -40,6 +41,11 @@ export type BatchMessage = {
 		params: unknown[];
 		method?: Sqlite3Method;
 	}[];
+};
+export type TransactionMessage = {
+	type: 'transaction';
+	queryKey: QueryKey;
+	transactionKey: QueryKey;
 };
 export type FunctionMessage = {
 	type: 'function';
