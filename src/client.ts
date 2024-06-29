@@ -16,6 +16,8 @@ import type {
 	WorkerProxy,
 	ScalarUserFunction,
 	TransactionMessage,
+	Query,
+	TransactionQuery,
 } from './types.js';
 
 export class SQLocal {
@@ -187,9 +189,7 @@ export class SQLocal {
 		return data;
 	};
 
-	protected execBatch = async (
-		statements: ReturnType<SQLocal['convertSqlTemplate']>[]
-	) => {
+	protected execBatch = async (statements: Query[]) => {
 		const message = await this.createQuery({
 			type: 'batch',
 			statements,
@@ -222,9 +222,7 @@ export class SQLocal {
 	};
 
 	transaction = async (
-		passStatements: (
-			sql: SQLocal['convertSqlTemplate']
-		) => ReturnType<SQLocal['convertSqlTemplate']>[]
+		passStatements: (sql: SQLocal['convertSqlTemplate']) => Query[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
 		const data = await this.execBatch(statements);
@@ -237,11 +235,7 @@ export class SQLocal {
 	transaction2 = async <T>(
 		transaction: (
 			sql: SQLocal['convertSqlTemplate']
-		) => Generator<
-			ReturnType<SQLocal['convertSqlTemplate']>,
-			T,
-			Record<string, any>[]
-		>
+		) => Generator<TransactionQuery, T, Record<string, any>[]>
 	) => {
 		const transactionKey = nanoid() satisfies QueryKey;
 		const txGen = transaction(this.convertSqlTemplate);

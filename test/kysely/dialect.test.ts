@@ -3,7 +3,9 @@ import { SQLocalKysely } from '../../src/kysely';
 import { Generated, Kysely } from 'kysely';
 
 describe('kysely dialect', () => {
-	const { dialect } = new SQLocalKysely('kysely-dialect-test.sqlite3');
+	const { dialect, transaction2 } = new SQLocalKysely(
+		'kysely-dialect-test.sqlite3'
+	);
 	const db = new Kysely<DB>({ dialect });
 
 	type DB = {
@@ -66,7 +68,38 @@ describe('kysely dialect', () => {
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
-	it('should perform successful transaction', async () => {
+	it('should perform successful transaction using sqlocal way', async () => {
+		const groceriesData = await transaction2(function* () {
+			yield db.insertInto('groceries').values({ name: 'apples' }).compile();
+			yield db.insertInto('groceries').values({ name: 'bananas' }).compile();
+			const data = yield db.selectFrom('groceries').selectAll().compile();
+			return data;
+		});
+
+		expect(groceriesData).toEqual([
+			{ id: 1, name: 'apples' },
+			{ id: 2, name: 'bananas' },
+		]);
+	});
+
+	it('should rollback failed transaction using sqlocal way', async () => {
+		const recordCount = await transaction2(function* () {
+			yield db.insertInto('groceries').values({ name: 'carrots' }).compile();
+			yield db
+				.insertInto('groeries' as any)
+				.values({ name: 'lettuce' })
+				.compile();
+			const data = yield db.selectFrom('groceries').selectAll().compile();
+			return data.length;
+		}).catch(() => null);
+
+		expect(recordCount).toBe(null);
+
+		const data = await db.selectFrom('groceries').selectAll().execute();
+		expect(data.length).toBe(0);
+	});
+
+	it('should perform successful transaction using kysely way', async () => {
 		await db.transaction().execute(async (trx) => {
 			await trx.insertInto('groceries').values({ name: 'apples' }).execute();
 			await trx.insertInto('groceries').values({ name: 'bananas' }).execute();
@@ -76,7 +109,7 @@ describe('kysely dialect', () => {
 		expect(data.length).toBe(2);
 	});
 
-	it('should rollback failed transaction', async () => {
+	it('should rollback failed transaction using kysely way', async () => {
 		await db
 			.transaction()
 			.execute(async (trx) => {

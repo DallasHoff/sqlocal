@@ -16,6 +16,7 @@ import type {
 	WorkerProxy,
 	RawResultData,
 	TransactionMessage,
+	TransactionQuery,
 } from './types.js';
 
 export class SQLocalProcessor {
@@ -200,7 +201,7 @@ export class SQLocalProcessor {
 							`_sqlocal_transaction_${transactionKey}`
 						] as (
 							data?: RawResultData
-						) => IteratorResult<{ sql: string; params: unknown[] }, any>;
+						) => IteratorResult<TransactionQuery, any>;
 
 						let statementResult: RawResultData | undefined;
 
@@ -218,7 +219,11 @@ export class SQLocalProcessor {
 								};
 								const rows = tx.exec({
 									sql: statement.sql,
-									bind: statement.params as any[],
+									bind: ('params' in statement
+										? statement.params
+										: 'parameters' in statement
+											? statement.parameters
+											: []) as any[],
 									returnValue: 'resultRows',
 									rowMode: 'array',
 									columnNames: statementData.columns,

@@ -3,11 +3,21 @@ import type { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
-export type QueryKey = string;
+
+export type Query = {
+	sql: string;
+	params: unknown[];
+};
+
+export type TransactionQuery =
+	| Query // default and drizzle
+	| { sql: string; parameters: Readonly<unknown[]> }; // kysely
+
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
 };
+
 export type WorkerProxy = ProxyHandler<Worker> &
 	Record<string, (...args: any) => any>;
 
@@ -16,6 +26,7 @@ export type ProcessorConfig = {
 };
 
 export type Message = InputMessage | OutputMessage;
+export type QueryKey = string;
 export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
 
 export type InputMessage =

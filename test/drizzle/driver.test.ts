@@ -5,7 +5,7 @@ import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { desc, eq, placeholder, relations } from 'drizzle-orm';
 
 describe('drizzle driver', () => {
-	const { sql, driver, batchDriver } = new SQLocalDrizzle(
+	const { sql, driver, batchDriver, transaction2 } = new SQLocalDrizzle(
 		'drizzle-driver-test.sqlite3'
 	);
 
@@ -88,7 +88,38 @@ describe('drizzle driver', () => {
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
-	it('should perform successful transaction', async () => {
+	it('should perform successful transaction using sqlocal way', async () => {
+		const groceriesData = await transaction2(function* () {
+			yield db.insert(groceries).values({ name: 'apples' }).toSQL();
+			yield db.insert(groceries).values({ name: 'bananas' }).toSQL();
+			const data = yield db.select().from(groceries).toSQL();
+			return data;
+		});
+
+		expect(groceriesData).toEqual([
+			{ id: 1, name: 'apples' },
+			{ id: 2, name: 'bananas' },
+		]);
+	});
+
+	it('should rollback failed transaction using sqlocal way', async () => {
+		const recordCount = await transaction2(function* () {
+			yield db.insert(groceries).values({ name: 'apples' }).toSQL();
+			yield db
+				.insert(groceries)
+				.values({ nam: 'bananas' } as any)
+				.toSQL();
+			const data = yield db.select().from(groceries).toSQL();
+			return data.length;
+		}).catch(() => null);
+
+		expect(recordCount).toBe(null);
+
+		const data = await db.select().from(groceries).all();
+		expect(data.length).toBe(0);
+	});
+
+	it('should perform successful transaction using drizzle way', async () => {
 		await db.transaction(async (trx) => {
 			await trx.insert(groceries).values({ name: 'apples' }).run();
 			await trx.insert(groceries).values({ name: 'bananas' }).run();
@@ -98,7 +129,7 @@ describe('drizzle driver', () => {
 		expect(data.length).toBe(2);
 	});
 
-	it('should rollback failed transaction', async () => {
+	it('should rollback failed transaction using drizzle way', async () => {
 		await db
 			.transaction(async (trx) => {
 				await trx.insert(groceries).values({ name: 'apples' }).run();
