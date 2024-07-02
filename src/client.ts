@@ -16,8 +16,8 @@ import type {
 	WorkerProxy,
 	ScalarUserFunction,
 	TransactionMessage,
-	Query,
-	TransactionQuery,
+	Statement,
+	TransactionStatement,
 } from './types.js';
 
 export class SQLocal {
@@ -189,7 +189,7 @@ export class SQLocal {
 		return data;
 	};
 
-	protected execBatch = async (statements: Query[]) => {
+	protected execBatch = async (statements: Statement[]) => {
 		const message = await this.createQuery({
 			type: 'batch',
 			statements,
@@ -222,7 +222,7 @@ export class SQLocal {
 	};
 
 	transaction = async (
-		passStatements: (sql: SQLocal['convertSqlTemplate']) => Query[]
+		passStatements: (sql: SQLocal['convertSqlTemplate']) => Statement[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
 		const data = await this.execBatch(statements);
@@ -235,10 +235,11 @@ export class SQLocal {
 	transaction2 = async <T>(
 		transaction: (
 			sql: SQLocal['convertSqlTemplate']
-		) => Generator<TransactionQuery, T, Record<string, any>[]>
+		) => Generator<TransactionStatement, T, Record<string, any>[]>
 	) => {
-		const transactionKey = nanoid() satisfies QueryKey;
 		const txGen = transaction(this.convertSqlTemplate);
+		const transactionKey = nanoid() satisfies QueryKey;
+
 		this.proxy[`_sqlocal_transaction_${transactionKey}`] = (
 			data?: RawResultData
 		) => {
@@ -254,6 +255,7 @@ export class SQLocal {
 			type: 'transaction',
 			transactionKey,
 		});
+		delete this.proxy[`_sqlocal_transaction_${transactionKey}`];
 
 		return (message.type === 'data' ? message.data : undefined) as T;
 	};

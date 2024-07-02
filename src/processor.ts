@@ -16,7 +16,7 @@ import type {
 	WorkerProxy,
 	RawResultData,
 	TransactionMessage,
-	TransactionQuery,
+	TransactionStatement,
 } from './types.js';
 
 export class SQLocalProcessor {
@@ -201,7 +201,7 @@ export class SQLocalProcessor {
 							`_sqlocal_transaction_${transactionKey}`
 						] as (
 							data?: RawResultData
-						) => IteratorResult<TransactionQuery, any>;
+						) => IteratorResult<TransactionStatement, any>;
 
 						let statementResult: RawResultData | undefined;
 

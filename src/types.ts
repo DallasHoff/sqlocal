@@ -4,15 +4,13 @@ export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 
-export type Query = {
+export type Statement = {
 	sql: string;
 	params: unknown[];
 };
-
-export type TransactionQuery =
-	| Query // default and drizzle
+export type TransactionStatement =
+	| Statement // default and drizzle
 	| { sql: string; parameters: Readonly<unknown[]> }; // kysely
-
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
