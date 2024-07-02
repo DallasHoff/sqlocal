@@ -13,21 +13,22 @@ describe('transaction', () => {
 	});
 
 	it('should perform successful transaction', async () => {
-		const txData = await transaction2<number>(function* (sql) {
-			let idTotal = 0;
+		const txData = await transaction2(function* (sql) {
+			let fruitNames: string[] = [];
 
 			yield sql`INSERT INTO groceries (name) VALUES ('apples'), ('bananas')`;
+
 			const fruits = yield sql`SELECT * FROM groceries`;
-			idTotal += fruits.reduce((sum, fruit) => sum + fruit.id, 0);
+			fruitNames = fruits.map((fruit) => fruit.name);
 
 			const [oranges] =
 				yield sql`INSERT INTO groceries (name) VALUES ('oranges') RETURNING *`;
-			idTotal += oranges.id;
 
-			return idTotal;
+			fruitNames.push(oranges.name);
+			return fruitNames.join(', ');
 		});
 
-		expect(txData).toBe(6);
+		expect(txData).toBe('apples, bananas, oranges');
 
 		const selectData = await sql`SELECT * FROM groceries`;
 		expect(selectData).toEqual([
