@@ -16,6 +16,7 @@ import type {
 	WorkerProxy,
 	ScalarUserFunction,
 	GetInfoMessage,
+	Statement,
 } from './types.js';
 
 export class SQLocal {
@@ -188,9 +189,7 @@ export class SQLocal {
 		return data;
 	};
 
-	protected execBatch = async (
-		statements: ReturnType<SQLocal['convertSqlTemplate']>[]
-	) => {
+	protected execBatch = async (statements: Statement[]) => {
 		const message = await this.createQuery({
 			type: 'batch',
 			statements,
@@ -223,9 +222,7 @@ export class SQLocal {
 	};
 
 	transaction = async (
-		passStatements: (
-			sql: SQLocal['convertSqlTemplate']
-		) => ReturnType<SQLocal['convertSqlTemplate']>[]
+		passStatements: (sql: SQLocal['convertSqlTemplate']) => Statement[]
 	) => {
 		const statements = passStatements(this.convertSqlTemplate);
 		const data = await this.execBatch(statements);
@@ -233,6 +230,12 @@ export class SQLocal {
 		return data.map(({ rows, columns }) => {
 			return this.convertRowsToObjects(rows, columns);
 		});
+	};
+
+	batch = async (
+		passStatements: (sql: SQLocal['convertSqlTemplate']) => Statement[]
+	) => {
+		return await this.transaction(passStatements);
 	};
 
 	createCallbackFunction = async (
