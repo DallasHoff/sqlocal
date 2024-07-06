@@ -15,12 +15,15 @@ import type {
 	ImportMessage,
 	WorkerProxy,
 	RawResultData,
+	GetInfoMessage,
+	Sqlite3StorageType,
 } from './types.js';
 
 export class SQLocalProcessor {
 	protected proxy: WorkerProxy;
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
+	protected dbStorageType: Sqlite3StorageType | undefined;
 	protected config: ProcessorConfig = {};
 	protected queuedMessages: InputMessage[] = [];
 	protected userFunctions = new Map<string, UserFunction>();
@@ -43,12 +46,15 @@ export class SQLocalProcessor {
 			if (this.db) {
 				this.db?.close();
 				this.db = undefined;
+				this.dbStorageType = undefined;
 			}
 
 			if ('opfs' in this.sqlite3) {
 				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath, 'cw');
+				this.dbStorageType = 'opfs';
 			} else {
 				this.db = new this.sqlite3.oo1.DB(this.config.databasePath, 'cw');
+				this.dbStorageType = 'memory';
 				console.warn(
 					`The origin private file system is not available, so ${this.config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 				);
@@ -62,6 +68,7 @@ export class SQLocalProcessor {
 
 			this.db?.close();
 			this.db = undefined;
+			this.dbStorageType = undefined;
 			return;
 		}
 
@@ -89,6 +96,9 @@ export class SQLocalProcessor {
 				break;
 			case 'function':
 				this.createUserFunction(message);
+				break;
+			case 'getinfo':
+				this.getDatabaseInfo(message);
 				break;
 			case 'import':
 				this.importDb(message);
@@ -200,6 +210,39 @@ export class SQLocalProcessor {
 		}
 	};
 
+	protected getDatabaseInfo = async (message: GetInfoMessage) => {
+		try {
+			const databasePath = this.config.databasePath;
+			const storageType = this.dbStorageType;
+			const persisted =
+				storageType !== undefined
+					? storageType !== 'memory'
+						? await navigator.storage?.persisted()
+						: false
+					: undefined;
+
+			const sizeResult = this.db?.exec({
+				sql: 'SELECT page_count * page_size AS size FROM pragma_page_count(), pragma_page_size()',
+				returnValue: 'resultRows',
+				rowMode: 'array',
+			});
+			const size = sizeResult?.[0]?.[0];
+			const databaseSizeBytes = typeof size === 'number' ? size : undefined;
+
+			this.emitMessage({
+				type: 'info',
+				queryKey: message.queryKey,
+				info: { databasePath, databaseSizeBytes, storageType, persisted },
+			});
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				queryKey: message.queryKey,
+				error,
+			});
+		}
+	};
+
 	protected createUserFunction = (message: FunctionMessage) => {
 		const { functionName, functionType, queryKey } = message;
 		let func;
@@ -305,6 +348,7 @@ export class SQLocalProcessor {
 			this.db.exec({ sql: 'PRAGMA optimize' });
 			this.db.close();
 			this.db = undefined;
+			this.dbStorageType = undefined;
 		}
 
 		this.emitMessage({

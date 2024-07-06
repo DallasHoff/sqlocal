@@ -15,6 +15,7 @@ import type {
 	BatchMessage,
 	WorkerProxy,
 	ScalarUserFunction,
+	GetInfoMessage,
 } from './types.js';
 
 export class SQLocal {
@@ -54,6 +55,7 @@ export class SQLocal {
 			case 'success':
 			case 'data':
 			case 'error':
+			case 'info':
 				if (message.queryKey && queries.has(message.queryKey)) {
 					const [resolve, reject] = queries.get(message.queryKey)!;
 					if (message.type === 'error') {
@@ -84,6 +86,7 @@ export class SQLocal {
 			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
+			| GetInfoMessage
 		>
 	) => {
 		if (this.isWorkerDestroyed === true) {
@@ -112,7 +115,8 @@ export class SQLocal {
 					| QueryMessage
 					| BatchMessage
 					| DestroyMessage
-					| FunctionMessage);
+					| FunctionMessage
+					| GetInfoMessage);
 				break;
 		}
 
@@ -255,6 +259,16 @@ export class SQLocal {
 		});
 
 		this.proxy[`_sqlocal_func_${funcName}`] = func;
+	};
+
+	getDatabaseInfo = async () => {
+		const message = await this.createQuery({ type: 'getinfo' });
+
+		if (message.type === 'info') {
+			return message.info;
+		} else {
+			throw new Error('The database failed to return valid information.');
+		}
 	};
 
 	getDatabaseFile = async () => {

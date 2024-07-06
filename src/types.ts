@@ -3,6 +3,7 @@ import type { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
+export type Sqlite3StorageType = 'memory' | 'opfs';
 export type QueryKey = string;
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
@@ -14,6 +15,12 @@ export type WorkerProxy = ProxyHandler<Worker> &
 export type ProcessorConfig = {
 	databasePath?: string;
 };
+export type DatabaseInfo = {
+	databasePath?: string;
+	databaseSizeBytes?: number;
+	storageType?: Sqlite3StorageType;
+	persisted?: boolean;
+};
 
 export type Message = InputMessage | OutputMessage;
 export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
@@ -24,6 +31,7 @@ export type InputMessage =
 	| FunctionMessage
 	| ConfigMessage
 	| ImportMessage
+	| GetInfoMessage
 	| DestroyMessage;
 export type QueryMessage = {
 	type: 'query';
@@ -57,6 +65,10 @@ export type ImportMessage = {
 	queryKey: QueryKey;
 	database: ArrayBuffer | Uint8Array;
 };
+export type GetInfoMessage = {
+	type: 'getinfo';
+	queryKey: QueryKey;
+};
 export type DestroyMessage = {
 	type: 'destroy';
 	queryKey: QueryKey;
@@ -66,7 +78,8 @@ export type OutputMessage =
 	| SuccessMessage
 	| ErrorMessage
 	| DataMessage
-	| CallbackMessage;
+	| CallbackMessage
+	| InfoMessage;
 export type SuccessMessage = {
 	type: 'success';
 	queryKey: QueryKey;
@@ -88,6 +101,11 @@ export type CallbackMessage = {
 	type: 'callback';
 	name: string;
 	args: unknown[];
+};
+export type InfoMessage = {
+	type: 'info';
+	queryKey: QueryKey;
+	info: DatabaseInfo;
 };
 
 export type UserFunction = CallbackUserFunction | ScalarUserFunction;

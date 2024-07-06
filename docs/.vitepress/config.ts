@@ -42,6 +42,10 @@ export default defineConfig({
 						link: '/api/transaction',
 					},
 					{
+						text: 'getDatabaseInfo',
+						link: '/api/getdatabaseinfo',
+					},
+					{
 						text: 'getDatabaseFile',
 						link: '/api/getdatabasefile',
 					},
