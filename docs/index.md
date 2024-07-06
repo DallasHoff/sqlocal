@@ -31,7 +31,7 @@ features:
     details: Each user can have their own private database instance
   - title: Simple API
     icon: 🚀
-    details: Just create a database and start running SQL queries
+    details: Just name your database and start running SQL queries
   - title: TypeScript
     icon: 🛠️
     details: Works with Kysely and Drizzle ORM for making type-safe queries

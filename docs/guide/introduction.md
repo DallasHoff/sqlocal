@@ -19,8 +19,8 @@ const { sql } = new SQLocal('database.sqlite3');
 // against the SQLite database
 await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`;
 
-// Execute a prepared statement just by inserting parameters
-// in the SQL string
+// Execute a parameterized statement just by inserting
+// parameters in the SQL string
 const items = ['bread', 'milk', 'rice'];
 for (let item of items) {
 	await sql`INSERT INTO groceries (name) VALUES (${item})`;
