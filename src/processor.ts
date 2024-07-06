@@ -301,8 +301,11 @@ export class SQLocalProcessor {
 	};
 
 	protected destroy = (message: DestroyMessage) => {
-		this.db?.close();
-		this.db = undefined;
+		if (this.db) {
+			this.db.exec({ sql: 'PRAGMA optimize' });
+			this.db.close();
+			this.db = undefined;
+		}
 
 		this.emitMessage({
 			type: 'success',
