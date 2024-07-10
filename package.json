@@ -38,7 +38,8 @@
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.46.0-build2",
 		"coincident": "^1.2.3",
-		"nanoid": "^5.0.7"
+		"nanoid": "^5.0.7",
+		"sql-parser-cst": "^0.28.0"
 	},
 	"devDependencies": {
 		"@vitest/browser": "^1.6.0",
