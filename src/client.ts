@@ -275,9 +275,23 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async () => {
-		const opfs = await navigator.storage.getDirectory();
-		const fileHandle = await opfs.getFileHandle(this.databasePath);
-		return await fileHandle.getFile();
+		const path = this.databasePath.split(/[\\/]/).filter((part) => part !== '');
+		const fileName = path.pop();
+
+		if (!fileName) {
+			throw new Error('Failed to parse the database file name.');
+		}
+
+		let dirHandle = await navigator.storage.getDirectory();
+		for (let dirName of path)
+			dirHandle = await dirHandle.getDirectoryHandle(dirName);
+
+		const fileHandle = await dirHandle.getFileHandle(fileName);
+		const file = await fileHandle.getFile();
+
+		return new File([file], fileName, {
+			type: 'application/x-sqlite3',
+		});
 	};
 
 	overwriteDatabaseFile = async (
