@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index';
+import { createEffectChecker } from './test-utils/create-effect-checker';
 
 describe('transaction', () => {
 	const { sql, transaction } = new SQLocal('transaction-test.sqlite3');
+	const nextEffectTables = createEffectChecker('transaction-test.sqlite3');
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
@@ -20,6 +22,9 @@ describe('transaction', () => {
 
 		expect(txData).toEqual([[{ id: 1, name: 'apples' }], []]);
 
+		const effectTables = await nextEffectTables('mutation');
+		expect(effectTables).toEqual(['groceries']);
+
 		const selectData = await sql`SELECT * FROM groceries`;
 		expect(selectData.length).toBe(2);
 	});
@@ -31,6 +36,9 @@ describe('transaction', () => {
 		]).catch(() => [[], []]);
 
 		expect(txData).toEqual([[], []]);
+
+		const effectTables = await nextEffectTables('mutation');
+		expect(effectTables).toEqual(null);
 
 		const selectData = await sql`SELECT * FROM groceries`;
 		expect(selectData.length).toBe(0);

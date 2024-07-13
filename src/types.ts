@@ -19,6 +19,7 @@ export type WorkerProxy = ProxyHandler<Worker> &
 
 export type ProcessorConfig = {
 	databasePath?: string;
+	reactive?: boolean;
 };
 export type DatabaseInfo = {
 	databasePath?: string;
@@ -124,4 +125,10 @@ export type ScalarUserFunction = {
 	type: 'scalar';
 	name: string;
 	func: (...args: any[]) => any;
+};
+
+export type EffectsMessage = {
+	type: 'effects';
+	effectType: 'read' | 'mutation';
+	tables: Set<string>;
 };

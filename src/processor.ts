@@ -17,16 +17,20 @@ import type {
 	RawResultData,
 	GetInfoMessage,
 	Sqlite3StorageType,
+	EffectsMessage,
 } from './types.js';
+import { parseQueryEffects } from './lib/parse-query-effects.js';
 
 export class SQLocalProcessor {
-	protected proxy: WorkerProxy;
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
 	protected dbStorageType: Sqlite3StorageType | undefined;
-	protected config: ProcessorConfig = {};
+	protected config: ProcessorConfig = { reactive: true };
 	protected queuedMessages: InputMessage[] = [];
 	protected userFunctions = new Map<string, UserFunction>();
+
+	protected proxy: WorkerProxy;
+	protected queryEffectsChannel: BroadcastChannel | undefined;
 
 	onmessage: ((message: OutputMessage) => void) | undefined;
 
@@ -44,14 +48,18 @@ export class SQLocalProcessor {
 			}
 
 			if (this.db) {
-				this.db?.close();
-				this.db = undefined;
-				this.dbStorageType = undefined;
+				this.destroy();
 			}
 
 			if ('opfs' in this.sqlite3) {
 				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath, 'cw');
 				this.dbStorageType = 'opfs';
+
+				if (this.config.reactive === true) {
+					this.queryEffectsChannel = new BroadcastChannel(
+						`_sqlocal_query_effects_(${this.config.databasePath})`
+					);
+				}
 			} else {
 				this.db = new this.sqlite3.oo1.DB(this.config.databasePath, 'cw');
 				this.dbStorageType = 'memory';
@@ -66,9 +74,7 @@ export class SQLocalProcessor {
 				queryKey: null,
 			});
 
-			this.db?.close();
-			this.db = undefined;
-			this.dbStorageType = undefined;
+			this.destroy();
 			return;
 		}
 
@@ -115,6 +121,31 @@ export class SQLocalProcessor {
 		}
 	};
 
+	protected emitEffectsBroadcast = (executedSql: Set<string>) => {
+		if (!this.queryEffectsChannel) return;
+
+		const allReadTables = new Set<string>();
+		const allMutatedTables = new Set<string>();
+
+		executedSql.forEach((sql) => {
+			const { readTables, mutatedTables } = parseQueryEffects(sql);
+			readTables.forEach((table) => allReadTables.add(table));
+			mutatedTables.forEach((table) => allMutatedTables.add(table));
+		});
+
+		this.queryEffectsChannel.postMessage({
+			type: 'effects',
+			effectType: 'read',
+			tables: allReadTables,
+		} satisfies EffectsMessage);
+
+		this.queryEffectsChannel.postMessage({
+			type: 'effects',
+			effectType: 'mutation',
+			tables: allMutatedTables,
+		} satisfies EffectsMessage);
+	};
+
 	protected editConfig = <T extends keyof ProcessorConfig>(
 		key: T,
 		value: ProcessorConfig[T]
@@ -130,6 +161,8 @@ export class SQLocalProcessor {
 
 	protected exec = (message: QueryMessage | BatchMessage) => {
 		if (!this.db) return;
+
+		const executedSql = new Set<string>();
 
 		try {
 			const response: DataMessage = {
@@ -165,6 +198,7 @@ export class SQLocalProcessor {
 					}
 
 					response.data.push(statementData);
+					executedSql.add(message.sql);
 					break;
 
 				case 'batch':
@@ -197,10 +231,15 @@ export class SQLocalProcessor {
 							response.data.push(statementData);
 						}
 					});
+
+					message.statements.forEach((statement) => {
+						executedSql.add(statement.sql);
+					});
 					break;
 			}
 
 			this.emitMessage(response);
+			this.emitEffectsBroadcast(executedSql);
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
@@ -343,7 +382,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected destroy = (message: DestroyMessage) => {
+	protected destroy = (message?: DestroyMessage) => {
 		if (this.db) {
 			this.db.exec({ sql: 'PRAGMA optimize' });
 			this.db.close();
@@ -351,9 +390,16 @@ export class SQLocalProcessor {
 			this.dbStorageType = undefined;
 		}
 
-		this.emitMessage({
-			type: 'success',
-			queryKey: message.queryKey,
-		});
+		if (this.queryEffectsChannel) {
+			this.queryEffectsChannel.close();
+			this.queryEffectsChannel = undefined;
+		}
+
+		if (message) {
+			this.emitMessage({
+				type: 'success',
+				queryKey: message.queryKey,
+			});
+		}
 	};
 }
