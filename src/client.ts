@@ -17,7 +17,13 @@ import type {
 	ScalarUserFunction,
 	GetInfoMessage,
 	Statement,
+	EffectsMessage,
+	ReturningStatement,
 } from './types.js';
+import { parseQueryEffects } from './lib/parse-query-effects.js';
+import { sqlTag } from './lib/sql-tag.js';
+import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
+import { normalizeStatement } from './lib/normalize-statement.js';
 
 export class SQLocal {
 	protected databasePath: string;
@@ -126,44 +132,6 @@ export class SQLocal {
 		});
 	};
 
-	protected convertSqlTemplate = (
-		queryTemplate: TemplateStringsArray,
-		...params: unknown[]
-	) => {
-		return {
-			sql: queryTemplate.join('?'),
-			params,
-		};
-	};
-
-	protected convertRowsToObjects = (
-		rows: unknown[] | unknown[][],
-		columns: string[]
-	) => {
-		let checkedRows: unknown[][];
-
-		const isArrayOfArrays = (
-			rows: unknown[] | unknown[][]
-		): rows is unknown[][] => {
-			return !rows.some((row) => !Array.isArray(row));
-		};
-
-		if (isArrayOfArrays(rows)) {
-			checkedRows = rows;
-		} else {
-			checkedRows = [rows];
-		}
-
-		return checkedRows.map((row) => {
-			const rowObj = {} as Record<string, unknown>;
-			columns.forEach((column, columnIndex) => {
-				rowObj[column] = row[columnIndex];
-			});
-
-			return rowObj;
-		});
-	};
-
 	protected exec = async (
 		sql: string,
 		params: unknown[],
@@ -208,34 +176,83 @@ export class SQLocal {
 		return data;
 	};
 
-	sql = async <T extends Record<string, any>[]>(
+	protected execAndConvert = async <T extends Record<string, any>>(
+		statement: ReturningStatement<T>
+	) => {
+		const { sql, params } = normalizeStatement(statement);
+		const { rows, columns } = await this.exec(sql, params, 'all');
+		const resultRecords = convertRowsToObjects(rows, columns);
+		return resultRecords as T[];
+	};
+
+	sql = async <T extends Record<string, any>>(
 		queryTemplate: TemplateStringsArray,
 		...params: unknown[]
 	) => {
-		const statement = this.convertSqlTemplate(queryTemplate, ...params);
-		const { rows, columns } = await this.exec(
-			statement.sql,
-			statement.params,
-			'all'
-		);
-		return this.convertRowsToObjects(rows, columns) as T;
+		const statement = sqlTag(queryTemplate, ...params);
+		const resultRecords = await this.execAndConvert<T>(statement);
+		return resultRecords;
 	};
 
-	transaction = async (
-		passStatements: (sql: SQLocal['convertSqlTemplate']) => Statement[]
-	) => {
-		const statements = passStatements(this.convertSqlTemplate);
+	transaction = async (passStatements: (sql: typeof sqlTag) => Statement[]) => {
+		const statements = passStatements(sqlTag);
 		const data = await this.execBatch(statements);
 
 		return data.map(({ rows, columns }) => {
-			return this.convertRowsToObjects(rows, columns);
+			return convertRowsToObjects(rows, columns);
 		});
 	};
 
-	batch = async (
-		passStatements: (sql: SQLocal['convertSqlTemplate']) => Statement[]
-	) => {
+	batch = async (passStatements: (sql: typeof sqlTag) => Statement[]) => {
 		return await this.transaction(passStatements);
+	};
+
+	reactiveQuery = <T extends Record<string, any>>(
+		statement:
+			| ReturningStatement<T>
+			| ((sql: typeof sqlTag) => ReturningStatement<T>),
+		callback: (data: T[]) => void
+	) => {
+		statement = typeof statement === 'function' ? statement(sqlTag) : statement;
+		const { readTables, mutatedTables } = parseQueryEffects(statement.sql);
+
+		if (mutatedTables.length > 0) {
+			throw new Error(
+				'The passed SQL would mutate one or more tables. Reactive queries must use non-mutating queries to avoid infinite loops.'
+			);
+		}
+
+		if (readTables.length > 0) {
+			this.execAndConvert<T>(statement).then((initialData) => {
+				callback(initialData);
+			});
+		} else {
+			throw new Error('The passed SQL does not read any tables.');
+		}
+
+		const queryEffectsChannel = new BroadcastChannel(
+			`_sqlocal_query_effects_(${this.databasePath})`
+		);
+
+		queryEffectsChannel.onmessage = async (
+			event: MessageEvent<EffectsMessage>
+		) => {
+			const message = event.data;
+			if (message.effectType === 'read') return;
+
+			const queryAffected = readTables.some((table) => {
+				return message.tables.has(table);
+			});
+
+			if (queryAffected) {
+				const newData = await this.execAndConvert<T>(statement);
+				callback(newData);
+			}
+		};
+
+		return () => {
+			queryEffectsChannel.close();
+		};
 	};
 
 	createCallbackFunction = async (
