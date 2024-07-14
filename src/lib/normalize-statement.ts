@@ -1,12 +1,37 @@
-import { ReturningStatement, Statement } from '../types.js';
+import { isSQLWrapper, type Query as DrizzleQuery } from 'drizzle-orm';
+import type { RunnableQuery } from 'drizzle-orm/runnable-query';
+import type { ReturningStatement, Statement } from '../types.js';
+import { sqlTag } from './sql-tag.js';
 
-export function normalizeStatement(statement: ReturningStatement): Statement {
-	return {
-		sql: statement.sql,
-		params: ('params' in statement
-			? statement.params
-			: 'parameters' in statement
-				? statement.parameters
-				: []) as unknown[],
-	};
+function isDrizzleStatement<Result = unknown>(
+	statement: ReturningStatement<Result>
+): statement is RunnableQuery<Result[], 'sqlite'> {
+	return '_' in statement && isSQLWrapper(statement);
+}
+
+export function normalizeStatement(
+	statement: ReturningStatement | ((sql: typeof sqlTag) => ReturningStatement)
+): Statement {
+	if (typeof statement === 'function') {
+		statement = statement(sqlTag);
+	}
+
+	if (isDrizzleStatement(statement)) {
+		if ('toSQL' in statement && typeof statement.toSQL === 'function') {
+			return statement.toSQL() as DrizzleQuery;
+		} else {
+			return { sql: '', params: [] };
+		}
+	}
+
+	const sql = statement.sql;
+	let params: unknown[] = [];
+
+	if ('params' in statement) {
+		params = statement.params;
+	} else if ('parameters' in statement) {
+		params = statement.parameters as unknown[];
+	}
+
+	return { sql, params };
 }
