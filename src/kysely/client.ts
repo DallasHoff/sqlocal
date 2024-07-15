@@ -9,6 +9,7 @@ import {
 	SqliteIntrospector,
 	SqliteQueryCompiler,
 } from 'kysely';
+import { convertRowsToObjects } from '../lib/convert-rows-to-objects.js';
 
 export class SQLocalKysely extends SQLocal {
 	private executor = async <T>(query: CompiledQuery) => {
@@ -18,7 +19,7 @@ export class SQLocalKysely extends SQLocal {
 			'all'
 		);
 		return {
-			rows: this.convertRowsToObjects(rows, columns) as T[],
+			rows: convertRowsToObjects(rows, columns) as T[],
 		} satisfies QueryResult<T>;
 	};
 

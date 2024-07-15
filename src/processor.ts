@@ -44,9 +44,7 @@ export class SQLocalProcessor {
 			}
 
 			if (this.db) {
-				this.db?.close();
-				this.db = undefined;
-				this.dbStorageType = undefined;
+				this.destroy();
 			}
 
 			if ('opfs' in this.sqlite3) {
@@ -66,9 +64,7 @@ export class SQLocalProcessor {
 				queryKey: null,
 			});
 
-			this.db?.close();
-			this.db = undefined;
-			this.dbStorageType = undefined;
+			this.destroy();
 			return;
 		}
 
@@ -343,7 +339,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected destroy = (message: DestroyMessage) => {
+	protected destroy = (message?: DestroyMessage) => {
 		if (this.db) {
 			this.db.exec({ sql: 'PRAGMA optimize' });
 			this.db.close();
@@ -351,9 +347,11 @@ export class SQLocalProcessor {
 			this.dbStorageType = undefined;
 		}
 
-		this.emitMessage({
-			type: 'success',
-			queryKey: message.queryKey,
-		});
+		if (message) {
+			this.emitMessage({
+				type: 'success',
+				queryKey: message.queryKey,
+			});
+		}
 	};
 }

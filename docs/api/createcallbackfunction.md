@@ -28,7 +28,7 @@ Then, we can create a temporary trigger that calls `logInsert` whenever we inser
 
 ```javascript
 await sql`
-  CREATE TEMP TRIGGER 'logGroceriesInsert' AFTER INSERT ON groceries
+  CREATE TEMP TRIGGER logGroceriesInsert AFTER INSERT ON groceries
   BEGIN
     SELECT logInsert('groceries', new.name);
   END
