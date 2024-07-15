@@ -121,7 +121,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected emitEffectsBroadcast = (executedSql: Set<string>) => {
+	protected emitEffectsBroadcast = (executedSql: Set<string>): void => {
 		if (!this.queryEffectsChannel) return;
 
 		const allReadTables = new Set<string>();

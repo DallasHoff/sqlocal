@@ -221,7 +221,7 @@ export class SQLocal {
 			| ReturningStatement<T>
 			| ((sql: typeof sqlTag) => ReturningStatement<T>),
 		callback: (data: T[]) => void
-	) => {
+	): (() => void) => {
 		statement = normalizeStatement(statement);
 		const { readTables, mutatedTables } = parseQueryEffects(statement.sql);
 
