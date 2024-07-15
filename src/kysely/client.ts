@@ -12,7 +12,9 @@ import {
 import { convertRowsToObjects } from '../lib/convert-rows-to-objects.js';
 
 export class SQLocalKysely extends SQLocal {
-	private executor = async <T>(query: CompiledQuery) => {
+	private executor = async <T>(
+		query: CompiledQuery
+	): Promise<QueryResult<T>> => {
 		const { rows, columns } = await this.exec(
 			query.sql,
 			query.parameters as unknown[],
@@ -20,15 +22,15 @@ export class SQLocalKysely extends SQLocal {
 		);
 		return {
 			rows: convertRowsToObjects(rows, columns) as T[],
-		} satisfies QueryResult<T>;
+		};
 	};
 
-	dialect = {
+	dialect: Dialect = {
 		createAdapter: () => new SqliteAdapter(),
 		createDriver: () => new SQLocalKyselyDriver(this, this.executor),
 		createIntrospector: (db) => new SqliteIntrospector(db),
 		createQueryCompiler: () => new SqliteQueryCompiler(),
-	} satisfies Dialect;
+	};
 }
 
 class SQLocalKyselyDriver implements Driver {
@@ -40,28 +42,28 @@ class SQLocalKyselyDriver implements Driver {
 		this.executor = executor;
 	}
 
-	async acquireConnection() {
+	async acquireConnection(): Promise<SQLocalKyselyConnection> {
 		return new SQLocalKyselyConnection(this.executor);
 	}
 
-	async beginTransaction(connection: DatabaseConnection) {
+	async beginTransaction(connection: DatabaseConnection): Promise<void> {
 		await connection.executeQuery(CompiledQuery.raw('BEGIN'));
 	}
 
-	async commitTransaction(connection: DatabaseConnection) {
+	async commitTransaction(connection: DatabaseConnection): Promise<void> {
 		await connection.executeQuery(CompiledQuery.raw('COMMIT'));
 	}
 
-	async rollbackTransaction(connection: DatabaseConnection) {
+	async rollbackTransaction(connection: DatabaseConnection): Promise<void> {
 		await connection.executeQuery(CompiledQuery.raw('ROLLBACK'));
 	}
 
-	async destroy() {
+	async destroy(): Promise<void> {
 		await this.client.destroy();
 	}
 
-	async init() {}
-	async releaseConnection() {}
+	async init(): Promise<void> {}
+	async releaseConnection(): Promise<void> {}
 }
 
 class SQLocalKyselyConnection implements DatabaseConnection {
@@ -71,11 +73,11 @@ class SQLocalKyselyConnection implements DatabaseConnection {
 		this.executor = executor;
 	}
 
-	async executeQuery<T>(query: CompiledQuery) {
+	async executeQuery<T>(query: CompiledQuery): Promise<QueryResult<T>> {
 		return await this.executor<T>(query);
 	}
 
-	async *streamQuery() {
+	async *streamQuery(): AsyncGenerator<never, void, unknown> {
 		throw new Error('SQLite3 does not support streaming.');
 	}
 }

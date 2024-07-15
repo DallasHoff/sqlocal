@@ -35,7 +35,7 @@ export class SQLocalProcessor {
 		this.init();
 	}
 
-	protected init = async () => {
+	protected init = async (): Promise<void> => {
 		if (!this.config.databasePath) return;
 
 		try {
@@ -72,7 +72,7 @@ export class SQLocalProcessor {
 		this.flushQueue();
 	};
 
-	postMessage = (message: InputMessage | MessageEvent<InputMessage>) => {
+	postMessage = (message: InputMessage | MessageEvent<InputMessage>): void => {
 		if (message instanceof MessageEvent) {
 			message = message.data;
 		}
@@ -105,7 +105,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected emitMessage = (message: OutputMessage) => {
+	protected emitMessage = (message: OutputMessage): void => {
 		if (this.onmessage) {
 			this.onmessage(message);
 		}
@@ -114,7 +114,7 @@ export class SQLocalProcessor {
 	protected editConfig = <T extends keyof ProcessorConfig>(
 		key: T,
 		value: ProcessorConfig[T]
-	) => {
+	): void => {
 		if (this.config[key] === value) return;
 
 		this.config[key] = value;
@@ -124,7 +124,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected exec = (message: QueryMessage | BatchMessage) => {
+	protected exec = (message: QueryMessage | BatchMessage): void => {
 		if (!this.db) return;
 
 		try {
@@ -206,7 +206,9 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected getDatabaseInfo = async (message: GetInfoMessage) => {
+	protected getDatabaseInfo = async (
+		message: GetInfoMessage
+	): Promise<void> => {
 		try {
 			const databasePath = this.config.databasePath;
 			const storageType = this.dbStorageType;
@@ -239,7 +241,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected createUserFunction = (message: FunctionMessage) => {
+	protected createUserFunction = (message: FunctionMessage): void => {
 		const { functionName, functionType, queryKey } = message;
 		let func;
 
@@ -285,7 +287,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected initUserFunction = (fn: UserFunction) => {
+	protected initUserFunction = (fn: UserFunction): void => {
 		if (!this.db) return;
 
 		this.db.createFunction({
@@ -297,7 +299,7 @@ export class SQLocalProcessor {
 		this.userFunctions.set(fn.name, fn);
 	};
 
-	protected importDb = async (message: ImportMessage) => {
+	protected importDb = async (message: ImportMessage): Promise<void> => {
 		if (!this.sqlite3 || !this.config.databasePath) return;
 
 		const { queryKey, database } = message;
@@ -331,7 +333,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected flushQueue = () => {
+	protected flushQueue = (): void => {
 		while (this.queuedMessages.length > 0) {
 			const message = this.queuedMessages.shift();
 			if (message === undefined) continue;
@@ -339,7 +341,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected destroy = (message?: DestroyMessage) => {
+	protected destroy = (message?: DestroyMessage): void => {
 		if (this.db) {
 			this.db.exec({ sql: 'PRAGMA optimize' });
 			this.db.close();
