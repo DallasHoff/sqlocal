@@ -17,13 +17,14 @@ import type {
 	ScalarUserFunction,
 	GetInfoMessage,
 	Statement,
-	EffectsMessage,
 	ReturningStatement,
+	DatabaseInfo,
+	EffectsMessage,
 } from './types.js';
-import { parseQueryEffects } from './lib/parse-query-effects.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
+import { parseQueryEffects } from './lib/parse-query-effects.js';
 
 export class SQLocal {
 	protected databasePath: string;
@@ -54,7 +55,9 @@ export class SQLocal {
 		} satisfies ConfigMessage);
 	}
 
-	protected processMessageEvent = (event: MessageEvent<OutputMessage>) => {
+	protected processMessageEvent = (
+		event: MessageEvent<OutputMessage>
+	): void => {
 		const message = event.data;
 		const queries = this.queriesInProgress;
 
@@ -95,7 +98,7 @@ export class SQLocal {
 			| ImportMessage
 			| GetInfoMessage
 		>
-	) => {
+	): Promise<OutputMessage> => {
 		if (this.isWorkerDestroyed === true) {
 			throw new Error(
 				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
@@ -136,7 +139,7 @@ export class SQLocal {
 		sql: string,
 		params: unknown[],
 		method: Sqlite3Method = 'all'
-	) => {
+	): Promise<RawResultData> => {
 		const message = await this.createQuery({
 			type: 'query',
 			sql,
@@ -157,7 +160,9 @@ export class SQLocal {
 		return data;
 	};
 
-	protected execBatch = async (statements: Statement[]) => {
+	protected execBatch = async (
+		statements: Statement[]
+	): Promise<RawResultData[]> => {
 		const message = await this.createQuery({
 			type: 'batch',
 			statements,
@@ -178,7 +183,7 @@ export class SQLocal {
 
 	protected execAndConvert = async <T extends Record<string, any>>(
 		statement: ReturningStatement<T>
-	) => {
+	): Promise<T[]> => {
 		const { sql, params } = normalizeStatement(statement);
 		const { rows, columns } = await this.exec(sql, params, 'all');
 		const resultRecords = convertRowsToObjects(rows, columns);
@@ -188,13 +193,15 @@ export class SQLocal {
 	sql = async <T extends Record<string, any>>(
 		queryTemplate: TemplateStringsArray,
 		...params: unknown[]
-	) => {
+	): Promise<T[]> => {
 		const statement = sqlTag(queryTemplate, ...params);
 		const resultRecords = await this.execAndConvert<T>(statement);
 		return resultRecords;
 	};
 
-	transaction = async (passStatements: (sql: typeof sqlTag) => Statement[]) => {
+	transaction = async (
+		passStatements: (sql: typeof sqlTag) => Statement[]
+	): Promise<Record<string, unknown>[][]> => {
 		const statements = passStatements(sqlTag);
 		const data = await this.execBatch(statements);
 
@@ -203,7 +210,9 @@ export class SQLocal {
 		});
 	};
 
-	batch = async (passStatements: (sql: typeof sqlTag) => Statement[]) => {
+	batch = async (
+		passStatements: (sql: typeof sqlTag) => Statement[]
+	): Promise<Record<string, unknown>[][]> => {
 		return await this.transaction(passStatements);
 	};
 
@@ -258,7 +267,7 @@ export class SQLocal {
 	createCallbackFunction = async (
 		funcName: string,
 		func: CallbackUserFunction['func']
-	) => {
+	): Promise<void> => {
 		await this.createQuery({
 			type: 'function',
 			functionName: funcName,
@@ -271,7 +280,7 @@ export class SQLocal {
 	createScalarFunction = async (
 		funcName: string,
 		func: ScalarUserFunction['func']
-	) => {
+	): Promise<void> => {
 		await this.createQuery({
 			type: 'function',
 			functionName: funcName,
@@ -281,7 +290,7 @@ export class SQLocal {
 		this.proxy[`_sqlocal_func_${funcName}`] = func;
 	};
 
-	getDatabaseInfo = async () => {
+	getDatabaseInfo = async (): Promise<DatabaseInfo> => {
 		const message = await this.createQuery({ type: 'getinfo' });
 
 		if (message.type === 'info') {
@@ -291,15 +300,29 @@ export class SQLocal {
 		}
 	};
 
-	getDatabaseFile = async () => {
-		const opfs = await navigator.storage.getDirectory();
-		const fileHandle = await opfs.getFileHandle(this.databasePath);
-		return await fileHandle.getFile();
+	getDatabaseFile = async (): Promise<File> => {
+		const path = this.databasePath.split(/[\\/]/).filter((part) => part !== '');
+		const fileName = path.pop();
+
+		if (!fileName) {
+			throw new Error('Failed to parse the database file name.');
+		}
+
+		let dirHandle = await navigator.storage.getDirectory();
+		for (let dirName of path)
+			dirHandle = await dirHandle.getDirectoryHandle(dirName);
+
+		const fileHandle = await dirHandle.getFileHandle(fileName);
+		const file = await fileHandle.getFile();
+
+		return new File([file], fileName, {
+			type: 'application/x-sqlite3',
+		});
 	};
 
 	overwriteDatabaseFile = async (
 		databaseFile: File | Blob | ArrayBuffer | Uint8Array
-	) => {
+	): Promise<void> => {
 		let database: ArrayBuffer | Uint8Array;
 
 		if (databaseFile instanceof Blob) {
@@ -314,7 +337,7 @@ export class SQLocal {
 		});
 	};
 
-	destroy = async () => {
+	destroy = async (): Promise<void> => {
 		await this.createQuery({ type: 'destroy' });
 		this.worker.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();

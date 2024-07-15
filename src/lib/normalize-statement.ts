@@ -20,7 +20,7 @@ export function normalizeStatement(
 		if ('toSQL' in statement && typeof statement.toSQL === 'function') {
 			return statement.toSQL() as DrizzleQuery;
 		} else {
-			return { sql: '', params: [] };
+			throw new Error('The passed Drizzle statement could not be parsed.');
 		}
 	}
 

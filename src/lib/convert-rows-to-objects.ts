@@ -1,14 +1,12 @@
+function isArrayOfArrays(rows: unknown[] | unknown[][]): rows is unknown[][] {
+	return !rows.some((row) => !Array.isArray(row));
+}
+
 export function convertRowsToObjects(
 	rows: unknown[] | unknown[][],
 	columns: string[]
 ): Record<string, unknown>[] {
 	let checkedRows: unknown[][];
-
-	const isArrayOfArrays = (
-		rows: unknown[] | unknown[][]
-	): rows is unknown[][] => {
-		return !rows.some((row) => !Array.isArray(row));
-	};
 
 	if (isArrayOfArrays(rows)) {
 		checkedRows = rows;

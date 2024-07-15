@@ -2,31 +2,37 @@ import type { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 import type { CompiledQuery } from 'kysely';
 import type { RunnableQuery } from 'drizzle-orm/runnable-query';
 
+// SQLite
+
 export type Sqlite3 = Sqlite3Static;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type Sqlite3StorageType = 'memory' | 'opfs';
 
+// Queries
+
 export type Statement = {
 	sql: string;
 	params: unknown[];
 };
+
 export type ReturningStatement<Result = unknown> =
 	| Statement // default
 	| CompiledQuery<Result> // kysely
 	| RunnableQuery<Result[], 'sqlite'>; // drizzle
+
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
 };
 
-export type WorkerProxy = ProxyHandler<Worker> &
-	Record<string, (...args: any) => any>;
+// Database status
 
 export type ProcessorConfig = {
 	databasePath?: string;
 	reactive?: boolean;
 };
+
 export type DatabaseInfo = {
 	databasePath?: string;
 	databaseSizeBytes?: number;
@@ -34,9 +40,13 @@ export type DatabaseInfo = {
 	persisted?: boolean;
 };
 
+// Worker messages
+
 export type Message = InputMessage | OutputMessage;
 export type QueryKey = string;
 export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
+export type WorkerProxy = ProxyHandler<Worker> &
+	Record<string, (...args: any) => any>;
 
 export type InputMessage =
 	| QueryMessage
@@ -120,6 +130,8 @@ export type InfoMessage = {
 	queryKey: QueryKey;
 	info: DatabaseInfo;
 };
+
+// User functions
 
 export type UserFunction = CallbackUserFunction | ScalarUserFunction;
 export type CallbackUserFunction = {

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocalDrizzle } from '../../src/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { desc, eq, placeholder, relations } from 'drizzle-orm';
+import { desc, eq, relations, sql as dsql } from 'drizzle-orm';
 
 describe('drizzle driver', () => {
 	const { sql, driver, batchDriver } = new SQLocalDrizzle(
@@ -48,7 +48,7 @@ describe('drizzle driver', () => {
 	it('should execute queries', async () => {
 		const insert1Prepared = db
 			.insert(groceries)
-			.values({ name: placeholder('name') })
+			.values({ name: dsql.placeholder('name') })
 			.returning({ name: groceries.name })
 			.prepare();
 		const items = ['bread', 'milk', 'rice'];
