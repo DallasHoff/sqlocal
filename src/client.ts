@@ -189,10 +189,17 @@ export class SQLocal {
 	};
 
 	sql = async <T extends Record<string, any>>(
-		queryTemplate: TemplateStringsArray,
+		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
 	): Promise<T[]> => {
-		const statement = sqlTag(queryTemplate, ...params);
+		let statement: Statement;
+
+		if (typeof queryTemplate === 'string') {
+			statement = { sql: queryTemplate, params };
+		} else {
+			statement = sqlTag(queryTemplate, ...params);
+		}
+
 		const resultRecords = await this.execAndConvert<T>(statement);
 		return resultRecords;
 	};
