@@ -17,12 +17,10 @@ import type {
 	ScalarUserFunction,
 	GetInfoMessage,
 	Statement,
-	ReturningStatement,
 	DatabaseInfo,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
-import { normalizeStatement } from './lib/normalize-statement.js';
 
 export class SQLocal {
 	protected databasePath: string;
@@ -179,15 +177,6 @@ export class SQLocal {
 		return data;
 	};
 
-	protected execAndConvert = async <T extends Record<string, any>>(
-		statement: ReturningStatement<T>
-	): Promise<T[]> => {
-		const { sql, params } = normalizeStatement(statement);
-		const { rows, columns } = await this.exec(sql, params, 'all');
-		const resultRecords = convertRowsToObjects(rows, columns);
-		return resultRecords as T[];
-	};
-
 	sql = async <T extends Record<string, any>>(
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
@@ -200,8 +189,13 @@ export class SQLocal {
 			statement = sqlTag(queryTemplate, ...params);
 		}
 
-		const resultRecords = await this.execAndConvert<T>(statement);
-		return resultRecords;
+		const { rows, columns } = await this.exec(
+			statement.sql,
+			statement.params,
+			'all'
+		);
+		const resultRecords = convertRowsToObjects(rows, columns);
+		return resultRecords as T[];
 	};
 
 	transaction = async (
