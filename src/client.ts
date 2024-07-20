@@ -198,21 +198,22 @@ export class SQLocal {
 		return resultRecords as T[];
 	};
 
-	transaction = async (
+	transaction = async <T extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<Record<string, unknown>[][]> => {
+	): Promise<T[][]> => {
 		const statements = passStatements(sqlTag);
 		const data = await this.execBatch(statements);
 
 		return data.map(({ rows, columns }) => {
-			return convertRowsToObjects(rows, columns);
+			const resultRecords = convertRowsToObjects(rows, columns);
+			return resultRecords as T[];
 		});
 	};
 
-	batch = async (
+	batch = async <T extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<Record<string, unknown>[][]> => {
-		return await this.transaction(passStatements);
+	): Promise<T[][]> => {
+		return await this.transaction<T>(passStatements);
 	};
 
 	createCallbackFunction = async (
