@@ -3,8 +3,9 @@ import { SQLocal } from '../src/index';
 import { createEffectChecker } from './test-utils/create-effect-checker';
 
 describe('transaction', () => {
-	const { sql, transaction } = new SQLocal('transaction-test.sqlite3');
-	const nextEffectTables = createEffectChecker('transaction-test.sqlite3');
+	const databasePath = 'transaction-test.sqlite3';
+	const { sql, transaction } = new SQLocal({ databasePath, reactive: true });
+	const nextEffectTables = createEffectChecker(databasePath);
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;

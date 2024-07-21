@@ -3,15 +3,16 @@ import { SQLocal } from '../src/index';
 import { createEffectChecker } from './test-utils/create-effect-checker';
 
 describe('destroy', () => {
-	const { sql, destroy } = new SQLocal('destroy-test.sqlite3');
-	const nextEffectTables = createEffectChecker('destroy-test.sqlite3');
+	const databasePath = 'destroy-test.sqlite3';
+	const { sql, destroy } = new SQLocal({ databasePath, reactive: true });
+	const nextEffectTables = createEffectChecker(databasePath);
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
 	});
 
 	afterEach(async () => {
-		const { sql } = new SQLocal('destroy-test.sqlite3');
+		const { sql } = new SQLocal(databasePath);
 		await sql`DROP TABLE groceries`;
 	});
 

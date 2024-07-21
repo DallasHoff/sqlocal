@@ -26,7 +26,7 @@ export class SQLocalProcessor {
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
 	protected dbStorageType: Sqlite3StorageType | undefined;
-	protected config: ProcessorConfig = { reactive: true }; // TODO
+	protected config: ProcessorConfig = {};
 	protected queuedMessages: InputMessage[] = [];
 	protected userFunctions = new Map<string, UserFunction>();
 

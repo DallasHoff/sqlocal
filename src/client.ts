@@ -185,13 +185,13 @@ export class SQLocal {
 		return data;
 	};
 
-	protected execAndConvert = async <T extends Record<string, any>>(
-		statement: ReturningStatement<T>
-	): Promise<T[]> => {
+	protected execAndConvert = async <Result extends Record<string, any>>(
+		statement: ReturningStatement<Result>
+	): Promise<Result[]> => {
 		const { sql, params } = normalizeStatement(statement);
 		const { rows, columns } = await this.exec(sql, params, 'all');
 		const resultRecords = convertRowsToObjects(rows, columns);
-		return resultRecords as T[];
+		return resultRecords as Result[];
 	};
 
 	sql = async <Result extends Record<string, any>>(
@@ -233,11 +233,11 @@ export class SQLocal {
 		return await this.transaction<Result>(passStatements);
 	};
 
-	reactiveQuery = <T extends Record<string, any>>(
+	reactiveQuery = <Result extends Record<string, any>>(
 		statement:
-			| ReturningStatement<T>
-			| ((sql: typeof sqlTag) => ReturningStatement<T>),
-		callback: (data: T[]) => void
+			| ReturningStatement<Result>
+			| ((sql: typeof sqlTag) => ReturningStatement<Result>),
+		callback: (data: Result[]) => void
 	): (() => void) => {
 		statement = normalizeStatement(statement);
 		const { readTables, mutatedTables } = parseQueryEffects(statement.sql);
@@ -249,7 +249,7 @@ export class SQLocal {
 		}
 
 		if (readTables.length > 0) {
-			this.execAndConvert<T>(statement).then((initialData) => {
+			this.execAndConvert<Result>(statement).then((initialData) => {
 				callback(initialData);
 			});
 		} else {
@@ -271,7 +271,7 @@ export class SQLocal {
 			});
 
 			if (queryAffected) {
-				const newData = await this.execAndConvert<T>(statement);
+				const newData = await this.execAndConvert<Result>(statement);
 				callback(newData);
 			}
 		};
