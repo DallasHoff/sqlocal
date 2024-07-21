@@ -177,10 +177,10 @@ export class SQLocal {
 		return data;
 	};
 
-	sql = async <T extends Record<string, any>>(
+	sql = async <Result extends Record<string, any>>(
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
-	): Promise<T[]> => {
+	): Promise<Result[]> => {
 		let statement: Statement;
 
 		if (typeof queryTemplate === 'string') {
@@ -195,25 +195,25 @@ export class SQLocal {
 			'all'
 		);
 		const resultRecords = convertRowsToObjects(rows, columns);
-		return resultRecords as T[];
+		return resultRecords as Result[];
 	};
 
-	transaction = async <T extends Record<string, any>>(
+	transaction = async <Result extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<T[][]> => {
+	): Promise<Result[][]> => {
 		const statements = passStatements(sqlTag);
 		const data = await this.execBatch(statements);
 
 		return data.map(({ rows, columns }) => {
 			const resultRecords = convertRowsToObjects(rows, columns);
-			return resultRecords as T[];
+			return resultRecords as Result[];
 		});
 	};
 
-	batch = async <T extends Record<string, any>>(
+	batch = async <Result extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<T[][]> => {
-		return await this.transaction<T>(passStatements);
+	): Promise<Result[][]> => {
+		return await this.transaction<Result>(passStatements);
 	};
 
 	createCallbackFunction = async (
