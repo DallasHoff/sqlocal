@@ -17,6 +17,7 @@ import type {
 	RawResultData,
 	GetInfoMessage,
 	Sqlite3StorageType,
+	ConfigMessage,
 } from './types.js';
 
 export class SQLocalProcessor {
@@ -38,6 +39,12 @@ export class SQLocalProcessor {
 	protected init = async (): Promise<void> => {
 		if (!this.config.databasePath) return;
 
+		const { databasePath, readOnly, verbose } = this.config;
+		const flags = [
+			readOnly === true ? 'r' : 'cw',
+			verbose === true ? 't' : '',
+		].join('');
+
 		try {
 			if (!this.sqlite3) {
 				this.sqlite3 = await sqlite3InitModule();
@@ -48,13 +55,13 @@ export class SQLocalProcessor {
 			}
 
 			if ('opfs' in this.sqlite3) {
-				this.db = new this.sqlite3.oo1.OpfsDb(this.config.databasePath, 'cw');
+				this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
 				this.dbStorageType = 'opfs';
 			} else {
-				this.db = new this.sqlite3.oo1.DB(this.config.databasePath, 'cw');
+				this.db = new this.sqlite3.oo1.DB(databasePath, flags);
 				this.dbStorageType = 'memory';
 				console.warn(
-					`The origin private file system is not available, so ${this.config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
+					`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 				);
 			}
 		} catch (error) {
@@ -84,7 +91,7 @@ export class SQLocalProcessor {
 
 		switch (message.type) {
 			case 'config':
-				this.editConfig(message.key, message.value);
+				this.editConfig(message);
 				break;
 			case 'query':
 			case 'batch':
@@ -111,17 +118,9 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected editConfig = <T extends keyof ProcessorConfig>(
-		key: T,
-		value: ProcessorConfig[T]
-	): void => {
-		if (this.config[key] === value) return;
-
-		this.config[key] = value;
-
-		if (key === 'databasePath') {
-			this.init();
-		}
+	protected editConfig = (message: ConfigMessage) => {
+		this.config = message.config;
+		this.init();
 	};
 
 	protected exec = (message: QueryMessage | BatchMessage): void => {

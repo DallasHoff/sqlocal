@@ -18,6 +18,7 @@ import type {
 	GetInfoMessage,
 	Statement,
 	DatabaseInfo,
+	ClientConfig,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
@@ -36,18 +37,21 @@ export class SQLocal {
 		]
 	>();
 
-	constructor(databasePath: string) {
+	constructor(databasePath: string);
+	constructor(config: ClientConfig);
+	constructor(config: string | ClientConfig) {
+		config = typeof config === 'string' ? { databasePath: config } : config;
+
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
 			type: 'module',
 		});
 		this.worker.addEventListener('message', this.processMessageEvent);
 
 		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.databasePath = databasePath;
+		this.databasePath = config.databasePath;
 		this.worker.postMessage({
 			type: 'config',
-			key: 'databasePath',
-			value: databasePath,
+			config,
 		} satisfies ConfigMessage);
 	}
 

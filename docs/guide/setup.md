@@ -55,6 +55,22 @@ With the client initialized, you are ready to [start making queries](/api/sql).
 
 <!-- @include: ../_partials/initialization-note.md -->
 
+## Options
+
+The `SQLocal` constructor can also be passed an object to accept additional options.
+
+```javascript
+export const db = new SQLocal({
+	databasePath: 'database.sqlite3',
+	readOnly: true,
+	verbose: true,
+});
+```
+
+- **`databasePath`** (`string`) - The file name for the database file. This is the only required option.
+- **`readOnly`** (`boolean`) - If `true`, connect to the database in read-only mode. Attempts to run queries that would mutate the database will throw an error.
+- **`verbose`** (`boolean`) - If `true`, any SQL executed on the database will be logged to the console.
+
 ## Vite Configuration
 
 Vite currently has an issue that prevents it from loading web worker files correctly with the default configuration. If you use Vite, please add the below to your [Vite configuration](https://vitejs.dev/config/) to fix this. Don't worry: it will have no impact on production performance.
