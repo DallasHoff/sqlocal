@@ -28,10 +28,14 @@ export type RawResultData = {
 
 // Database status
 
-export type ProcessorConfig = {
-	databasePath?: string;
+export type ClientConfig = {
+	databasePath: string;
+	readOnly?: boolean;
+	verbose?: boolean;
 	reactive?: boolean;
 };
+
+export type ProcessorConfig = Partial<ClientConfig>;
 
 export type DatabaseInfo = {
 	databasePath?: string;
@@ -80,8 +84,7 @@ export type FunctionMessage = {
 };
 export type ConfigMessage = {
 	type: 'config';
-	key: keyof ProcessorConfig;
-	value: any;
+	config: ProcessorConfig;
 };
 export type ImportMessage = {
 	type: 'import';

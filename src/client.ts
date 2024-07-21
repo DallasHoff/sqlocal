@@ -17,9 +17,10 @@ import type {
 	ScalarUserFunction,
 	GetInfoMessage,
 	Statement,
-	ReturningStatement,
 	DatabaseInfo,
 	EffectsMessage,
+	ClientConfig,
+	ReturningStatement,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
@@ -40,18 +41,21 @@ export class SQLocal {
 		]
 	>();
 
-	constructor(databasePath: string) {
+	constructor(databasePath: string);
+	constructor(config: ClientConfig);
+	constructor(config: string | ClientConfig) {
+		config = typeof config === 'string' ? { databasePath: config } : config;
+
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
 			type: 'module',
 		});
 		this.worker.addEventListener('message', this.processMessageEvent);
 
 		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.databasePath = databasePath;
+		this.databasePath = config.databasePath;
 		this.worker.postMessage({
 			type: 'config',
-			key: 'databasePath',
-			value: databasePath,
+			config,
 		} satisfies ConfigMessage);
 	}
 
@@ -190,30 +194,43 @@ export class SQLocal {
 		return resultRecords as T[];
 	};
 
-	sql = async <T extends Record<string, any>>(
-		queryTemplate: TemplateStringsArray,
+	sql = async <Result extends Record<string, any>>(
+		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
-	): Promise<T[]> => {
-		const statement = sqlTag(queryTemplate, ...params);
-		const resultRecords = await this.execAndConvert<T>(statement);
-		return resultRecords;
+	): Promise<Result[]> => {
+		let statement: Statement;
+
+		if (typeof queryTemplate === 'string') {
+			statement = { sql: queryTemplate, params };
+		} else {
+			statement = sqlTag(queryTemplate, ...params);
+		}
+
+		const { rows, columns } = await this.exec(
+			statement.sql,
+			statement.params,
+			'all'
+		);
+		const resultRecords = convertRowsToObjects(rows, columns);
+		return resultRecords as Result[];
 	};
 
-	transaction = async (
+	transaction = async <Result extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<Record<string, unknown>[][]> => {
+	): Promise<Result[][]> => {
 		const statements = passStatements(sqlTag);
 		const data = await this.execBatch(statements);
 
 		return data.map(({ rows, columns }) => {
-			return convertRowsToObjects(rows, columns);
+			const resultRecords = convertRowsToObjects(rows, columns);
+			return resultRecords as Result[];
 		});
 	};
 
-	batch = async (
+	batch = async <Result extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<Record<string, unknown>[][]> => {
-		return await this.transaction(passStatements);
+	): Promise<Result[][]> => {
+		return await this.transaction<Result>(passStatements);
 	};
 
 	reactiveQuery = <T extends Record<string, any>>(

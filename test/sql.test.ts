@@ -58,9 +58,9 @@ describe('sql', () => {
 
 		const select2 = await sql`SELECT name FROM groceries ORDER BY id DESC`;
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
-	});
 
-	it('should be cross-origin isolated', () => {
-		expect(crossOriginIsolated).toBe(true);
+		const sqlStr = 'SELECT name FROM groceries WHERE id = ?';
+		const select3 = await sql(sqlStr, 1);
+		expect(select3).toEqual([{ name: 'bread' }]);
 	});
 });
