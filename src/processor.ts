@@ -19,6 +19,7 @@ import type {
 	Sqlite3StorageType,
 	ConfigMessage,
 } from './types.js';
+import { createMutex } from './lib/create-mutex.js';
 
 export class SQLocalProcessor {
 	protected proxy: WorkerProxy;
@@ -26,7 +27,7 @@ export class SQLocalProcessor {
 	protected db: Sqlite3Db | undefined;
 	protected dbStorageType: Sqlite3StorageType | undefined;
 	protected config: ProcessorConfig = {};
-	protected queuedMessages: InputMessage[] = [];
+	protected initMutex = createMutex();
 	protected userFunctions = new Map<string, UserFunction>();
 
 	onmessage: ((message: OutputMessage) => void) | undefined;
@@ -38,6 +39,8 @@ export class SQLocalProcessor {
 
 	protected init = async (): Promise<void> => {
 		if (!this.config.databasePath) return;
+
+		await this.initMutex.lock();
 
 		const { databasePath, readOnly, verbose } = this.config;
 		const flags = [
@@ -76,18 +79,17 @@ export class SQLocalProcessor {
 		}
 
 		this.userFunctions.forEach(this.initUserFunction);
-		this.flushQueue();
+		await this.initMutex.unlock();
 	};
 
-	postMessage = (message: InputMessage | MessageEvent<InputMessage>): void => {
+	postMessage = async (
+		message: InputMessage | MessageEvent<InputMessage>
+	): Promise<void> => {
 		if (message instanceof MessageEvent) {
 			message = message.data;
 		}
 
-		if (!this.db && message.type !== 'config') {
-			this.queuedMessages.push(message);
-			return;
-		}
+		await this.initMutex.lock();
 
 		switch (message.type) {
 			case 'config':
@@ -110,6 +112,8 @@ export class SQLocalProcessor {
 				this.destroy(message);
 				break;
 		}
+
+		await this.initMutex.unlock();
 	};
 
 	protected emitMessage = (message: OutputMessage): void => {
@@ -329,14 +333,6 @@ export class SQLocalProcessor {
 				error,
 				queryKey,
 			});
-		}
-	};
-
-	protected flushQueue = (): void => {
-		while (this.queuedMessages.length > 0) {
-			const message = this.queuedMessages.shift();
-			if (message === undefined) continue;
-			this.postMessage(message);
 		}
 	};
 

@@ -24,7 +24,7 @@ import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 
 export class SQLocal {
-	protected databasePath: string;
+	protected config: ClientConfig;
 	protected worker: Worker;
 	protected proxy: WorkerProxy;
 	protected isWorkerDestroyed: boolean = false;
@@ -48,7 +48,7 @@ export class SQLocal {
 		this.worker.addEventListener('message', this.processMessageEvent);
 
 		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.databasePath = config.databasePath;
+		this.config = config;
 		this.worker.postMessage({
 			type: 'config',
 			config,
@@ -257,7 +257,9 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		const path = this.databasePath.split(/[\\/]/).filter((part) => part !== '');
+		const path = this.config.databasePath
+			.split(/[\\/]/)
+			.filter((part) => part !== '');
 		const fileName = path.pop();
 
 		if (!fileName) {
