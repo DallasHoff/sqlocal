@@ -1,11 +1,15 @@
 import { isSQLWrapper } from 'drizzle-orm';
-import type { RunnableQuery } from 'drizzle-orm/runnable-query';
-import type { ReturningStatement, Statement } from '../types.js';
+import type { RunnableQuery as DrizzleQuery } from 'drizzle-orm/runnable-query';
+import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
+import type { StatementInput, Statement } from '../types.js';
 import { sqlTag } from './sql-tag.js';
 
 function isDrizzleStatement<Result = unknown>(
-	statement: ReturningStatement<Result>
-): statement is RunnableQuery<Result[], 'sqlite'> {
+	statement: StatementInput<Result>
+): statement is DrizzleQuery<
+	Result extends SqliteRemoteResult<unknown> ? any : Result[],
+	'sqlite'
+> {
 	return isSQLWrapper(statement);
 }
 
@@ -19,9 +23,7 @@ function isStatement(statement: unknown): statement is Statement {
 	);
 }
 
-export function normalizeStatement(
-	statement: ReturningStatement | ((sql: typeof sqlTag) => ReturningStatement)
-): Statement {
+export function normalizeStatement(statement: StatementInput): Statement {
 	if (typeof statement === 'function') {
 		statement = statement(sqlTag);
 	}

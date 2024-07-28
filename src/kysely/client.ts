@@ -1,4 +1,3 @@
-import { SQLocal } from '../index.js';
 import {
 	CompiledQuery,
 	DatabaseConnection,
@@ -9,6 +8,8 @@ import {
 	SqliteIntrospector,
 	SqliteQueryCompiler,
 } from 'kysely';
+import { SQLocal } from '../index.js';
+import type { Transaction } from '../types.js';
 
 export class SQLocalKysely extends SQLocal {
 	dialect: Dialect = {
@@ -20,11 +21,7 @@ export class SQLocalKysely extends SQLocal {
 }
 
 class SQLocalKyselyDriver implements Driver {
-	private client: SQLocalKysely;
-
-	constructor(client: SQLocalKysely) {
-		this.client = client;
-	}
+	constructor(private client: SQLocalKysely) {}
 
 	async init(): Promise<void> {}
 
@@ -35,17 +32,19 @@ class SQLocalKyselyDriver implements Driver {
 	async releaseConnection(): Promise<void> {}
 
 	async beginTransaction(connection: SQLocalKyselyConnection): Promise<void> {
-		await connection.executeQuery(CompiledQuery.raw('BEGIN'));
+		connection.transaction = await this.client.beginTransaction();
 	}
 
 	async commitTransaction(connection: SQLocalKyselyConnection): Promise<void> {
-		await connection.executeQuery(CompiledQuery.raw('COMMIT'));
+		await connection.transaction?.commit();
+		connection.transaction = null;
 	}
 
 	async rollbackTransaction(
 		connection: SQLocalKyselyConnection
 	): Promise<void> {
-		await connection.executeQuery(CompiledQuery.raw('ROLLBACK'));
+		await connection.transaction?.rollback();
+		connection.transaction = null;
 	}
 
 	async destroy(): Promise<void> {
@@ -54,16 +53,20 @@ class SQLocalKyselyDriver implements Driver {
 }
 
 class SQLocalKyselyConnection implements DatabaseConnection {
-	private client: SQLocalKysely;
+	transaction: Transaction | null = null;
 
-	constructor(client: SQLocalKysely) {
-		this.client = client;
-	}
+	constructor(private client: SQLocalKysely) {}
 
 	async executeQuery<Result>(
 		query: CompiledQuery
 	): Promise<QueryResult<Result>> {
-		const rows = await this.client.sql(query.sql, ...query.parameters);
+		let rows;
+
+		if (this.transaction === null) {
+			rows = await this.client.sql(query.sql, ...query.parameters);
+		} else {
+			rows = await this.transaction.query(query);
+		}
 
 		return {
 			rows: rows as Result[],

@@ -1,5 +1,4 @@
 import coincident from 'coincident';
-import { nanoid } from 'nanoid';
 import type {
 	CallbackUserFunction,
 	ConfigMessage,
@@ -19,9 +18,15 @@ import type {
 	Statement,
 	DatabaseInfo,
 	ClientConfig,
+	TransactionMessage,
+	StatementInput,
+	Transaction,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
+import { normalizeStatement } from './lib/normalize-statement.js';
+import { getQueryKey } from './lib/get-query-key.js';
+import { normalizeSql } from './lib/normalize-sql.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -93,6 +98,7 @@ export class SQLocal {
 		message: OmitQueryKey<
 			| QueryMessage
 			| BatchMessage
+			| TransactionMessage
 			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
@@ -105,7 +111,7 @@ export class SQLocal {
 			);
 		}
 
-		const queryKey = nanoid() satisfies QueryKey;
+		const queryKey = getQueryKey();
 
 		switch (message.type) {
 			case 'import':
@@ -124,6 +130,7 @@ export class SQLocal {
 				} satisfies
 					| QueryMessage
 					| BatchMessage
+					| TransactionMessage
 					| DestroyMessage
 					| FunctionMessage
 					| GetInfoMessage);
@@ -138,10 +145,12 @@ export class SQLocal {
 	protected exec = async (
 		sql: string,
 		params: unknown[],
-		method: Sqlite3Method = 'all'
+		method: Sqlite3Method = 'all',
+		transactionKey?: QueryKey
 	): Promise<RawResultData> => {
 		const message = await this.createQuery({
 			type: 'query',
+			transactionKey,
 			sql,
 			params,
 			method,
@@ -185,14 +194,7 @@ export class SQLocal {
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
 	): Promise<Result[]> => {
-		let statement: Statement;
-
-		if (typeof queryTemplate === 'string') {
-			statement = { sql: queryTemplate, params };
-		} else {
-			statement = sqlTag(queryTemplate, ...params);
-		}
-
+		const statement = normalizeSql(queryTemplate, params);
 		const { rows, columns } = await this.exec(
 			statement.sql,
 			statement.params,
@@ -202,7 +204,7 @@ export class SQLocal {
 		return resultRecords as Result[];
 	};
 
-	transaction = async <Result extends Record<string, any>>(
+	batch = async <Result extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
 	): Promise<Result[][]> => {
 		const statements = passStatements(sqlTag);
@@ -214,10 +216,81 @@ export class SQLocal {
 		});
 	};
 
-	batch = async <Result extends Record<string, any>>(
-		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<Result[][]> => {
-		return await this.transaction<Result>(passStatements);
+	beginTransaction = async (): Promise<Transaction> => {
+		const transactionKey = getQueryKey();
+
+		await this.createQuery({
+			type: 'transaction',
+			transactionKey,
+			action: 'begin',
+		});
+
+		const query = async <Result extends Record<string, any>>(
+			passStatement: StatementInput<Result>
+		): Promise<Result[]> => {
+			const statement = normalizeStatement(passStatement);
+			const { rows, columns } = await this.exec(
+				statement.sql,
+				statement.params,
+				'all',
+				transactionKey
+			);
+			const resultRecords = convertRowsToObjects(rows, columns) as Result[];
+			return resultRecords;
+		};
+
+		const sql = async <Result extends Record<string, any>>(
+			queryTemplate: TemplateStringsArray | string,
+			...params: unknown[]
+		): Promise<Result[]> => {
+			const statement = normalizeSql(queryTemplate, params);
+			const resultRecords = await query<Result>(statement);
+			return resultRecords;
+		};
+
+		const commit = async (): Promise<void> => {
+			await this.createQuery({
+				type: 'transaction',
+				transactionKey,
+				action: 'commit',
+			});
+		};
+
+		const rollback = async (): Promise<void> => {
+			await this.createQuery({
+				type: 'transaction',
+				transactionKey,
+				action: 'rollback',
+			});
+		};
+
+		return {
+			query,
+			sql,
+			commit,
+			rollback,
+		};
+	};
+
+	transaction = async <Result>(
+		transaction: (tx: {
+			sql: Transaction['sql'];
+			query: Transaction['query'];
+		}) => Promise<Result>
+	): Promise<Result> => {
+		const tx = await this.beginTransaction();
+
+		try {
+			const result = await transaction({
+				sql: tx.sql,
+				query: tx.query,
+			});
+			await tx.commit();
+			return result;
+		} catch (err) {
+			await tx.rollback();
+			throw err;
+		}
 	};
 
 	createCallbackFunction = async (
