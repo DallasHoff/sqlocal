@@ -49,8 +49,12 @@ export type RawResultData = {
 
 // Database status
 
+export type StorageType =
+	| { type: 'memory'; dbContent?: ArrayBuffer }
+	| { type: 'opfs'; path: string };
+
 export type ClientConfig = {
-	databasePath: string;
+	storage: StorageType;
 	readOnly?: boolean;
 	verbose?: boolean;
 };
@@ -62,6 +66,10 @@ export type DatabaseInfo = {
 	databaseSizeBytes?: number;
 	storageType?: Sqlite3StorageType;
 	persisted?: boolean;
+};
+
+export type DatabaseExport = {
+	data: Uint8Array;
 };
 
 // Worker messages
@@ -80,7 +88,8 @@ export type InputMessage =
 	| ConfigMessage
 	| ImportMessage
 	| GetInfoMessage
-	| DestroyMessage;
+	| DestroyMessage
+	| ExportMessage;
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
@@ -114,6 +123,10 @@ export type ConfigMessage = {
 	type: 'config';
 	config: ProcessorConfig;
 };
+export type ExportMessage = {
+	type: 'export';
+	queryKey: QueryKey;
+};
 export type ImportMessage = {
 	type: 'import';
 	queryKey: QueryKey;
@@ -133,7 +146,8 @@ export type OutputMessage =
 	| ErrorMessage
 	| DataMessage
 	| CallbackMessage
-	| InfoMessage;
+	| InfoMessage
+	| ExportDataMessage;
 export type SuccessMessage = {
 	type: 'success';
 	queryKey: QueryKey;
@@ -160,6 +174,11 @@ export type InfoMessage = {
 	type: 'info';
 	queryKey: QueryKey;
 	info: DatabaseInfo;
+};
+export type ExportDataMessage = {
+	type: 'export';
+	queryKey: QueryKey;
+	export: DatabaseExport;
 };
 
 // User functions

@@ -19,6 +19,7 @@ import type {
 	ConfigMessage,
 	QueryKey,
 	TransactionMessage,
+	ExportMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
@@ -44,11 +45,11 @@ export class SQLocalProcessor {
 	}
 
 	protected init = async (): Promise<void> => {
-		if (!this.config.databasePath) return;
+		if (!this.config.storage) return;
 
 		await this.initMutex.lock();
 
-		const { databasePath, readOnly, verbose } = this.config;
+		const { readOnly, verbose } = this.config;
 		const flags = [
 			readOnly === true ? 'r' : 'cw',
 			verbose === true ? 't' : '',
@@ -62,16 +63,37 @@ export class SQLocalProcessor {
 			if (this.db) {
 				this.destroy();
 			}
-
-			if ('opfs' in this.sqlite3) {
-				this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
+			if (this.config.storage?.type === 'opfs') {
+				if (!('opfs' in this.sqlite3)) {
+					throw new Error('OPFS not available');
+				}
+				this.db = new this.sqlite3.oo1.OpfsDb(this.config.storage.path, flags);
 				this.dbStorageType = 'opfs';
-			} else {
-				this.db = new this.sqlite3.oo1.DB(databasePath, flags);
+			} else if (this.config.storage?.type === 'memory') {
+				this.db = new this.sqlite3.oo1.DB(':memory:', flags);
 				this.dbStorageType = 'memory';
-				console.warn(
-					`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
-				);
+				const deserializeFlag = readOnly
+					? this.sqlite3.capi.SQLITE_DESERIALIZE_READONLY
+					: this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE;
+
+				if (this.config.storage.dbContent) {
+					const p = this.sqlite3.wasm.allocFromTypedArray(
+						this.config.storage.dbContent
+					);
+					const rc = this.sqlite3.capi.sqlite3_deserialize(
+						this.db.pointer!,
+						'main',
+						p,
+						this.config.storage.dbContent.byteLength,
+						this.config.storage.dbContent.byteLength,
+						deserializeFlag
+						// Optionally:
+						// | sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE
+					);
+					this.db.checkRc(rc);
+				}
+			} else {
+				throw new Error('Type not supported');
 			}
 		} catch (error) {
 			this.emitMessage({
@@ -111,6 +133,9 @@ export class SQLocalProcessor {
 				break;
 			case 'getinfo':
 				this.getDatabaseInfo(message);
+				break;
+			case 'export':
+				this.exportDb(message);
 				break;
 			case 'import':
 				this.importDb(message);
@@ -206,8 +231,11 @@ export class SQLocalProcessor {
 		message: GetInfoMessage
 	): Promise<void> => {
 		try {
-			const databasePath = this.config.databasePath;
 			const storageType = this.dbStorageType;
+			const databasePath =
+				this.config.storage?.type !== 'memory'
+					? this.config.storage!.path
+					: undefined;
 			const persisted =
 				storageType !== undefined
 					? storageType !== 'memory'
@@ -227,6 +255,26 @@ export class SQLocalProcessor {
 				type: 'info',
 				queryKey: message.queryKey,
 				info: { databasePath, databaseSizeBytes, storageType, persisted },
+			});
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				queryKey: message.queryKey,
+				error,
+			});
+		}
+	};
+
+	protected exportDb = async (message: ExportMessage): Promise<void> => {
+		try {
+			const byteArray = this.sqlite3!.capi.sqlite3_js_db_export(this.db!);
+
+			this.emitMessage({
+				type: 'export',
+				queryKey: message.queryKey,
+				export: {
+					data: byteArray,
+				},
 			});
 		} catch (error) {
 			this.emitMessage({
@@ -296,36 +344,52 @@ export class SQLocalProcessor {
 	};
 
 	protected importDb = async (message: ImportMessage): Promise<void> => {
-		if (!this.sqlite3 || !this.config.databasePath) return;
+		if (!this.sqlite3) return;
 
 		const { queryKey, database } = message;
+		if (this.config.storage?.type === 'opfs') {
+			if (!('opfs' in this.sqlite3)) {
+				this.emitMessage({
+					type: 'error',
+					error: new Error(
+						'The origin private file system is not available, so a database cannot be imported. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).'
+					),
+					queryKey,
+				});
+				return;
+			}
 
-		if (!('opfs' in this.sqlite3)) {
-			this.emitMessage({
-				type: 'error',
-				error: new Error(
-					'The origin private file system is not available, so a database cannot be imported. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).'
-				),
-				queryKey,
-			});
-			return;
-		}
+			try {
+				await this.sqlite3.oo1.OpfsDb.importDb(
+					this.config.storage.path,
+					database
+				);
+				this.emitMessage({
+					type: 'success',
+					queryKey,
+				});
+			} catch (error) {
+				this.emitMessage({
+					type: 'error',
+					error,
+					queryKey,
+				});
+			}
+		} else if (this.config.storage?.type === 'memory') {
+			const db = this.db ? this.db : new this.sqlite3.oo1.DB();
 
-		try {
-			await this.sqlite3.oo1.OpfsDb.importDb(
-				this.config.databasePath,
-				database
+			const p = this.sqlite3.wasm.allocFromTypedArray(database);
+			const rc = this.sqlite3.capi.sqlite3_deserialize(
+				db.pointer!,
+				'main',
+				p,
+				database.byteLength,
+				database.byteLength,
+				this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+				// Optionally:
+				// | sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE
 			);
-			this.emitMessage({
-				type: 'success',
-				queryKey,
-			});
-		} catch (error) {
-			this.emitMessage({
-				type: 'error',
-				error,
-				queryKey,
-			});
+			db.checkRc(rc);
 		}
 	};
 

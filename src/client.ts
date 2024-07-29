@@ -21,6 +21,7 @@ import type {
 	TransactionMessage,
 	StatementInput,
 	Transaction,
+	ExportMessage,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
@@ -45,7 +46,10 @@ export class SQLocal {
 	constructor(databasePath: string);
 	constructor(config: ClientConfig);
 	constructor(config: string | ClientConfig) {
-		config = typeof config === 'string' ? { databasePath: config } : config;
+		config =
+			typeof config === 'string'
+				? { storage: { path: config, type: 'opfs' } }
+				: config;
 
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
 			type: 'module',
@@ -70,6 +74,7 @@ export class SQLocal {
 			case 'success':
 			case 'data':
 			case 'error':
+			case 'export':
 			case 'info':
 				if (message.queryKey && queries.has(message.queryKey)) {
 					const [resolve, reject] = queries.get(message.queryKey)!;
@@ -101,6 +106,7 @@ export class SQLocal {
 			| TransactionMessage
 			| DestroyMessage
 			| FunctionMessage
+			| ExportMessage
 			| ImportMessage
 			| GetInfoMessage
 		>
@@ -133,6 +139,7 @@ export class SQLocal {
 					| TransactionMessage
 					| DestroyMessage
 					| FunctionMessage
+					| ExportMessage
 					| GetInfoMessage);
 				break;
 		}
@@ -329,8 +336,21 @@ export class SQLocal {
 		}
 	};
 
+	getDatabaseContent = async (): Promise<Uint8Array> => {
+		const message = await this.createQuery({ type: 'export' });
+
+		if (message.type === 'export') {
+			return message.export.data;
+		} else {
+			throw new Error('The database failed to return an export.');
+		}
+	};
+
 	getDatabaseFile = async (): Promise<File> => {
-		const path = this.config.databasePath
+		if (this.config.storage.type === 'memory') {
+			throw new Error('getDatabaseFile not supported for storage type memory');
+		}
+		const path = this.config.storage.path
 			.split(/[\\/]/)
 			.filter((part) => part !== '');
 		const fileName = path.pop();
