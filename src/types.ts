@@ -49,8 +49,8 @@ export type RawResultData = {
 
 // Database status
 
-export type StorageType = { type: 'memory'; dbFile: ArrayBuffer }
-	| { type: 'fs'; path: string } // needed?
+export type StorageType =
+	| { type: 'memory'; dbFile?: ArrayBuffer }
 	| { type: 'opfs'; path: string };
 
 export type ClientConfig = {

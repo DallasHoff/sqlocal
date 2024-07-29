@@ -68,11 +68,27 @@ export class SQLocalProcessor {
 				}
 				this.db = new this.sqlite3.oo1.OpfsDb(this.config.storage.path, flags);
 				this.dbStorageType = 'opfs';
-			} else if (this.config.storage?.type === 'fs') {
-				throw new Error('FS not supported');
-			} else {
+			} else if (this.config.storage?.type === 'memory') {
 				this.db = new this.sqlite3.oo1.DB(':memory:', flags);
 				this.dbStorageType = 'memory';
+				if (this.config.storage.dbFile) {
+					const p = this.sqlite3.wasm.allocFromTypedArray(
+						this.config.storage.dbFile
+					);
+					const rc = this.sqlite3.capi.sqlite3_deserialize(
+						this.db.pointer!,
+						'main',
+						p,
+						this.config.storage.dbFile.byteLength,
+						this.config.storage.dbFile.byteLength,
+						this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+						// Optionally:
+						// | sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE
+					);
+					this.db.checkRc(rc);
+				}
+			} else {
+				throw new Error('Type not supported');
 			}
 		} catch (error) {
 			this.emitMessage({
@@ -301,36 +317,52 @@ export class SQLocalProcessor {
 
 	protected importDb = async (message: ImportMessage): Promise<void> => {
 		// TODO implement logic for memory only database...
-		if (!this.sqlite3 || this.config.storage?.type !== 'opfs') return;
+		if (!this.sqlite3) return;
 
 		const { queryKey, database } = message;
+		if (this.config.storage?.type === 'opfs') {
+			if (!('opfs' in this.sqlite3)) {
+				this.emitMessage({
+					type: 'error',
+					error: new Error(
+						'The origin private file system is not available, so a database cannot be imported. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).'
+					),
+					queryKey,
+				});
+				return;
+			}
 
-		if (!('opfs' in this.sqlite3)) {
-			this.emitMessage({
-				type: 'error',
-				error: new Error(
-					'The origin private file system is not available, so a database cannot be imported. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).'
-				),
-				queryKey,
-			});
-			return;
-		}
+			try {
+				await this.sqlite3.oo1.OpfsDb.importDb(
+					this.config.storage.path,
+					database
+				);
+				this.emitMessage({
+					type: 'success',
+					queryKey,
+				});
+			} catch (error) {
+				this.emitMessage({
+					type: 'error',
+					error,
+					queryKey,
+				});
+			}
+		} else if (this.config.storage?.type === 'memory') {
+			const db = this.db ? this.db : new this.sqlite3.oo1.DB();
 
-		try {
-			await this.sqlite3.oo1.OpfsDb.importDb(
-				this.config.storage.path,
-				database
+			const p = this.sqlite3.wasm.allocFromTypedArray(database);
+			const rc = this.sqlite3.capi.sqlite3_deserialize(
+				db.pointer!,
+				'main',
+				p,
+				database.byteLength,
+				database.byteLength,
+				this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+				// Optionally:
+				// | sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE
 			);
-			this.emitMessage({
-				type: 'success',
-				queryKey,
-			});
-		} catch (error) {
-			this.emitMessage({
-				type: 'error',
-				error,
-				queryKey,
-			});
+			db.checkRc(rc);
 		}
 	};
 
