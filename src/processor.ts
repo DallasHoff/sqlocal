@@ -44,11 +44,11 @@ export class SQLocalProcessor {
 	}
 
 	protected init = async (): Promise<void> => {
-		if (!this.config.databasePath) return;
+		if (!this.config.storage) return;
 
 		await this.initMutex.lock();
 
-		const { databasePath, readOnly, verbose } = this.config;
+		const { readOnly, verbose } = this.config;
 		const flags = [
 			readOnly === true ? 'r' : 'cw',
 			verbose === true ? 't' : '',
@@ -62,16 +62,17 @@ export class SQLocalProcessor {
 			if (this.db) {
 				this.destroy();
 			}
-
-			if ('opfs' in this.sqlite3) {
-				this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
+			if (this.config.storage?.type === 'opfs') {
+				if (!('opfs' in this.sqlite3)) {
+					throw new Error('OPFS not available');
+				}
+				this.db = new this.sqlite3.oo1.OpfsDb(this.config.storage.path, flags);
 				this.dbStorageType = 'opfs';
+			} else if (this.config.storage?.type === 'fs') {
+				throw new Error('FS not supported');
 			} else {
-				this.db = new this.sqlite3.oo1.DB(databasePath, flags);
+				this.db = new this.sqlite3.oo1.DB(':memory:', flags);
 				this.dbStorageType = 'memory';
-				console.warn(
-					`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
-				);
 			}
 		} catch (error) {
 			this.emitMessage({
@@ -206,8 +207,11 @@ export class SQLocalProcessor {
 		message: GetInfoMessage
 	): Promise<void> => {
 		try {
-			const databasePath = this.config.databasePath;
 			const storageType = this.dbStorageType;
+			const databasePath =
+				this.config.storage?.type !== 'memory'
+					? this.config.storage!.path
+					: undefined;
 			const persisted =
 				storageType !== undefined
 					? storageType !== 'memory'
@@ -296,7 +300,8 @@ export class SQLocalProcessor {
 	};
 
 	protected importDb = async (message: ImportMessage): Promise<void> => {
-		if (!this.sqlite3 || !this.config.databasePath) return;
+		// TODO implement logic for memory only database...
+		if (!this.sqlite3 || this.config.storage?.type !== 'opfs') return;
 
 		const { queryKey, database } = message;
 
@@ -313,7 +318,7 @@ export class SQLocalProcessor {
 
 		try {
 			await this.sqlite3.oo1.OpfsDb.importDb(
-				this.config.databasePath,
+				this.config.storage.path,
 				database
 			);
 			this.emitMessage({

@@ -45,7 +45,10 @@ export class SQLocal {
 	constructor(databasePath: string);
 	constructor(config: ClientConfig);
 	constructor(config: string | ClientConfig) {
-		config = typeof config === 'string' ? { databasePath: config } : config;
+		config =
+			typeof config === 'string'
+				? { storage: { path: config, type: 'opfs' } }
+				: config;
 
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
 			type: 'module',
@@ -330,7 +333,10 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		const path = this.config.databasePath
+		if (this.config.storage.type === 'memory') {
+			throw new Error('getDatabaseFile not supported for storage type memory');
+		}
+		const path = this.config.storage.path
 			.split(/[\\/]/)
 			.filter((part) => part !== '');
 		const fileName = path.pop();

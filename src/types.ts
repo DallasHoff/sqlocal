@@ -49,8 +49,12 @@ export type RawResultData = {
 
 // Database status
 
+export type StorageType = { type: 'memory'; dbFile: ArrayBuffer }
+	| { type: 'fs'; path: string } // needed?
+	| { type: 'opfs'; path: string };
+
 export type ClientConfig = {
-	databasePath: string;
+	storage: StorageType;
 	readOnly?: boolean;
 	verbose?: boolean;
 };
