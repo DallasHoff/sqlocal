@@ -19,6 +19,7 @@ import type {
 	ConfigMessage,
 	QueryKey,
 	TransactionMessage,
+	ExportMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
@@ -71,17 +72,21 @@ export class SQLocalProcessor {
 			} else if (this.config.storage?.type === 'memory') {
 				this.db = new this.sqlite3.oo1.DB(':memory:', flags);
 				this.dbStorageType = 'memory';
-				if (this.config.storage.dbFile) {
+				const deserializeFlag = readOnly
+					? this.sqlite3.capi.SQLITE_DESERIALIZE_READONLY
+					: this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE;
+
+				if (this.config.storage.dbContent) {
 					const p = this.sqlite3.wasm.allocFromTypedArray(
-						this.config.storage.dbFile
+						this.config.storage.dbContent
 					);
 					const rc = this.sqlite3.capi.sqlite3_deserialize(
 						this.db.pointer!,
 						'main',
 						p,
-						this.config.storage.dbFile.byteLength,
-						this.config.storage.dbFile.byteLength,
-						this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+						this.config.storage.dbContent.byteLength,
+						this.config.storage.dbContent.byteLength,
+						deserializeFlag
 						// Optionally:
 						// | sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE
 					);
@@ -128,6 +133,9 @@ export class SQLocalProcessor {
 				break;
 			case 'getinfo':
 				this.getDatabaseInfo(message);
+				break;
+			case 'export':
+				this.exportDb(message);
 				break;
 			case 'import':
 				this.importDb(message);
@@ -257,6 +265,26 @@ export class SQLocalProcessor {
 		}
 	};
 
+	protected exportDb = async (message: ExportMessage): Promise<void> => {
+		try {
+			const byteArray = this.sqlite3!.capi.sqlite3_js_db_export(this.db!);
+
+			this.emitMessage({
+				type: 'export',
+				queryKey: message.queryKey,
+				export: {
+					data: byteArray,
+				},
+			});
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				queryKey: message.queryKey,
+				error,
+			});
+		}
+	};
+
 	protected createUserFunction = (message: FunctionMessage): void => {
 		const { functionName, functionType, queryKey } = message;
 		let func;
@@ -316,7 +344,6 @@ export class SQLocalProcessor {
 	};
 
 	protected importDb = async (message: ImportMessage): Promise<void> => {
-		// TODO implement logic for memory only database...
 		if (!this.sqlite3) return;
 
 		const { queryKey, database } = message;

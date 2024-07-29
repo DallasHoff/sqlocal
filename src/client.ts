@@ -21,6 +21,7 @@ import type {
 	TransactionMessage,
 	StatementInput,
 	Transaction,
+	ExportMessage,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
@@ -73,6 +74,7 @@ export class SQLocal {
 			case 'success':
 			case 'data':
 			case 'error':
+			case 'export':
 			case 'info':
 				if (message.queryKey && queries.has(message.queryKey)) {
 					const [resolve, reject] = queries.get(message.queryKey)!;
@@ -104,6 +106,7 @@ export class SQLocal {
 			| TransactionMessage
 			| DestroyMessage
 			| FunctionMessage
+			| ExportMessage
 			| ImportMessage
 			| GetInfoMessage
 		>
@@ -136,6 +139,7 @@ export class SQLocal {
 					| TransactionMessage
 					| DestroyMessage
 					| FunctionMessage
+					| ExportMessage
 					| GetInfoMessage);
 				break;
 		}
@@ -329,6 +333,16 @@ export class SQLocal {
 			return message.info;
 		} else {
 			throw new Error('The database failed to return valid information.');
+		}
+	};
+
+	getDatabaseContent = async (): Promise<Uint8Array> => {
+		const message = await this.createQuery({ type: 'export' });
+
+		if (message.type === 'export') {
+			return message.export.data;
+		} else {
+			throw new Error('The database failed to return an export.');
 		}
 	};
 

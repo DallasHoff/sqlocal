@@ -13,6 +13,7 @@ describe('transaction', () => {
 	afterEach(async () => {
 		await sql`DROP TABLE groceries`;
 		await sql`DROP TABLE prices`;
+		
 	});
 
 	it('should perform successful transaction', async () => {
