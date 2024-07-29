@@ -19,6 +19,7 @@ import type {
 	ConfigMessage,
 	QueryKey,
 	TransactionMessage,
+	ExportMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
@@ -112,6 +113,9 @@ export class SQLocalProcessor {
 				break;
 			case 'getinfo':
 				this.getDatabaseInfo(message);
+				break;
+			case 'export':
+				this.getDatabaseExport(message);
 				break;
 			case 'import':
 				this.importDb(message);
@@ -231,6 +235,28 @@ export class SQLocalProcessor {
 				type: 'info',
 				queryKey: message.queryKey,
 				info: { databasePath, databaseSizeBytes, storageType, persisted },
+			});
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				queryKey: message.queryKey,
+				error,
+			});
+		}
+	};
+
+	protected getDatabaseExport = async (
+		message: ExportMessage
+	): Promise<void> => {
+		try {
+			const byteArray = this.sqlite3!.capi.sqlite3_js_db_export(this.db!);
+
+			this.emitMessage({
+				type: 'export',
+				queryKey: message.queryKey,
+				export: {
+					data: byteArray,
+				},
 			});
 		} catch (error) {
 			this.emitMessage({
