@@ -1,4 +1,3 @@
-import { isSQLWrapper } from 'drizzle-orm';
 import type { RunnableQuery as DrizzleQuery } from 'drizzle-orm/runnable-query';
 import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
 import type { StatementInput, Statement } from '../types.js';
@@ -10,7 +9,12 @@ function isDrizzleStatement<Result = unknown>(
 	Result extends SqliteRemoteResult<unknown> ? any : Result[],
 	'sqlite'
 > {
-	return isSQLWrapper(statement);
+	return (
+		typeof statement === 'object' &&
+		statement !== null &&
+		'getSQL' in statement &&
+		typeof statement.getSQL === 'function'
+	);
 }
 
 function isStatement(statement: unknown): statement is Statement {
@@ -29,15 +33,16 @@ export function normalizeStatement(statement: StatementInput): Statement {
 	}
 
 	if (isDrizzleStatement(statement)) {
-		if ('toSQL' in statement && typeof statement.toSQL === 'function') {
-			const drizzleStatement = statement.toSQL();
-
-			if (isStatement(drizzleStatement)) {
-				return drizzleStatement;
-			} else {
-				throw new Error('The passed Drizzle statement could not be parsed.');
+		try {
+			if (!('toSQL' in statement && typeof statement.toSQL === 'function')) {
+				throw 1;
 			}
-		} else {
+			const drizzleStatement = statement.toSQL();
+			if (!isStatement(drizzleStatement)) {
+				throw 2;
+			}
+			return drizzleStatement;
+		} catch {
 			throw new Error('The passed statement could not be parsed.');
 		}
 	}
