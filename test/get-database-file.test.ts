@@ -12,11 +12,13 @@ describe('getDatabaseFile', () => {
 
 			await sql`CREATE TABLE nums (num REAL NOT NULL)`;
 			const file = await getDatabaseFile();
+			const now = new Date().getTime();
 
 			expect(file).toBeInstanceOf(File);
 			expect(file.name).toBe(fileName);
 			expect(file.size).toBe(16384);
 			expect(file.type).toBe('application/x-sqlite3');
+			expect(now - file.lastModified).toBeLessThan(50);
 
 			let dirHandle = await navigator.storage.getDirectory();
 

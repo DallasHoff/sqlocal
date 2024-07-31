@@ -316,6 +316,7 @@ export class SQLocalProcessor {
 				this.config.databasePath,
 				database
 			);
+			await this.init();
 			this.emitMessage({
 				type: 'success',
 				queryKey,
