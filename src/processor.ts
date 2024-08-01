@@ -35,6 +35,7 @@ export class SQLocalProcessor {
 	protected initMutex = createMutex();
 	protected transactionMutex = createMutex();
 	protected transactionKey: QueryKey | null = null;
+	protected transactionExecutedSql = new Set<string>();
 
 	protected proxy: WorkerProxy;
 	protected queryEffectsChannel: BroadcastChannel | undefined;
@@ -150,17 +151,21 @@ export class SQLocalProcessor {
 			mutatedTables.forEach((table) => allMutatedTables.add(table));
 		});
 
-		this.queryEffectsChannel.postMessage({
-			type: 'effects',
-			effectType: 'read',
-			tables: allReadTables,
-		} satisfies EffectsMessage);
+		if (allReadTables.size > 0) {
+			this.queryEffectsChannel.postMessage({
+				type: 'effects',
+				effectType: 'read',
+				tables: allReadTables,
+			} satisfies EffectsMessage);
+		}
 
-		this.queryEffectsChannel.postMessage({
-			type: 'effects',
-			effectType: 'mutation',
-			tables: allMutatedTables,
-		} satisfies EffectsMessage);
+		if (allMutatedTables.size > 0) {
+			this.queryEffectsChannel.postMessage({
+				type: 'effects',
+				effectType: 'mutation',
+				tables: allMutatedTables,
+			} satisfies EffectsMessage);
+		}
 	};
 
 	protected editConfig = (message: ConfigMessage) => {
@@ -196,7 +201,12 @@ export class SQLocalProcessor {
 				case 'query':
 					const statementData = execOnDb(this.db, message);
 					response.data.push(statementData);
-					executedSql.add(message.sql);
+
+					if (!partOfTransaction) {
+						executedSql.add(message.sql);
+					} else {
+						this.transactionExecutedSql.add(message.sql);
+					}
 					break;
 
 				case 'batch':
@@ -224,6 +234,13 @@ export class SQLocalProcessor {
 						this.db.exec({ sql });
 						this.transactionKey = null;
 						await this.transactionMutex.unlock();
+
+						if (message.action === 'commit') {
+							this.transactionExecutedSql.forEach((sql) => {
+								executedSql.add(sql);
+							});
+						}
+						this.transactionExecutedSql.clear();
 					}
 					break;
 			}
