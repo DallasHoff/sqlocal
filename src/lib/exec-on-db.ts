@@ -1,4 +1,4 @@
-import { RawResultData, Sqlite3Db, Sqlite3Method } from '../types.js';
+import type { RawResultData, Sqlite3Db, Sqlite3Method } from '../types.js';
 
 export function execOnDb(
 	db: Sqlite3Db,
