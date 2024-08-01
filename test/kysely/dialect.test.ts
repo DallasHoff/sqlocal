@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Generated, Kysely } from 'kysely';
+import { Generated, Kysely, ParseJSONResultsPlugin } from 'kysely';
+import { jsonArrayFrom } from 'kysely/helpers/sqlite';
 import { SQLocalKysely } from '../../src/kysely';
 import { sleep } from '../test-utils/sleep';
 
@@ -7,7 +8,10 @@ describe('kysely dialect', () => {
 	const { dialect, transaction } = new SQLocalKysely(
 		'kysely-dialect-test.sqlite3'
 	);
-	const db = new Kysely<DB>({ dialect });
+	const db = new Kysely<DB>({
+		dialect,
+		plugins: [new ParseJSONResultsPlugin()],
+	});
 
 	type DB = {
 		groceries: {
@@ -79,6 +83,47 @@ describe('kysely dialect', () => {
 			.orderBy('id', 'desc')
 			.execute();
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
+	});
+
+	it('should execute queries with relations', async () => {
+		await db
+			.insertInto('groceries')
+			.values([{ name: 'chicken' }, { name: 'beef' }])
+			.execute();
+		await db
+			.insertInto('prices')
+			.values([
+				{ groceryId: 1, price: 3.29 },
+				{ groceryId: 1, price: 2.99 },
+				{ groceryId: 1, price: 3.79 },
+				{ groceryId: 2, price: 5.29 },
+				{ groceryId: 2, price: 4.49 },
+			])
+			.execute();
+
+		const data = await db
+			.selectFrom('groceries')
+			.select('name')
+			.select((eb) => [
+				jsonArrayFrom(
+					eb
+						.selectFrom('prices')
+						.select('price')
+						.whereRef('groceries.id', '=', 'prices.groceryId')
+				).as('prices'),
+			])
+			.execute();
+
+		expect(data).toEqual([
+			{
+				name: 'chicken',
+				prices: [{ price: 3.29 }, { price: 2.99 }, { price: 3.79 }],
+			},
+			{
+				name: 'beef',
+				prices: [{ price: 5.29 }, { price: 4.49 }],
+			},
+		]);
 	});
 
 	it('should perform successful transaction using sqlocal way', async () => {

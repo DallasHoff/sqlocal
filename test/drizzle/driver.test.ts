@@ -89,6 +89,66 @@ describe('drizzle driver', () => {
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
+	it('should accept batched queries', async () => {
+		const data = await db.batch([
+			db.insert(groceries).values({ name: 'bread' }),
+			db
+				.insert(groceries)
+				.values({ name: 'rice' })
+				.returning({ name: groceries.name }),
+			db.insert(groceries).values({ name: 'milk' }).returning(),
+			db.select().from(groceries),
+		]);
+
+		expect(data).toEqual([
+			{ rows: [], columns: [] },
+			[{ name: 'rice' }],
+			[{ id: 3, name: 'milk' }],
+			[
+				{ id: 1, name: 'bread' },
+				{ id: 2, name: 'rice' },
+				{ id: 3, name: 'milk' },
+			],
+		]);
+	});
+
+	it('should execute relational queries', async () => {
+		await db.batch([
+			db.insert(groceries).values([{ name: 'chicken' }, { name: 'beef' }]),
+			db.insert(prices).values([
+				{ groceryId: 1, price: 3.29 },
+				{ groceryId: 1, price: 2.99 },
+				{ groceryId: 1, price: 3.79 },
+				{ groceryId: 2, price: 5.29 },
+				{ groceryId: 2, price: 4.49 },
+			]),
+		]);
+
+		const data = await db.query.groceries.findMany({
+			columns: {
+				name: true,
+			},
+			with: {
+				prices: {
+					columns: {
+						price: true,
+					},
+				},
+			},
+		});
+
+		expect(data).toEqual([
+			{
+				name: 'chicken',
+				prices: [{ price: 3.29 }, { price: 2.99 }, { price: 3.79 }],
+			},
+			{
+				name: 'beef',
+				prices: [{ price: 5.29 }, { price: 4.49 }],
+			},
+		]);
+	});
+
 	it('should perform successful transaction using sqlocal way', async () => {
 		const productName = 'rice';
 		const productPrice = 2.99;
@@ -202,66 +262,5 @@ describe('drizzle driver', () => {
 
 		expect(data).toEqual([{ name: 'x' }, { name: 'b' }]);
 		expect(order).toEqual([1, 2, 3]);
-	});
-
-	it('should accept batched queries', async () => {
-		const data = await db.batch([
-			db.insert(groceries).values({ name: 'bread' }),
-			db
-				.insert(groceries)
-				.values({ name: 'rice' })
-				.returning({ name: groceries.name }),
-			db.insert(groceries).values({ name: 'milk' }).returning(),
-			db.select().from(groceries),
-		]);
-
-		expect(data).toEqual([
-			{ rows: [], columns: [] },
-			[{ name: 'rice' }],
-			[{ id: 3, name: 'milk' }],
-			[
-				{ id: 1, name: 'bread' },
-				{ id: 2, name: 'rice' },
-				{ id: 3, name: 'milk' },
-			],
-		]);
-	});
-
-	it('should execute relational queries', async () => {
-		await db.batch([
-			db.insert(groceries).values({ name: 'chicken' }),
-			db.insert(groceries).values({ name: 'beef' }),
-			db.insert(prices).values([
-				{ groceryId: 1, price: 3.29 },
-				{ groceryId: 1, price: 2.99 },
-				{ groceryId: 1, price: 3.79 },
-				{ groceryId: 2, price: 5.29 },
-				{ groceryId: 2, price: 4.49 },
-			]),
-		]);
-
-		const data = await db.query.groceries.findMany({
-			columns: {
-				name: true,
-			},
-			with: {
-				prices: {
-					columns: {
-						price: true,
-					},
-				},
-			},
-		});
-
-		expect(data).toEqual([
-			{
-				name: 'chicken',
-				prices: [{ price: 3.29 }, { price: 2.99 }, { price: 3.79 }],
-			},
-			{
-				name: 'beef',
-				prices: [{ price: 5.29 }, { price: 4.49 }],
-			},
-		]);
 	});
 });
