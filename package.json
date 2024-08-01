@@ -41,15 +41,15 @@
 		"nanoid": "^5.0.7"
 	},
 	"devDependencies": {
-		"@vitest/browser": "^1.6.0",
+		"@vitest/browser": "^2.0.5",
 		"drizzle-orm": "^0.31.2",
 		"kysely": "^0.27.4",
 		"prettier": "^3.3.2",
 		"taze": "^0.14.2",
 		"typescript": "^5.5.3",
-		"vite": "^5.3.3",
+		"vite": "^5.3.5",
 		"vitepress": "^1.2.3",
-		"vitest": "^1.6.0",
+		"vitest": "^2.0.5",
 		"webdriverio": "^8.39.1",
 		"wrangler": "^3.63.1"
 	},
