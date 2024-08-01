@@ -14,21 +14,27 @@ import type {
 	InputMessage,
 	ImportMessage,
 	WorkerProxy,
-	RawResultData,
 	GetInfoMessage,
 	Sqlite3StorageType,
 	EffectsMessage,
 	ConfigMessage,
+	QueryKey,
+	TransactionMessage,
 } from './types.js';
 import { parseQueryEffects } from './lib/parse-query-effects.js';
+import { createMutex } from './lib/create-mutex.js';
+import { execOnDb } from './lib/exec-on-db.js';
 
 export class SQLocalProcessor {
 	protected sqlite3: Sqlite3 | undefined;
 	protected db: Sqlite3Db | undefined;
 	protected dbStorageType: Sqlite3StorageType | undefined;
 	protected config: ProcessorConfig = {};
-	protected queuedMessages: InputMessage[] = [];
 	protected userFunctions = new Map<string, UserFunction>();
+
+	protected initMutex = createMutex();
+	protected transactionMutex = createMutex();
+	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
 	protected queryEffectsChannel: BroadcastChannel | undefined;
@@ -42,6 +48,8 @@ export class SQLocalProcessor {
 
 	protected init = async (): Promise<void> => {
 		if (!this.config.databasePath) return;
+
+		await this.initMutex.lock();
 
 		const { databasePath, readOnly, verbose } = this.config;
 		const flags = [
@@ -86,18 +94,17 @@ export class SQLocalProcessor {
 		}
 
 		this.userFunctions.forEach(this.initUserFunction);
-		this.flushQueue();
+		await this.initMutex.unlock();
 	};
 
-	postMessage = (message: InputMessage | MessageEvent<InputMessage>): void => {
+	postMessage = async (
+		message: InputMessage | MessageEvent<InputMessage>
+	): Promise<void> => {
 		if (message instanceof MessageEvent) {
 			message = message.data;
 		}
 
-		if (!this.db && message.type !== 'config') {
-			this.queuedMessages.push(message);
-			return;
-		}
+		await this.initMutex.lock();
 
 		switch (message.type) {
 			case 'config':
@@ -105,6 +112,7 @@ export class SQLocalProcessor {
 				break;
 			case 'query':
 			case 'batch':
+			case 'transaction':
 				this.exec(message);
 				break;
 			case 'function':
@@ -120,6 +128,8 @@ export class SQLocalProcessor {
 				this.destroy(message);
 				break;
 		}
+
+		await this.initMutex.unlock();
 	};
 
 	protected emitMessage = (message: OutputMessage): void => {
@@ -158,10 +168,22 @@ export class SQLocalProcessor {
 		this.init();
 	};
 
-	protected exec = (message: QueryMessage | BatchMessage): void => {
+	protected exec = async (
+		message: QueryMessage | BatchMessage | TransactionMessage
+	): Promise<void> => {
 		if (!this.db) return;
 
 		const executedSql = new Set<string>();
+		const partOfTransaction =
+			(message.type === 'transaction' &&
+				(this.transactionKey === null ||
+					message.transactionKey === this.transactionKey)) ||
+			(message.type === 'query' &&
+				message.transactionKey === this.transactionKey);
+
+		if (!partOfTransaction) {
+			await this.transactionMutex.lock();
+		}
 
 		try {
 			const response: DataMessage = {
@@ -172,30 +194,7 @@ export class SQLocalProcessor {
 
 			switch (message.type) {
 				case 'query':
-					const statementData: RawResultData = {
-						rows: [],
-						columns: [],
-					};
-					const rows = this.db.exec({
-						sql: message.sql,
-						bind: message.params as any[],
-						returnValue: 'resultRows',
-						rowMode: 'array',
-						columnNames: statementData.columns,
-					});
-
-					switch (message.method) {
-						case 'run':
-							break;
-						case 'get':
-							statementData.rows = rows[0];
-							break;
-						case 'all':
-						default:
-							statementData.rows = rows;
-							break;
-					}
-
+					const statementData = execOnDb(this.db, message);
 					response.data.push(statementData);
 					executedSql.add(message.sql);
 					break;
@@ -203,30 +202,7 @@ export class SQLocalProcessor {
 				case 'batch':
 					this.db.transaction((tx: Sqlite3Db) => {
 						for (let statement of message.statements) {
-							const statementData: RawResultData = {
-								rows: [],
-								columns: [],
-							};
-							const rows = tx.exec({
-								sql: statement.sql,
-								bind: statement.params as any[],
-								returnValue: 'resultRows',
-								rowMode: 'array',
-								columnNames: statementData.columns,
-							});
-
-							switch (statement.method) {
-								case 'run':
-									break;
-								case 'get':
-									statementData.rows = rows[0];
-									break;
-								case 'all':
-								default:
-									statementData.rows = rows;
-									break;
-							}
-
+							const statementData = execOnDb(tx, statement);
 							response.data.push(statementData);
 						}
 					});
@@ -234,6 +210,21 @@ export class SQLocalProcessor {
 					message.statements.forEach((statement) => {
 						executedSql.add(statement.sql);
 					});
+					break;
+
+				case 'transaction':
+					if (message.action === 'begin') {
+						await this.transactionMutex.lock();
+						this.transactionKey = message.transactionKey;
+						this.db.exec({ sql: 'BEGIN' });
+					}
+
+					if (message.action === 'commit' || message.action === 'rollback') {
+						const sql = message.action === 'commit' ? 'COMMIT' : 'ROLLBACK';
+						this.db.exec({ sql });
+						this.transactionKey = null;
+						await this.transactionMutex.unlock();
+					}
 					break;
 			}
 
@@ -245,6 +236,10 @@ export class SQLocalProcessor {
 				error,
 				queryKey: message.queryKey,
 			});
+		}
+
+		if (!partOfTransaction) {
+			await this.transactionMutex.unlock();
 		}
 	};
 
@@ -362,6 +357,7 @@ export class SQLocalProcessor {
 				this.config.databasePath,
 				database
 			);
+			await this.init();
 			this.emitMessage({
 				type: 'success',
 				queryKey,
@@ -372,14 +368,6 @@ export class SQLocalProcessor {
 				error,
 				queryKey,
 			});
-		}
-	};
-
-	protected flushQueue = (): void => {
-		while (this.queuedMessages.length > 0) {
-			const message = this.queuedMessages.shift();
-			if (message === undefined) continue;
-			this.postMessage(message);
 		}
 	};
 

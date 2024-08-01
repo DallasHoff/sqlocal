@@ -1,4 +1,3 @@
-import { SQLocal } from '../index.js';
 import {
 	CompiledQuery,
 	DatabaseConnection,
@@ -9,72 +8,69 @@ import {
 	SqliteIntrospector,
 	SqliteQueryCompiler,
 } from 'kysely';
-import { convertRowsToObjects } from '../lib/convert-rows-to-objects.js';
+import { SQLocal } from '../index.js';
+import type { Transaction } from '../types.js';
 
 export class SQLocalKysely extends SQLocal {
-	private executor = async <T>(
-		query: CompiledQuery
-	): Promise<QueryResult<T>> => {
-		const { rows, columns } = await this.exec(
-			query.sql,
-			query.parameters as unknown[],
-			'all'
-		);
-		return {
-			rows: convertRowsToObjects(rows, columns) as T[],
-		};
-	};
-
 	dialect: Dialect = {
 		createAdapter: () => new SqliteAdapter(),
-		createDriver: () => new SQLocalKyselyDriver(this, this.executor),
+		createDriver: () => new SQLocalKyselyDriver(this),
 		createIntrospector: (db) => new SqliteIntrospector(db),
 		createQueryCompiler: () => new SqliteQueryCompiler(),
 	};
 }
 
 class SQLocalKyselyDriver implements Driver {
-	private client: SQLocalKysely;
-	private executor: SQLocalKysely['executor'];
+	constructor(private client: SQLocalKysely) {}
 
-	constructor(client: SQLocalKysely, executor: SQLocalKysely['executor']) {
-		this.client = client;
-		this.executor = executor;
-	}
+	async init(): Promise<void> {}
 
 	async acquireConnection(): Promise<SQLocalKyselyConnection> {
-		return new SQLocalKyselyConnection(this.executor);
+		return new SQLocalKyselyConnection(this.client);
 	}
 
-	async beginTransaction(connection: DatabaseConnection): Promise<void> {
-		await connection.executeQuery(CompiledQuery.raw('BEGIN'));
+	async releaseConnection(): Promise<void> {}
+
+	async beginTransaction(connection: SQLocalKyselyConnection): Promise<void> {
+		connection.transaction = await this.client.beginTransaction();
 	}
 
-	async commitTransaction(connection: DatabaseConnection): Promise<void> {
-		await connection.executeQuery(CompiledQuery.raw('COMMIT'));
+	async commitTransaction(connection: SQLocalKyselyConnection): Promise<void> {
+		await connection.transaction?.commit();
+		connection.transaction = null;
 	}
 
-	async rollbackTransaction(connection: DatabaseConnection): Promise<void> {
-		await connection.executeQuery(CompiledQuery.raw('ROLLBACK'));
+	async rollbackTransaction(
+		connection: SQLocalKyselyConnection
+	): Promise<void> {
+		await connection.transaction?.rollback();
+		connection.transaction = null;
 	}
 
 	async destroy(): Promise<void> {
 		await this.client.destroy();
 	}
-
-	async init(): Promise<void> {}
-	async releaseConnection(): Promise<void> {}
 }
 
 class SQLocalKyselyConnection implements DatabaseConnection {
-	private executor: SQLocalKysely['executor'];
+	transaction: Transaction | null = null;
 
-	constructor(executor: SQLocalKysely['executor']) {
-		this.executor = executor;
-	}
+	constructor(private client: SQLocalKysely) {}
 
-	async executeQuery<T>(query: CompiledQuery): Promise<QueryResult<T>> {
-		return await this.executor<T>(query);
+	async executeQuery<Result>(
+		query: CompiledQuery
+	): Promise<QueryResult<Result>> {
+		let rows;
+
+		if (this.transaction === null) {
+			rows = await this.client.sql(query.sql, ...query.parameters);
+		} else {
+			rows = await this.transaction.query(query);
+		}
+
+		return {
+			rows: rows as Result[],
+		};
 	}
 
 	async *streamQuery(): AsyncGenerator<never, void, unknown> {

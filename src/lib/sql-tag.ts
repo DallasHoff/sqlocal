@@ -1,4 +1,4 @@
-import { Statement } from '../types.js';
+import type { Statement } from '../types.js';
 
 export function sqlTag(
 	queryTemplate: TemplateStringsArray,

@@ -1,6 +1,8 @@
 import type { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
-import type { CompiledQuery } from 'kysely';
-import type { RunnableQuery } from 'drizzle-orm/runnable-query';
+import type { CompiledQuery as KyselyQuery } from 'kysely';
+import type { RunnableQuery as DrizzleQuery } from 'drizzle-orm/runnable-query';
+import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
+import type { sqlTag } from './lib/sql-tag.js';
 
 // SQLite
 
@@ -17,9 +19,28 @@ export type Statement = {
 };
 
 export type ReturningStatement<Result = unknown> =
-	| Statement // default
-	| CompiledQuery<Result> // kysely
-	| RunnableQuery<Result[], 'sqlite'>; // drizzle
+	| Statement
+	| KyselyQuery<Result>
+	| DrizzleQuery<
+			Result extends SqliteRemoteResult<unknown> ? any : Result[],
+			'sqlite'
+	  >;
+
+export type StatementInput<Result = unknown> =
+	| ReturningStatement<Result>
+	| ((sql: typeof sqlTag) => ReturningStatement<Result>);
+
+export type Transaction = {
+	query: <Result extends Record<string, any>>(
+		passStatement: StatementInput<Result>
+	) => Promise<Result[]>;
+	sql: <Result extends Record<string, any>>(
+		queryTemplate: TemplateStringsArray | string,
+		...params: unknown[]
+	) => Promise<Result[]>;
+	commit: () => Promise<void>;
+	rollback: () => Promise<void>;
+};
 
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
@@ -55,6 +76,7 @@ export type WorkerProxy = ProxyHandler<Worker> &
 export type InputMessage =
 	| QueryMessage
 	| BatchMessage
+	| TransactionMessage
 	| FunctionMessage
 	| ConfigMessage
 	| ImportMessage
@@ -63,6 +85,7 @@ export type InputMessage =
 export type QueryMessage = {
 	type: 'query';
 	queryKey: QueryKey;
+	transactionKey?: QueryKey;
 	sql: string;
 	params: unknown[];
 	method: Sqlite3Method;
@@ -75,6 +98,12 @@ export type BatchMessage = {
 		params: unknown[];
 		method?: Sqlite3Method;
 	}[];
+};
+export type TransactionMessage = {
+	type: 'transaction';
+	queryKey: QueryKey;
+	transactionKey: QueryKey;
+	action: 'begin' | 'rollback' | 'commit';
 };
 export type FunctionMessage = {
 	type: 'function';

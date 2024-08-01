@@ -38,6 +38,10 @@ export default defineConfig({
 						link: '/api/sql',
 					},
 					{
+						text: 'batch',
+						link: '/api/batch',
+					},
+					{
 						text: 'transaction',
 						link: '/api/transaction',
 					},

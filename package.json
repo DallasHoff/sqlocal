@@ -1,6 +1,6 @@
 {
 	"name": "sqlocal",
-	"version": "0.10.2",
+	"version": "0.11.1",
 	"type": "module",
 	"types": "./dist/index.d.ts",
 	"browser": "./dist/index.js",
@@ -22,6 +22,7 @@
 			"import": "./dist/kysely/index.js"
 		}
 	},
+	"sideEffects": false,
 	"files": [
 		"dist",
 		"src"
@@ -42,15 +43,15 @@
 		"sql-parser-cst": "^0.28.0"
 	},
 	"devDependencies": {
-		"@vitest/browser": "^1.6.0",
+		"@vitest/browser": "^2.0.5",
 		"drizzle-orm": "^0.31.2",
 		"kysely": "^0.27.4",
 		"prettier": "^3.3.2",
 		"taze": "^0.14.2",
 		"typescript": "^5.5.3",
-		"vite": "^5.3.3",
+		"vite": "^5.3.5",
 		"vitepress": "^1.2.3",
-		"vitest": "^1.6.0",
+		"vitest": "^2.0.5",
 		"webdriverio": "^8.39.1",
 		"wrangler": "^3.63.1"
 	},

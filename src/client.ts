@@ -1,5 +1,4 @@
 import coincident from 'coincident';
-import { nanoid } from 'nanoid';
 import type {
 	CallbackUserFunction,
 	ConfigMessage,
@@ -21,14 +20,19 @@ import type {
 	EffectsMessage,
 	ClientConfig,
 	ReturningStatement,
+	TransactionMessage,
+	StatementInput,
+	Transaction,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { parseQueryEffects } from './lib/parse-query-effects.js';
+import { getQueryKey } from './lib/get-query-key.js';
+import { normalizeSql } from './lib/normalize-sql.js';
 
 export class SQLocal {
-	protected databasePath: string;
+	protected config: ClientConfig;
 	protected worker: Worker;
 	protected proxy: WorkerProxy;
 	protected isWorkerDestroyed: boolean = false;
@@ -52,7 +56,7 @@ export class SQLocal {
 		this.worker.addEventListener('message', this.processMessageEvent);
 
 		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.databasePath = config.databasePath;
+		this.config = config;
 		this.worker.postMessage({
 			type: 'config',
 			config,
@@ -97,6 +101,7 @@ export class SQLocal {
 		message: OmitQueryKey<
 			| QueryMessage
 			| BatchMessage
+			| TransactionMessage
 			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
@@ -109,7 +114,7 @@ export class SQLocal {
 			);
 		}
 
-		const queryKey = nanoid() satisfies QueryKey;
+		const queryKey = getQueryKey();
 
 		switch (message.type) {
 			case 'import':
@@ -128,6 +133,7 @@ export class SQLocal {
 				} satisfies
 					| QueryMessage
 					| BatchMessage
+					| TransactionMessage
 					| DestroyMessage
 					| FunctionMessage
 					| GetInfoMessage);
@@ -142,10 +148,12 @@ export class SQLocal {
 	protected exec = async (
 		sql: string,
 		params: unknown[],
-		method: Sqlite3Method = 'all'
+		method: Sqlite3Method = 'all',
+		transactionKey?: QueryKey
 	): Promise<RawResultData> => {
 		const message = await this.createQuery({
 			type: 'query',
+			transactionKey,
 			sql,
 			params,
 			method,
@@ -198,14 +206,7 @@ export class SQLocal {
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
 	): Promise<Result[]> => {
-		let statement: Statement;
-
-		if (typeof queryTemplate === 'string') {
-			statement = { sql: queryTemplate, params };
-		} else {
-			statement = sqlTag(queryTemplate, ...params);
-		}
-
+		const statement = normalizeSql(queryTemplate, params);
 		const { rows, columns } = await this.exec(
 			statement.sql,
 			statement.params,
@@ -215,7 +216,7 @@ export class SQLocal {
 		return resultRecords as Result[];
 	};
 
-	transaction = async <Result extends Record<string, any>>(
+	batch = async <Result extends Record<string, any>>(
 		passStatements: (sql: typeof sqlTag) => Statement[]
 	): Promise<Result[][]> => {
 		const statements = passStatements(sqlTag);
@@ -227,10 +228,81 @@ export class SQLocal {
 		});
 	};
 
-	batch = async <Result extends Record<string, any>>(
-		passStatements: (sql: typeof sqlTag) => Statement[]
-	): Promise<Result[][]> => {
-		return await this.transaction<Result>(passStatements);
+	beginTransaction = async (): Promise<Transaction> => {
+		const transactionKey = getQueryKey();
+
+		await this.createQuery({
+			type: 'transaction',
+			transactionKey,
+			action: 'begin',
+		});
+
+		const query = async <Result extends Record<string, any>>(
+			passStatement: StatementInput<Result>
+		): Promise<Result[]> => {
+			const statement = normalizeStatement(passStatement);
+			const { rows, columns } = await this.exec(
+				statement.sql,
+				statement.params,
+				'all',
+				transactionKey
+			);
+			const resultRecords = convertRowsToObjects(rows, columns) as Result[];
+			return resultRecords;
+		};
+
+		const sql = async <Result extends Record<string, any>>(
+			queryTemplate: TemplateStringsArray | string,
+			...params: unknown[]
+		): Promise<Result[]> => {
+			const statement = normalizeSql(queryTemplate, params);
+			const resultRecords = await query<Result>(statement);
+			return resultRecords;
+		};
+
+		const commit = async (): Promise<void> => {
+			await this.createQuery({
+				type: 'transaction',
+				transactionKey,
+				action: 'commit',
+			});
+		};
+
+		const rollback = async (): Promise<void> => {
+			await this.createQuery({
+				type: 'transaction',
+				transactionKey,
+				action: 'rollback',
+			});
+		};
+
+		return {
+			query,
+			sql,
+			commit,
+			rollback,
+		};
+	};
+
+	transaction = async <Result>(
+		transaction: (tx: {
+			sql: Transaction['sql'];
+			query: Transaction['query'];
+		}) => Promise<Result>
+	): Promise<Result> => {
+		const tx = await this.beginTransaction();
+
+		try {
+			const result = await transaction({
+				sql: tx.sql,
+				query: tx.query,
+			});
+			await tx.commit();
+			return result;
+		} catch (err) {
+			await tx.rollback();
+			throw err;
+		}
 	};
 
 	reactiveQuery = <Result extends Record<string, any>>(
@@ -257,7 +329,7 @@ export class SQLocal {
 		}
 
 		const queryEffectsChannel = new BroadcastChannel(
-			`_sqlocal_query_effects_(${this.databasePath})`
+			`_sqlocal_query_effects_(${this.config.databasePath})`
 		);
 
 		queryEffectsChannel.onmessage = async (
@@ -318,7 +390,9 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		const path = this.databasePath.split(/[\\/]/).filter((part) => part !== '');
+		const path = this.config.databasePath
+			.split(/[\\/]/)
+			.filter((part) => part !== '');
 		const fileName = path.pop();
 
 		if (!fileName) {

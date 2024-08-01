@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { SQLocalKysely } from '../../src/kysely';
 import { Kysely, Migrator } from 'kysely';
 
 describe('kysely migrations', () => {
-	const { dialect } = new SQLocalKysely('kysely-migrations-test.sqlite3');
+	const databasePath = 'kysely-migrations-test.sqlite3';
+	const { dialect } = new SQLocalKysely(databasePath);
 	const db = new Kysely({ dialect });
 
 	const migrator = new Migrator({
@@ -26,6 +27,11 @@ describe('kysely migrations', () => {
 		const table = tables.find((table) => table.name === tableName);
 		return table?.columns.map((column) => column.name);
 	};
+
+	afterEach(async () => {
+		const opfs = await navigator.storage.getDirectory();
+		await opfs.removeEntry(databasePath);
+	});
 
 	it('should migrate the database', async () => {
 		expect(await getTableNames()).toEqual([]);

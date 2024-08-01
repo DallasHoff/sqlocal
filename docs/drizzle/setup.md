@@ -63,3 +63,7 @@ console.log(data);
 ```
 
 See the [Drizzle documentation](https://orm.drizzle.team/docs/crud) for more examples.
+
+## Transactions
+
+[Drizzle's `transaction` method](https://orm.drizzle.team/docs/transactions) cannot isolate transactions from outside queries. It is recommended to use the `transaction` method of `SQLocalDrizzle` instead. See the [`transaction` documentation](../api/transaction.md#drizzle).

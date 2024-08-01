@@ -3,9 +3,10 @@ import { SQLocalDrizzle } from '../../src/drizzle';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { desc, eq, relations, sql as dsql } from 'drizzle-orm';
+import { sleep } from '../test-utils/sleep';
 
 describe('drizzle driver', () => {
-	const { sql, driver, batchDriver } = new SQLocalDrizzle(
+	const { sql, driver, batchDriver, transaction } = new SQLocalDrizzle(
 		'drizzle-driver-test.sqlite3'
 	);
 
@@ -21,7 +22,7 @@ describe('drizzle driver', () => {
 	const prices = sqliteTable('prices', {
 		id: int('id').primaryKey({ autoIncrement: true }),
 		groceryId: int('groceryId').notNull(),
-		usd: real('usd').notNull(),
+		price: real('price').notNull(),
 	});
 
 	const pricesRelations = relations(prices, ({ one }) => ({
@@ -37,7 +38,7 @@ describe('drizzle driver', () => {
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
-		await sql`CREATE TABLE prices (id INTEGER PRIMARY KEY AUTOINCREMENT, groceryId INTEGER NOT NULL, usd REAL NOT NULL)`;
+		await sql`CREATE TABLE prices (id INTEGER PRIMARY KEY AUTOINCREMENT, groceryId INTEGER NOT NULL, price REAL NOT NULL)`;
 	});
 
 	afterEach(async () => {
@@ -88,31 +89,6 @@ describe('drizzle driver', () => {
 		expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 	});
 
-	it('should perform successful transaction', async () => {
-		await db.transaction(async (trx) => {
-			await trx.insert(groceries).values({ name: 'apples' }).run();
-			await trx.insert(groceries).values({ name: 'bananas' }).run();
-		});
-
-		const data = await db.select().from(groceries).all();
-		expect(data.length).toBe(2);
-	});
-
-	it('should rollback failed transaction', async () => {
-		await db
-			.transaction(async (trx) => {
-				await trx.insert(groceries).values({ name: 'apples' }).run();
-				await trx
-					.insert(groceries)
-					.values({ nam: 'bananas' } as any)
-					.run();
-			})
-			.catch(() => {});
-
-		const data = await db.select().from(groceries).all();
-		expect(data.length).toBe(0);
-	});
-
 	it('should accept batched queries', async () => {
 		const data = await db.batch([
 			db.insert(groceries).values({ name: 'bread' }),
@@ -138,14 +114,13 @@ describe('drizzle driver', () => {
 
 	it('should execute relational queries', async () => {
 		await db.batch([
-			db.insert(groceries).values({ name: 'chicken' }),
-			db.insert(groceries).values({ name: 'beef' }),
+			db.insert(groceries).values([{ name: 'chicken' }, { name: 'beef' }]),
 			db.insert(prices).values([
-				{ groceryId: 1, usd: 3.29 },
-				{ groceryId: 1, usd: 2.99 },
-				{ groceryId: 1, usd: 3.79 },
-				{ groceryId: 2, usd: 5.29 },
-				{ groceryId: 2, usd: 4.49 },
+				{ groceryId: 1, price: 3.29 },
+				{ groceryId: 1, price: 2.99 },
+				{ groceryId: 1, price: 3.79 },
+				{ groceryId: 2, price: 5.29 },
+				{ groceryId: 2, price: 4.49 },
 			]),
 		]);
 
@@ -156,7 +131,7 @@ describe('drizzle driver', () => {
 			with: {
 				prices: {
 					columns: {
-						usd: true,
+						price: true,
 					},
 				},
 			},
@@ -165,12 +140,127 @@ describe('drizzle driver', () => {
 		expect(data).toEqual([
 			{
 				name: 'chicken',
-				prices: [{ usd: 3.29 }, { usd: 2.99 }, { usd: 3.79 }],
+				prices: [{ price: 3.29 }, { price: 2.99 }, { price: 3.79 }],
 			},
 			{
 				name: 'beef',
-				prices: [{ usd: 5.29 }, { usd: 4.49 }],
+				prices: [{ price: 5.29 }, { price: 4.49 }],
 			},
 		]);
+	});
+
+	it('should perform successful transaction using sqlocal way', async () => {
+		const productName = 'rice';
+		const productPrice = 2.99;
+
+		const newProductId = await transaction(async (tx) => {
+			const [product] = await tx.query(
+				db.insert(groceries).values({ name: productName }).returning()
+			);
+			await tx.query(
+				db.insert(prices).values({ groceryId: product.id, price: productPrice })
+			);
+			return product.id;
+		});
+
+		expect(newProductId).toBe(1);
+
+		const selectData1 = await db.select().from(groceries).all();
+		expect(selectData1.length).toBe(1);
+		const selectData2 = await db.select().from(prices).all();
+		expect(selectData2.length).toBe(1);
+	});
+
+	it('should rollback failed transaction using sqlocal way', async () => {
+		const recordCount = await transaction(async ({ query }) => {
+			await query(db.insert(groceries).values({ name: 'apples' }));
+			await query(db.insert(groceries).values({ nam: 'bananas' } as any));
+			const data = await query(db.select().from(groceries));
+			return data.length;
+		}).catch(() => null);
+
+		expect(recordCount).toBe(null);
+
+		const data = await db.select().from(groceries).all();
+		expect(data.length).toBe(0);
+	});
+
+	it('should isolate transaction mutations using sqlocal way', async () => {
+		const order: number[] = [];
+
+		await Promise.all([
+			transaction(async ({ query }) => {
+				order.push(1);
+				await query(db.insert(groceries).values({ name: 'a' }));
+				await sleep(200);
+				order.push(3);
+				await query(db.insert(groceries).values({ name: 'b' }));
+			}),
+			(async () => {
+				await sleep(100);
+				order.push(2);
+				await db.update(groceries).set({ name: 'x' }).run();
+			})(),
+		]);
+
+		const data = await db
+			.select({ name: groceries.name })
+			.from(groceries)
+			.all();
+
+		expect(data).toEqual([{ name: 'x' }, { name: 'x' }]);
+		expect(order).toEqual([1, 2, 3]);
+	});
+
+	it('should perform successful transaction using drizzle way', async () => {
+		await db.transaction(async (tx) => {
+			await tx.insert(groceries).values({ name: 'apples' }).run();
+			await tx.insert(groceries).values({ name: 'bananas' }).run();
+		});
+
+		const data = await db.select().from(groceries).all();
+		expect(data.length).toBe(2);
+	});
+
+	it('should rollback failed transaction using drizzle way', async () => {
+		await db
+			.transaction(async (tx) => {
+				await tx.insert(groceries).values({ name: 'apples' }).run();
+				await tx
+					.insert(groceries)
+					.values({ nam: 'bananas' } as any)
+					.run();
+			})
+			.catch(() => {});
+
+		const data = await db.select().from(groceries).all();
+		expect(data.length).toBe(0);
+	});
+
+	it('should NOT isolate transaction mutations using drizzle way', async () => {
+		const order: number[] = [];
+
+		await Promise.all([
+			db.transaction(async (tx) => {
+				order.push(1);
+				await tx.insert(groceries).values({ name: 'a' }).run();
+				await sleep(200);
+				order.push(3);
+				await tx.insert(groceries).values({ name: 'b' }).run();
+			}),
+			(async () => {
+				await sleep(100);
+				order.push(2);
+				await db.update(groceries).set({ name: 'x' }).run();
+			})(),
+		]);
+
+		const data = await db
+			.select({ name: groceries.name })
+			.from(groceries)
+			.all();
+
+		expect(data).toEqual([{ name: 'x' }, { name: 'b' }]);
+		expect(order).toEqual([1, 2, 3]);
 	});
 });
