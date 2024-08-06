@@ -36,7 +36,9 @@ export class SQLocalProcessor {
 
 	protected proxy: WorkerProxy;
 
-	onmessage: ((message: OutputMessage) => void) | undefined;
+	onmessage:
+		| ((message: OutputMessage, transfer: Transferable[]) => void)
+		| undefined;
 
 	constructor(worker: typeof globalThis) {
 		this.proxy = coincident(worker) as WorkerProxy;
@@ -123,9 +125,12 @@ export class SQLocalProcessor {
 		await this.initMutex.unlock();
 	};
 
-	protected emitMessage = (message: OutputMessage): void => {
+	protected emitMessage = (
+		message: OutputMessage,
+		transfer: Transferable[] = []
+	): void => {
 		if (this.onmessage) {
-			this.onmessage(message);
+			this.onmessage(message, transfer);
 		}
 	};
 
