@@ -335,18 +335,25 @@ export class SQLocal {
 			.filter((part) => part !== '');
 		const fileName = path.pop();
 
+		const tempFileName = `backup-${Date.now()}--${fileName}`;
+		const tempFilePath = `${path.join('/')}/${tempFileName}`;
+
 		if (!fileName) {
 			throw new Error('Failed to parse the database file name.');
 		}
+
+		await this.exec('VACUUM INTO ?', [tempFilePath]);
 
 		let dirHandle = await navigator.storage.getDirectory();
 		for (let dirName of path)
 			dirHandle = await dirHandle.getDirectoryHandle(dirName);
 
-		const fileHandle = await dirHandle.getFileHandle(fileName);
+		const fileHandle = await dirHandle.getFileHandle(tempFileName);
 		const file = await fileHandle.getFile();
+		const fileBuffer = await file.arrayBuffer();
+		await dirHandle.removeEntry(tempFileName);
 
-		return new File([file], fileName, {
+		return new File([fileBuffer], fileName, {
 			type: 'application/x-sqlite3',
 		});
 	};

@@ -31,10 +31,8 @@ describe('getDatabaseFile', () => {
 		}
 	});
 
-	it('should throw when requested database has not been created', async () => {
-		const { getDatabaseFile } = new SQLocal(fileName);
-		expect(async () => await getDatabaseFile()).rejects.toThrowError(
-			'A requested file or directory could not be found at the time an operation was processed.'
-		);
+	it('should not throw when requested database has not been created', async () => {
+		const { getDatabaseFile } = new SQLocal('blank.sqlite3');
+		expect(getDatabaseFile()).resolves.not.toThrow();
 	});
 });
