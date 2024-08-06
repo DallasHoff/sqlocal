@@ -3,9 +3,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	test: {
+		includeTaskLocation: true,
 		browser: {
 			enabled: true,
 			headless: true,
+			screenshotFailures: false,
 			provider: 'webdriverio',
 			name: 'chrome',
 		},
