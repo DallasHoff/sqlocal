@@ -1,13 +1,10 @@
 import {
 	CompiledQuery,
-	DatabaseConnection,
-	Dialect,
-	Driver,
-	QueryResult,
 	SqliteAdapter,
 	SqliteIntrospector,
 	SqliteQueryCompiler,
 } from 'kysely';
+import type { DatabaseConnection, Dialect, Driver, QueryResult } from 'kysely';
 import { SQLocal } from '../index.js';
 import type { Transaction } from '../types.js';
 

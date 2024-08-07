@@ -3,12 +3,11 @@
 		"target": "ES2020",
 		"module": "NodeNext",
 		"lib": ["ES2020", "WebWorker"],
-		"useDefineForClassFields": true,
-		"skipLibCheck": true,
 
-		/* Bundler mode */
+		/* Building */
 		"moduleResolution": "NodeNext",
 		"esModuleInterop": true,
+		"useDefineForClassFields": true,
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,
@@ -18,9 +17,11 @@
 
 		/* Linting */
 		"strict": true,
+		"skipLibCheck": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		"noFallthroughCasesInSwitch": true
+		"noFallthroughCasesInSwitch": true,
+		"verbatimModuleSyntax": true
 	},
 	"include": ["src"],
 	"exclude": ["**/node_modules/**", "dist"]
