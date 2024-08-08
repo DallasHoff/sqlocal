@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocal } from '../src/index.js';
 
 describe('overwriteDatabaseFile', async () => {
 	const db1 = new SQLocal('overwrite-test-db1.sqlite3');

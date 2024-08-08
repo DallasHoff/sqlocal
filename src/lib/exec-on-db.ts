@@ -21,7 +21,7 @@ export function execOnDb(
 		case 'run':
 			break;
 		case 'get':
-			statementData.rows = rows[0];
+			statementData.rows = rows[0] ?? [];
 			break;
 		case 'all':
 		default:

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocal } from '../src/index.js';
 
 describe('getDatabaseInfo', () => {
 	const { sql, getDatabaseInfo } = new SQLocal(

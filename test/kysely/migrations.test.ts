@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { SQLocalKysely } from '../../src/kysely';
+import { SQLocalKysely } from '../../src/kysely/index.js';
 import { Kysely, Migrator } from 'kysely';
 
 describe('kysely migrations', () => {
@@ -11,7 +11,7 @@ describe('kysely migrations', () => {
 		db,
 		provider: {
 			async getMigrations() {
-				const { migrations } = await import('./migrations/');
+				const { migrations } = await import('./migrations/index.js');
 				return migrations;
 			},
 		},

@@ -162,8 +162,8 @@ export class SQLocal {
 		};
 
 		if (message.type === 'data') {
-			data.rows = message.data[0].rows;
-			data.columns = message.data[0].columns;
+			data.rows = message.data[0]?.rows ?? [];
+			data.columns = message.data[0]?.columns ?? [];
 		}
 
 		return data;

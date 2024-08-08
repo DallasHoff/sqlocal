@@ -1,4 +1,5 @@
-import { Kysely, Migration } from 'kysely';
+import { Kysely } from 'kysely';
+import type { Migration } from 'kysely';
 
 export const Migration20230802: Migration = {
 	async up(db: Kysely<any>) {

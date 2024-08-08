@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocal } from '../src/index.js';
 
 describe('init', () => {
 	const databasePath = 'init-test.sqlite3';

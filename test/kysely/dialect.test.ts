@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Generated, Kysely, ParseJSONResultsPlugin } from 'kysely';
+import { Kysely, ParseJSONResultsPlugin } from 'kysely';
+import type { Generated } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/sqlite';
-import { SQLocalKysely } from '../../src/kysely';
-import { sleep } from '../test-utils/sleep';
+import { SQLocalKysely } from '../../src/kysely/index.js';
+import { sleep } from '../test-utils/sleep.js';
 
 describe('kysely dialect', () => {
 	const { dialect, transaction } = new SQLocalKysely(

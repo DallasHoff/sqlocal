@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocal } from '../src/index.js';
 
 describe('sql', () => {
 	const { sql } = new SQLocal('sql-test.sqlite3');

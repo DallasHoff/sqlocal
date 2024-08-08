@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocal } from '../src/index.js';
 
 describe('destroy', () => {
 	const { sql, destroy } = new SQLocal('destroy-test.sqlite3');

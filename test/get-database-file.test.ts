@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SQLocal } from '../src/index';
+import { SQLocal } from '../src/index.js';
 
 describe('getDatabaseFile', () => {
 	const fileName = 'get-database-file-test.sqlite3';

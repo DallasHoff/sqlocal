@@ -6,6 +6,7 @@
 
 		/* Building */
 		"moduleResolution": "NodeNext",
+		"moduleDetection": "force",
 		"esModuleInterop": true,
 		"useDefineForClassFields": true,
 		"allowSyntheticDefaultImports": true,
@@ -21,8 +22,9 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
+		"noImplicitOverride": true,
 		"verbatimModuleSyntax": true
 	},
-	"include": ["src"],
+	"include": ["src", "test"],
 	"exclude": ["**/node_modules/**", "dist"]
 }
