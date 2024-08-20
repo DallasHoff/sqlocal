@@ -1,3 +1,13 @@
+# About this fork
+
+This fork is a temporary fork of the original [sqlocal](https://github.com/DallasHoff/sqlocal) package
+to support frameworks that pre-renders at build time where `Worker` is not defined.
+
+Other than minor dependency updates, the only changes are:
+
+- `SQLocal` won't try to start the Worker if `Worker` is not defined.
+- new `startWorker` function added to `SQLocal` to be called from client-side where Worker can be started.
+
 # SQLocal
 
 SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system. It wraps the [WebAssembly build of SQLite3](https://sqlite.org/wasm/doc/trunk/index.md) and gives you a simple interface to interact with databases running on device.
