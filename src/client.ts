@@ -27,6 +27,7 @@ import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
+import { parseDatabasePath } from './lib/parse-database-path.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -330,24 +331,15 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		const path = this.config.databasePath
-			.split(/[\\/]/)
-			.filter((part) => part !== '');
-		const fileName = path.pop();
-
+		const { directories, fileName, getDirectoryHandle } = parseDatabasePath(
+			this.config.databasePath
+		);
 		const tempFileName = `backup-${Date.now()}--${fileName}`;
-		const tempFilePath = `${path.join('/')}/${tempFileName}`;
-
-		if (!fileName) {
-			throw new Error('Failed to parse the database file name.');
-		}
+		const tempFilePath = `${directories.join('/')}/${tempFileName}`;
 
 		await this.exec('VACUUM INTO ?', [tempFilePath]);
 
-		let dirHandle = await navigator.storage.getDirectory();
-		for (let dirName of path)
-			dirHandle = await dirHandle.getDirectoryHandle(dirName);
-
+		const dirHandle = await getDirectoryHandle();
 		const fileHandle = await dirHandle.getFileHandle(tempFileName);
 		const file = await fileHandle.getFile();
 		const fileBuffer = await file.arrayBuffer();
@@ -373,6 +365,24 @@ export class SQLocal {
 			type: 'import',
 			database,
 		});
+	};
+
+	deleteDatabaseFile = async (): Promise<void> => {
+		const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
+			this.config.databasePath
+		);
+		const dirHandle = await getDirectoryHandle();
+		const fileNames = [fileName, ...tempFileNames];
+
+		await Promise.all(
+			fileNames.map(async (name) => {
+				return dirHandle.removeEntry(name).catch((err) => {
+					if (!(err instanceof DOMException && err.name === 'NotFoundError')) {
+						throw err;
+					}
+				});
+			})
+		);
 	};
 
 	destroy = async (): Promise<void> => {

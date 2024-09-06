@@ -8,7 +8,9 @@ describe('getDatabaseFile', () => {
 	it('should return the requested database file', async () => {
 		for (let path of paths) {
 			const databasePath = [...path, fileName].join('/');
-			const { sql, getDatabaseFile } = new SQLocal(databasePath);
+			const { sql, getDatabaseFile, deleteDatabaseFile } = new SQLocal(
+				databasePath
+			);
 
 			await sql`CREATE TABLE nums (num REAL NOT NULL)`;
 			const file = await getDatabaseFile();
@@ -20,14 +22,7 @@ describe('getDatabaseFile', () => {
 			expect(file.type).toBe('application/x-sqlite3');
 			expect(now - file.lastModified).toBeLessThan(50);
 
-			let dirHandle = await navigator.storage.getDirectory();
-
-			for (let dirName of path) {
-				if (dirName === '') continue;
-				dirHandle = await dirHandle.getDirectoryHandle(dirName);
-			}
-
-			await dirHandle.removeEntry(fileName);
+			await deleteDatabaseFile();
 		}
 	});
 

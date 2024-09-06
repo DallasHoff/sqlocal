@@ -4,7 +4,7 @@ import { Kysely, Migrator } from 'kysely';
 
 describe('kysely migrations', () => {
 	const databasePath = 'kysely-migrations-test.sqlite3';
-	const { dialect } = new SQLocalKysely(databasePath);
+	const { dialect, deleteDatabaseFile } = new SQLocalKysely(databasePath);
 	const db = new Kysely({ dialect });
 
 	const migrator = new Migrator({
@@ -29,8 +29,7 @@ describe('kysely migrations', () => {
 	};
 
 	afterEach(async () => {
-		const opfs = await navigator.storage.getDirectory();
-		await opfs.removeEntry(databasePath);
+		await deleteDatabaseFile();
 	});
 
 	it('should migrate the database', async () => {

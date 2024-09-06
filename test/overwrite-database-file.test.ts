@@ -12,9 +12,8 @@ describe('overwriteDatabaseFile', async () => {
 	await db2.sql`INSERT INTO nums (num) VALUES (1), (2), (3)`;
 
 	afterAll(async () => {
-		const opfs = await navigator.storage.getDirectory();
-		await opfs.removeEntry('overwrite-test-db1.sqlite3');
-		await opfs.removeEntry('overwrite-test-db2.sqlite3');
+		await db1.deleteDatabaseFile();
+		await db2.deleteDatabaseFile();
 	});
 
 	it('should replace the contents of a database', async () => {

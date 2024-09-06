@@ -3,7 +3,7 @@ import { SQLocal } from '../src/index.js';
 
 describe('init', () => {
 	const databasePath = 'init-test.sqlite3';
-	const { sql } = new SQLocal({ databasePath });
+	const { sql, deleteDatabaseFile } = new SQLocal({ databasePath });
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
@@ -15,8 +15,7 @@ describe('init', () => {
 	});
 
 	afterAll(async () => {
-		const opfs = await navigator.storage.getDirectory();
-		await opfs.removeEntry(databasePath);
+		await deleteDatabaseFile();
 	});
 
 	it('should be cross-origin isolated', () => {
