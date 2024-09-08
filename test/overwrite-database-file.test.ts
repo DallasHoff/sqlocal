@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe('overwriteDatabaseFile', async () => {
+describe('overwriteDatabaseFile', () => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();
 		const db1 = new SQLocal({
