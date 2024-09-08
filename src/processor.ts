@@ -19,9 +19,11 @@ import type {
 	ConfigMessage,
 	QueryKey,
 	TransactionMessage,
+	DeleteMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
+import { parseDatabasePath } from './lib/parse-database-path.js';
 
 export class SQLocalProcessor {
 	protected sqlite3: Sqlite3 | undefined;
@@ -35,6 +37,7 @@ export class SQLocalProcessor {
 	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
+	protected reinitChannel: BroadcastChannel | undefined;
 
 	onmessage:
 		| ((message: OutputMessage, transfer: Transferable[]) => void)
@@ -75,6 +78,15 @@ export class SQLocalProcessor {
 					`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 				);
 			}
+
+			this.reinitChannel = new BroadcastChannel(
+				`_sqlocal_reinit_(${databasePath})`
+			);
+			this.reinitChannel.onmessage = (message: MessageEvent<QueryKey>) => {
+				if (this.config.clientKey !== message.data) {
+					this.init();
+				}
+			};
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
@@ -87,6 +99,7 @@ export class SQLocalProcessor {
 		}
 
 		this.userFunctions.forEach(this.initUserFunction);
+		this.emitMessage({ type: 'event', event: 'connect' });
 		await this.initMutex.unlock();
 	};
 
@@ -116,6 +129,9 @@ export class SQLocalProcessor {
 				break;
 			case 'import':
 				this.importDb(message);
+				break;
+			case 'delete':
+				this.deleteDb(message);
 				break;
 			case 'destroy':
 				this.destroy(message);
@@ -335,12 +351,56 @@ export class SQLocalProcessor {
 		}
 	};
 
+	protected deleteDb = async (message: DeleteMessage): Promise<void> => {
+		if (!this.config.databasePath) return;
+
+		const { queryKey } = message;
+
+		try {
+			const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
+				this.config.databasePath
+			);
+			const dirHandle = await getDirectoryHandle();
+			const fileNames = [fileName, ...tempFileNames];
+
+			this.destroy();
+
+			await Promise.all(
+				fileNames.map(async (name) => {
+					return dirHandle.removeEntry(name).catch((err) => {
+						if (
+							!(err instanceof DOMException && err.name === 'NotFoundError')
+						) {
+							throw err;
+						}
+					});
+				})
+			);
+			await this.init();
+			this.emitMessage({
+				type: 'success',
+				queryKey,
+			});
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				error,
+				queryKey,
+			});
+		}
+	};
+
 	protected destroy = (message?: DestroyMessage): void => {
 		if (this.db) {
 			this.db.exec({ sql: 'PRAGMA optimize' });
 			this.db.close();
 			this.db = undefined;
 			this.dbStorageType = undefined;
+		}
+
+		if (this.reinitChannel) {
+			this.reinitChannel.close();
+			this.reinitChannel = undefined;
 		}
 
 		if (message) {

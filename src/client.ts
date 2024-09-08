@@ -21,6 +21,7 @@ import type {
 	TransactionMessage,
 	StatementInput,
 	Transaction,
+	DeleteMessage,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
@@ -28,12 +29,14 @@ import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
 import { parseDatabasePath } from './lib/parse-database-path.js';
+import { mutationLock } from './lib/mutation-lock.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
+	protected clientKey: QueryKey;
 	protected worker: Worker;
-	protected proxy: WorkerProxy;
 	protected isWorkerDestroyed: boolean = false;
+	protected bypassMutationLock: boolean = false;
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
 	protected queriesInProgress = new Map<
 		QueryKey,
@@ -43,10 +46,23 @@ export class SQLocal {
 		]
 	>();
 
+	protected proxy: WorkerProxy;
+	protected reinitChannel: BroadcastChannel;
+
 	constructor(databasePath: string);
 	constructor(config: ClientConfig);
 	constructor(config: string | ClientConfig) {
-		config = typeof config === 'string' ? { databasePath: config } : config;
+		const clientConfig =
+			typeof config === 'string' ? { databasePath: config } : config;
+		this.config = clientConfig;
+		this.clientKey = getQueryKey();
+
+		const { onConnect, ...commonConfig } = clientConfig;
+		const processorConfig = { ...commonConfig, clientKey: this.clientKey };
+
+		this.reinitChannel = new BroadcastChannel(
+			`_sqlocal_reinit_(${clientConfig.databasePath})`
+		);
 
 		this.worker = new Worker(new URL('./worker', import.meta.url), {
 			type: 'module',
@@ -54,10 +70,9 @@ export class SQLocal {
 		this.worker.addEventListener('message', this.processMessageEvent);
 
 		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.config = config;
 		this.worker.postMessage({
 			type: 'config',
-			config,
+			config: processorConfig,
 		} satisfies ConfigMessage);
 	}
 
@@ -92,18 +107,27 @@ export class SQLocal {
 					userCallback(...(message.args ?? []));
 				}
 				break;
+
+			case 'event':
+				switch (message.event) {
+					case 'connect':
+						this.config.onConnect?.();
+						break;
+				}
+				break;
 		}
 	};
 
-	protected createQuery = (
+	protected createQuery = async (
 		message: OmitQueryKey<
 			| QueryMessage
 			| BatchMessage
 			| TransactionMessage
-			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
 			| GetInfoMessage
+			| DeleteMessage
+			| DestroyMessage
 		>
 	): Promise<OutputMessage> => {
 		if (this.isWorkerDestroyed === true) {
@@ -112,35 +136,45 @@ export class SQLocal {
 			);
 		}
 
-		const queryKey = getQueryKey();
+		return await mutationLock(
+			'shared',
+			this.bypassMutationLock ||
+				message.type === 'import' ||
+				message.type === 'delete',
+			this.config,
+			async () => {
+				const queryKey = getQueryKey();
 
-		switch (message.type) {
-			case 'import':
-				this.worker.postMessage(
-					{
-						...message,
-						queryKey,
-					} satisfies ImportMessage,
-					[message.database]
-				);
-				break;
-			default:
-				this.worker.postMessage({
-					...message,
-					queryKey,
-				} satisfies
-					| QueryMessage
-					| BatchMessage
-					| TransactionMessage
-					| DestroyMessage
-					| FunctionMessage
-					| GetInfoMessage);
-				break;
-		}
+				switch (message.type) {
+					case 'import':
+						this.worker.postMessage(
+							{
+								...message,
+								queryKey,
+							} satisfies ImportMessage,
+							[message.database]
+						);
+						break;
+					default:
+						this.worker.postMessage({
+							...message,
+							queryKey,
+						} satisfies
+							| QueryMessage
+							| BatchMessage
+							| TransactionMessage
+							| FunctionMessage
+							| GetInfoMessage
+							| DeleteMessage
+							| DestroyMessage);
+						break;
+				}
 
-		return new Promise<OutputMessage>((resolve, reject) => {
-			this.queriesInProgress.set(queryKey, [resolve, reject]);
-		});
+				return await new Promise<OutputMessage>((resolve, reject) => {
+					this.queriesInProgress.set(queryKey, [resolve, reject]);
+				});
+			}
+		);
 	};
 
 	protected exec = async (
@@ -351,7 +385,8 @@ export class SQLocal {
 	};
 
 	overwriteDatabaseFile = async (
-		databaseFile: File | Blob | ArrayBuffer | Uint8Array
+		databaseFile: File | Blob | ArrayBuffer | Uint8Array,
+		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
 		let database: ArrayBuffer | Uint8Array;
 
@@ -361,28 +396,44 @@ export class SQLocal {
 			database = databaseFile;
 		}
 
-		await this.createQuery({
-			type: 'import',
-			database,
+		await mutationLock('exclusive', false, this.config, async () => {
+			try {
+				await this.createQuery({
+					type: 'import',
+					database,
+				});
+
+				if (typeof beforeUnlock === 'function') {
+					this.bypassMutationLock = true;
+					await beforeUnlock();
+				}
+
+				this.reinitChannel.postMessage(this.clientKey);
+			} finally {
+				this.bypassMutationLock = false;
+			}
 		});
 	};
 
-	deleteDatabaseFile = async (): Promise<void> => {
-		const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
-			this.config.databasePath
-		);
-		const dirHandle = await getDirectoryHandle();
-		const fileNames = [fileName, ...tempFileNames];
-
-		await Promise.all(
-			fileNames.map(async (name) => {
-				return dirHandle.removeEntry(name).catch((err) => {
-					if (!(err instanceof DOMException && err.name === 'NotFoundError')) {
-						throw err;
-					}
+	deleteDatabaseFile = async (
+		beforeUnlock?: () => void | Promise<void>
+	): Promise<void> => {
+		await mutationLock('exclusive', false, this.config, async () => {
+			try {
+				await this.createQuery({
+					type: 'delete',
 				});
-			})
-		);
+
+				if (typeof beforeUnlock === 'function') {
+					this.bypassMutationLock = true;
+					await beforeUnlock();
+				}
+
+				this.reinitChannel.postMessage(this.clientKey);
+			} finally {
+				this.bypassMutationLock = false;
+			}
+		});
 	};
 
 	destroy = async (): Promise<void> => {
@@ -390,6 +441,7 @@ export class SQLocal {
 		this.worker.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
+		this.reinitChannel.close();
 		this.worker.terminate();
 		this.isWorkerDestroyed = true;
 	};
