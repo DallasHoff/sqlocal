@@ -320,6 +320,7 @@ export class SQLocalProcessor {
 		if (!this.sqlite3 || !this.config.databasePath) return;
 
 		const { queryKey, database } = message;
+		let errored = false;
 
 		if (!('opfs' in this.sqlite3)) {
 			this.emitMessage({
@@ -333,19 +334,25 @@ export class SQLocalProcessor {
 		}
 
 		try {
+			this.destroy();
 			await this.sqlite3.oo1.OpfsDb.importDb(
 				this.config.databasePath,
 				database
 			);
-			await this.init();
-			this.emitMessage({
-				type: 'success',
-				queryKey,
-			});
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
 				error,
+				queryKey,
+			});
+			errored = true;
+		} finally {
+			await this.init();
+		}
+
+		if (!errored) {
+			this.emitMessage({
+				type: 'success',
 				queryKey,
 			});
 		}
@@ -355,6 +362,7 @@ export class SQLocalProcessor {
 		if (!this.config.databasePath) return;
 
 		const { queryKey } = message;
+		let errored = false;
 
 		try {
 			const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
@@ -376,15 +384,20 @@ export class SQLocalProcessor {
 					});
 				})
 			);
-			await this.init();
-			this.emitMessage({
-				type: 'success',
-				queryKey,
-			});
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
 				error,
+				queryKey,
+			});
+			errored = true;
+		} finally {
+			await this.init();
+		}
+
+		if (!errored) {
+			this.emitMessage({
+				type: 'success',
 				queryKey,
 			});
 		}
