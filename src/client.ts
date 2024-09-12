@@ -47,7 +47,7 @@ export class SQLocal {
 	constructor(config: string | ClientConfig) {
 		this.config = typeof config === 'string' ? { databasePath: config } : config;
 
-		if (!this.worker && typeof globalThis.Worker !== 'undefined') {
+		if (typeof globalThis.Worker !== 'undefined') {
 			this.worker = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
 			});
