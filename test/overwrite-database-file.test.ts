@@ -89,4 +89,18 @@ describe('overwriteDatabaseFile', () => {
 		await db2.deleteDatabaseFile();
 		await db2.destroy();
 	});
+
+	it('should restore user functions', async () => {
+		const db = new SQLocal('overwrite-test-db-functions.sqlite3');
+		await db.createScalarFunction('double', (num: number) => num * 2);
+
+		const num1 = await db.sql`SELECT double(1) AS num`;
+		expect(num1).toEqual([{ num: 2 }]);
+
+		const dbFile = await db.getDatabaseFile();
+		await db.overwriteDatabaseFile(dbFile);
+
+		const num2 = await db.sql`SELECT double(2) AS num`;
+		expect(num2).toEqual([{ num: 4 }]);
+	});
 });

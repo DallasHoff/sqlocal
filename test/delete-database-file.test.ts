@@ -68,4 +68,17 @@ describe('deleteDatabaseFile', () => {
 		await db2.destroy();
 		await db1.destroy();
 	});
+
+	it('should restore user functions', async () => {
+		const db = new SQLocal('delete-db-test-functions.sqlite3');
+		await db.createScalarFunction('double', (num: number) => num * 2);
+
+		const num1 = await db.sql`SELECT double(1) AS num`;
+		expect(num1).toEqual([{ num: 2 }]);
+
+		await db.deleteDatabaseFile();
+
+		const num2 = await db.sql`SELECT double(2) AS num`;
+		expect(num2).toEqual([{ num: 4 }]);
+	});
 });
