@@ -47,10 +47,6 @@ export class SQLocal {
 	constructor(config: string | ClientConfig) {
 		this.config = typeof config === 'string' ? { databasePath: config } : config;
 
-		this.startWorker();
-	}
-
-	startWorker = async (): Promise<void> => {
 		if (!this.worker && typeof globalThis.Worker !== 'undefined') {
 			this.worker = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
@@ -110,6 +106,11 @@ export class SQLocal {
 			| GetInfoMessage
 		>
 	): Promise<OutputMessage> => {
+		if (!this.worker) {
+			throw new Error(
+				'This SQLocal client does not have a worker. This is likely due to SSR or worker failing to initialize.'
+			)
+		}
 		if (this.isWorkerDestroyed === true) {
 			throw new Error(
 				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
