@@ -108,9 +108,10 @@ export class SQLocal {
 	): Promise<OutputMessage> => {
 		if (!this.worker) {
 			throw new Error(
-				'This SQLocal client does not have a worker. This is likely due to SSR or worker failing to initialize.'
+				'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
 			)
 		}
+
 		if (this.isWorkerDestroyed === true) {
 			throw new Error(
 				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
@@ -121,7 +122,7 @@ export class SQLocal {
 
 		switch (message.type) {
 			case 'import':
-				this.worker?.postMessage(
+				this.worker.postMessage(
 					{
 						...message,
 						queryKey,
@@ -130,7 +131,7 @@ export class SQLocal {
 				);
 				break;
 			default:
-				this.worker?.postMessage({
+				this.worker.postMessage({
 					...message,
 					queryKey,
 				} satisfies
