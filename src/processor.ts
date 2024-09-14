@@ -24,9 +24,9 @@ import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
 
 export class SQLocalProcessor {
-	protected sqlite3: Sqlite3 | undefined;
-	protected db: Sqlite3Db | undefined;
-	protected dbStorageType: Sqlite3StorageType | undefined;
+	protected sqlite3?: Sqlite3;
+	protected db?: Sqlite3Db;
+	protected dbStorageType?: Sqlite3StorageType;
 	protected config: ProcessorConfig = {};
 	protected userFunctions = new Map<string, UserFunction>();
 
@@ -36,9 +36,7 @@ export class SQLocalProcessor {
 
 	protected proxy: WorkerProxy;
 
-	onmessage:
-		| ((message: OutputMessage, transfer: Transferable[]) => void)
-		| undefined;
+	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
 	constructor(worker: typeof globalThis) {
 		this.proxy = coincident(worker) as WorkerProxy;
