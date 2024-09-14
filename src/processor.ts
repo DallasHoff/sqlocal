@@ -142,6 +142,13 @@ export class SQLocalProcessor {
 	): Promise<void> => {
 		if (!this.db) return;
 
+		const requestedTransactionDuringAnotherTransaction =
+			// we're in a transaction
+			this.transactionKey !== null &&
+			message.type === 'transaction' &&
+			// the message is requesting a different txn
+			message.transactionKey !== this.transactionKey;
+
 		const partOfTransaction =
 			(message.type === 'transaction' &&
 				(this.transactionKey === null ||
@@ -177,7 +184,9 @@ export class SQLocalProcessor {
 
 				case 'transaction':
 					if (message.action === 'begin') {
-						await this.transactionMutex.lock();
+						if (!requestedTransactionDuringAnotherTransaction) {
+							await this.transactionMutex.lock();
+						}
 						this.transactionKey = message.transactionKey;
 						this.db.exec({ sql: 'BEGIN' });
 					}
