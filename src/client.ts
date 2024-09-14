@@ -30,8 +30,8 @@ import { normalizeSql } from './lib/normalize-sql.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
-	protected worker: Worker;
-	protected proxy: WorkerProxy;
+	protected worker?: Worker;
+	protected proxy?: WorkerProxy;
 	protected isWorkerDestroyed: boolean = false;
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
 	protected queriesInProgress = new Map<
@@ -45,19 +45,20 @@ export class SQLocal {
 	constructor(databasePath: string);
 	constructor(config: ClientConfig);
 	constructor(config: string | ClientConfig) {
-		config = typeof config === 'string' ? { databasePath: config } : config;
+		this.config = typeof config === 'string' ? { databasePath: config } : config;
 
-		this.worker = new Worker(new URL('./worker', import.meta.url), {
-			type: 'module',
-		});
-		this.worker.addEventListener('message', this.processMessageEvent);
+		if (typeof globalThis.Worker !== 'undefined') {
+			this.worker = new Worker(new URL('./worker', import.meta.url), {
+				type: 'module',
+			});
+			this.worker.addEventListener('message', this.processMessageEvent);
 
-		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.config = config;
-		this.worker.postMessage({
-			type: 'config',
-			config,
-		} satisfies ConfigMessage);
+			this.proxy = coincident(this.worker) as WorkerProxy;
+			this.worker.postMessage({
+				type: 'config',
+				config: this.config,
+			} satisfies ConfigMessage);
+		}
 	}
 
 	protected processMessageEvent = (
@@ -105,6 +106,12 @@ export class SQLocal {
 			| GetInfoMessage
 		>
 	): Promise<OutputMessage> => {
+		if (!this.worker) {
+			throw new Error(
+				'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
+			)
+		}
+
 		if (this.isWorkerDestroyed === true) {
 			throw new Error(
 				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
@@ -316,7 +323,9 @@ export class SQLocal {
 			functionType: 'scalar',
 		});
 
-		this.proxy[`_sqlocal_func_${funcName}`] = func;
+		if (this.proxy) {
+			this.proxy[`_sqlocal_func_${funcName}`] = func;
+		}
 	};
 
 	getDatabaseInfo = async (): Promise<DatabaseInfo> => {
@@ -377,10 +386,10 @@ export class SQLocal {
 
 	destroy = async (): Promise<void> => {
 		await this.createQuery({ type: 'destroy' });
-		this.worker.removeEventListener('message', this.processMessageEvent);
+		this.worker?.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
-		this.worker.terminate();
+		this.worker?.terminate();
 		this.isWorkerDestroyed = true;
 	};
 }
