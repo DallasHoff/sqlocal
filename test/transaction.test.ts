@@ -73,4 +73,18 @@ describe('transaction', () => {
 		expect(data).toEqual([{ name: 'x' }, { name: 'x' }]);
 		expect(order).toEqual([1, 2, 3]);
 	});
+
+	it('can complete concurrent transactions', async () => {
+		const promise = Promise.all([
+			transaction(async (tx) => {
+				await tx.sql`SELECT * FROM groceries`;
+				await sleep(100);
+			}),
+			transaction(async (tx) => {
+				await tx.sql`SELECT * FROM groceries`;
+			}),
+		]);
+
+		await expect(promise).resolves.toHaveLength(2);
+	});
 });
