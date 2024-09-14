@@ -45,7 +45,8 @@ export class SQLocal {
 	constructor(databasePath: string);
 	constructor(config: ClientConfig);
 	constructor(config: string | ClientConfig) {
-		this.config = typeof config === 'string' ? { databasePath: config } : config;
+		this.config =
+			typeof config === 'string' ? { databasePath: config } : config;
 
 		if (typeof globalThis.Worker !== 'undefined') {
 			this.worker = new Worker(new URL('./worker', import.meta.url), {
@@ -109,7 +110,7 @@ export class SQLocal {
 		if (!this.worker) {
 			throw new Error(
 				'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
-			)
+			);
 		}
 
 		if (this.isWorkerDestroyed === true) {
