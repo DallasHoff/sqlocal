@@ -22,8 +22,8 @@ describe('overwriteDatabaseFile', async () => {
 		await db1.overwriteDatabaseFile(db2File);
 
 		const letters = db1.sql`SELECT * FROM letters`;
-		expect(letters).rejects.toThrow();
+		await expect(letters).rejects.toThrow();
 		const nums = db1.sql`SELECT * FROM nums`;
-		expect(nums).resolves.toEqual([{ num: 1 }, { num: 2 }, { num: 3 }]);
+		await expect(nums).resolves.toEqual([{ num: 1 }, { num: 2 }, { num: 3 }]);
 	});
 });

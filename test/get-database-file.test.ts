@@ -33,6 +33,6 @@ describe('getDatabaseFile', () => {
 
 	it('should not throw when requested database has not been created', async () => {
 		const { getDatabaseFile } = new SQLocal('blank.sqlite3');
-		expect(getDatabaseFile()).resolves.not.toThrow();
+		await expect(getDatabaseFile()).resolves.not.toThrow();
 	});
 });

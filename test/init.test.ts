@@ -39,7 +39,7 @@ describe('init', () => {
 		const write = async () => {
 			await sql`INSERT INTO nums (num) VALUES (1)`;
 		};
-		expect(write).rejects.toThrowError(
+		await expect(write).rejects.toThrowError(
 			'SQLITE_IOERR_WRITE: sqlite3 result code 778: disk I/O error'
 		);
 

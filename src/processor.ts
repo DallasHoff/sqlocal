@@ -73,6 +73,8 @@ export class SQLocalProcessor {
 					`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 				);
 			}
+
+			this.userFunctions.forEach(this.initUserFunction);
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
@@ -81,11 +83,9 @@ export class SQLocalProcessor {
 			});
 
 			this.destroy();
-			return;
+		} finally {
+			await this.initMutex.unlock();
 		}
-
-		this.userFunctions.forEach(this.initUserFunction);
-		await this.initMutex.unlock();
 	};
 
 	postMessage = async (
@@ -142,17 +142,6 @@ export class SQLocalProcessor {
 	): Promise<void> => {
 		if (!this.db) return;
 
-		const partOfTransaction =
-			(message.type === 'transaction' &&
-				(this.transactionKey === null ||
-					message.transactionKey === this.transactionKey)) ||
-			(message.type === 'query' &&
-				message.transactionKey === this.transactionKey);
-
-		if (!partOfTransaction) {
-			await this.transactionMutex.lock();
-		}
-
 		try {
 			const response: DataMessage = {
 				type: 'data',
@@ -162,17 +151,35 @@ export class SQLocalProcessor {
 
 			switch (message.type) {
 				case 'query':
-					const statementData = execOnDb(this.db, message);
-					response.data.push(statementData);
+					const partOfTransaction =
+						this.transactionKey !== null &&
+						this.transactionKey === message.transactionKey;
+
+					try {
+						if (!partOfTransaction) {
+							await this.transactionMutex.lock();
+						}
+						const statementData = execOnDb(this.db, message);
+						response.data.push(statementData);
+					} finally {
+						if (!partOfTransaction) {
+							await this.transactionMutex.unlock();
+						}
+					}
 					break;
 
 				case 'batch':
-					this.db.transaction((tx: Sqlite3Db) => {
-						for (let statement of message.statements) {
-							const statementData = execOnDb(tx, statement);
-							response.data.push(statementData);
-						}
-					});
+					try {
+						await this.transactionMutex.lock();
+						this.db.transaction((tx: Sqlite3Db) => {
+							for (let statement of message.statements) {
+								const statementData = execOnDb(tx, statement);
+								response.data.push(statementData);
+							}
+						});
+					} finally {
+						await this.transactionMutex.unlock();
+					}
 					break;
 
 				case 'transaction':
@@ -182,7 +189,11 @@ export class SQLocalProcessor {
 						this.db.exec({ sql: 'BEGIN' });
 					}
 
-					if (message.action === 'commit' || message.action === 'rollback') {
+					if (
+						(message.action === 'commit' || message.action === 'rollback') &&
+						this.transactionKey !== null &&
+						this.transactionKey === message.transactionKey
+					) {
 						const sql = message.action === 'commit' ? 'COMMIT' : 'ROLLBACK';
 						this.db.exec({ sql });
 						this.transactionKey = null;
@@ -198,10 +209,6 @@ export class SQLocalProcessor {
 				error,
 				queryKey: message.queryKey,
 			});
-		}
-
-		if (!partOfTransaction) {
-			await this.transactionMutex.unlock();
 		}
 	};
 

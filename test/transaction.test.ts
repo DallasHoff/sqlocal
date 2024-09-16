@@ -3,7 +3,7 @@ import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
 
 describe('transaction', () => {
-	const { sql, transaction } = new SQLocal('transaction-test.sqlite3');
+	const { sql, batch, transaction } = new SQLocal('transaction-test.sqlite3');
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
@@ -50,7 +50,7 @@ describe('transaction', () => {
 		expect(selectData.length).toBe(0);
 	});
 
-	it('should isolate transaction mutations', async () => {
+	it('should isolate transaction mutations from outside queries', async () => {
 		const order: number[] = [];
 
 		await Promise.all([
@@ -72,5 +72,51 @@ describe('transaction', () => {
 
 		expect(data).toEqual([{ name: 'x' }, { name: 'x' }]);
 		expect(order).toEqual([1, 2, 3]);
+	});
+
+	it('should isolate transaction mutations from outside batch queries', async () => {
+		const order: number[] = [];
+
+		await Promise.all([
+			transaction(async (tx) => {
+				order.push(1);
+				await tx.sql`INSERT INTO groceries (name) VALUES ('a')`;
+				await sleep(200);
+				order.push(3);
+				await tx.sql`INSERT INTO groceries (name) VALUES ('b')`;
+			}),
+			(async () => {
+				await sleep(100);
+				order.push(2);
+				await batch((sql) => [sql`UPDATE groceries SET name = 'x'`]);
+			})(),
+		]);
+
+		const data = await sql`SELECT name FROM groceries`;
+
+		expect(data).toEqual([{ name: 'x' }, { name: 'x' }]);
+		expect(order).toEqual([1, 2, 3]);
+	});
+
+	it('should complete concurrent transactions', async () => {
+		const transactions = Promise.all([
+			transaction(async (tx) => {
+				await tx.sql`INSERT INTO groceries (name) VALUES ('a') RETURNING name`;
+				await sleep(100);
+				return await tx.sql`SELECT name FROM groceries`;
+			}),
+			transaction(async (tx) => {
+				await sleep(50);
+				return await tx.sql`INSERT INTO groceries (name) VALUES ('b') RETURNING name`;
+			}),
+		]);
+
+		await expect(transactions).resolves.toEqual([
+			[{ name: 'a' }],
+			[{ name: 'b' }],
+		]);
+
+		const data = await sql`SELECT name FROM groceries`;
+		expect(data).toEqual([{ name: 'a' }, { name: 'b' }]);
 	});
 });
