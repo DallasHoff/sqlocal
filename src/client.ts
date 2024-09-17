@@ -111,11 +111,7 @@ export class SQLocal {
 				break;
 
 			case 'event':
-				switch (message.event) {
-					case 'connect':
-						this.config.onConnect?.();
-						break;
-				}
+				this.config.onConnect?.();
 				break;
 		}
 	};
