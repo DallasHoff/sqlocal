@@ -33,7 +33,7 @@ describe('sql', () => {
 
 		const multiSelect2 = async () =>
 			await sql`SELECT * FROM groceries WHERE id = ${3}; SELECT * FROM groceries WHERE id = ${2};`;
-		expect(multiSelect2).rejects.toThrow();
+		await expect(multiSelect2).rejects.toThrow();
 
 		const delete1 = await sql`DELETE FROM groceries WHERE id = 2 RETURNING *`;
 		expect(delete1).toEqual([{ id: 2, name: 'milk' }]);

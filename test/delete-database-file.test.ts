@@ -34,7 +34,7 @@ describe('deleteDatabaseFile', () => {
 		expect(letters).toEqual([{ letter: 'x' }]);
 
 		const nums2 = sql`SELECT * FROM nums`;
-		expect(nums2).rejects.toThrow();
+		await expect(nums2).rejects.toThrow();
 
 		await deleteDatabaseFile();
 		await destroy();

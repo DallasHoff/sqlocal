@@ -34,7 +34,7 @@ import { mutationLock } from './lib/mutation-lock.js';
 export class SQLocal {
 	protected config: ClientConfig;
 	protected clientKey: QueryKey;
-	protected worker: Worker;
+	protected worker?: Worker;
 	protected isWorkerDestroyed: boolean = false;
 	protected bypassMutationLock: boolean = false;
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
@@ -46,7 +46,7 @@ export class SQLocal {
 		]
 	>();
 
-	protected proxy: WorkerProxy;
+	protected proxy?: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
 
 	constructor(databasePath: string);
@@ -64,16 +64,18 @@ export class SQLocal {
 			`_sqlocal_reinit_(${clientConfig.databasePath})`
 		);
 
-		this.worker = new Worker(new URL('./worker', import.meta.url), {
-			type: 'module',
-		});
-		this.worker.addEventListener('message', this.processMessageEvent);
+		if (typeof globalThis.Worker !== 'undefined') {
+			this.worker = new Worker(new URL('./worker', import.meta.url), {
+				type: 'module',
+			});
+			this.worker.addEventListener('message', this.processMessageEvent);
 
-		this.proxy = coincident(this.worker) as WorkerProxy;
-		this.worker.postMessage({
-			type: 'config',
-			config: processorConfig,
-		} satisfies ConfigMessage);
+			this.proxy = coincident(this.worker) as WorkerProxy;
+			this.worker.postMessage({
+				type: 'config',
+				config: processorConfig,
+			} satisfies ConfigMessage);
+		}
 	}
 
 	protected processMessageEvent = (
@@ -130,12 +132,6 @@ export class SQLocal {
 			| DestroyMessage
 		>
 	): Promise<OutputMessage> => {
-		if (this.isWorkerDestroyed === true) {
-			throw new Error(
-				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
-			);
-		}
-
 		return await mutationLock(
 			'shared',
 			this.bypassMutationLock ||
@@ -143,6 +139,18 @@ export class SQLocal {
 				message.type === 'delete',
 			this.config,
 			async () => {
+				if (!this.worker) {
+					throw new Error(
+						'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
+					);
+				}
+
+				if (this.isWorkerDestroyed === true) {
+					throw new Error(
+						'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
+					);
+				}
+
 				const queryKey = getQueryKey();
 
 				switch (message.type) {
@@ -351,7 +359,9 @@ export class SQLocal {
 			functionType: 'scalar',
 		});
 
-		this.proxy[`_sqlocal_func_${funcName}`] = func;
+		if (this.proxy) {
+			this.proxy[`_sqlocal_func_${funcName}`] = func;
+		}
 	};
 
 	getDatabaseInfo = async (): Promise<DatabaseInfo> => {
@@ -438,11 +448,11 @@ export class SQLocal {
 
 	destroy = async (): Promise<void> => {
 		await this.createQuery({ type: 'destroy' });
-		this.worker.removeEventListener('message', this.processMessageEvent);
+		this.worker?.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
 		this.reinitChannel.close();
-		this.worker.terminate();
+		this.worker?.terminate();
 		this.isWorkerDestroyed = true;
 	};
 }

@@ -26,9 +26,9 @@ import { execOnDb } from './lib/exec-on-db.js';
 import { parseDatabasePath } from './lib/parse-database-path.js';
 
 export class SQLocalProcessor {
-	protected sqlite3: Sqlite3 | undefined;
-	protected db: Sqlite3Db | undefined;
-	protected dbStorageType: Sqlite3StorageType | undefined;
+	protected sqlite3?: Sqlite3;
+	protected db?: Sqlite3Db;
+	protected dbStorageType?: Sqlite3StorageType;
 	protected config: ProcessorConfig = {};
 	protected userFunctions = new Map<string, UserFunction>();
 
@@ -39,9 +39,7 @@ export class SQLocalProcessor {
 	protected proxy: WorkerProxy;
 	protected reinitChannel: BroadcastChannel | undefined;
 
-	onmessage:
-		| ((message: OutputMessage, transfer: Transferable[]) => void)
-		| undefined;
+	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
 	constructor(worker: typeof globalThis) {
 		this.proxy = coincident(worker) as WorkerProxy;
@@ -87,6 +85,9 @@ export class SQLocalProcessor {
 					this.init();
 				}
 			};
+
+			this.userFunctions.forEach(this.initUserFunction);
+			this.emitMessage({ type: 'event', event: 'connect' });
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
@@ -95,12 +96,9 @@ export class SQLocalProcessor {
 			});
 
 			this.destroy();
-			return;
+		} finally {
+			await this.initMutex.unlock();
 		}
-
-		this.userFunctions.forEach(this.initUserFunction);
-		this.emitMessage({ type: 'event', event: 'connect' });
-		await this.initMutex.unlock();
 	};
 
 	postMessage = async (
@@ -160,17 +158,6 @@ export class SQLocalProcessor {
 	): Promise<void> => {
 		if (!this.db) return;
 
-		const partOfTransaction =
-			(message.type === 'transaction' &&
-				(this.transactionKey === null ||
-					message.transactionKey === this.transactionKey)) ||
-			(message.type === 'query' &&
-				message.transactionKey === this.transactionKey);
-
-		if (!partOfTransaction) {
-			await this.transactionMutex.lock();
-		}
-
 		try {
 			const response: DataMessage = {
 				type: 'data',
@@ -180,17 +167,35 @@ export class SQLocalProcessor {
 
 			switch (message.type) {
 				case 'query':
-					const statementData = execOnDb(this.db, message);
-					response.data.push(statementData);
+					const partOfTransaction =
+						this.transactionKey !== null &&
+						this.transactionKey === message.transactionKey;
+
+					try {
+						if (!partOfTransaction) {
+							await this.transactionMutex.lock();
+						}
+						const statementData = execOnDb(this.db, message);
+						response.data.push(statementData);
+					} finally {
+						if (!partOfTransaction) {
+							await this.transactionMutex.unlock();
+						}
+					}
 					break;
 
 				case 'batch':
-					this.db.transaction((tx: Sqlite3Db) => {
-						for (let statement of message.statements) {
-							const statementData = execOnDb(tx, statement);
-							response.data.push(statementData);
-						}
-					});
+					try {
+						await this.transactionMutex.lock();
+						this.db.transaction((tx: Sqlite3Db) => {
+							for (let statement of message.statements) {
+								const statementData = execOnDb(tx, statement);
+								response.data.push(statementData);
+							}
+						});
+					} finally {
+						await this.transactionMutex.unlock();
+					}
 					break;
 
 				case 'transaction':
@@ -200,7 +205,11 @@ export class SQLocalProcessor {
 						this.db.exec({ sql: 'BEGIN' });
 					}
 
-					if (message.action === 'commit' || message.action === 'rollback') {
+					if (
+						(message.action === 'commit' || message.action === 'rollback') &&
+						this.transactionKey !== null &&
+						this.transactionKey === message.transactionKey
+					) {
 						const sql = message.action === 'commit' ? 'COMMIT' : 'ROLLBACK';
 						this.db.exec({ sql });
 						this.transactionKey = null;
@@ -216,10 +225,6 @@ export class SQLocalProcessor {
 				error,
 				queryKey: message.queryKey,
 			});
-		}
-
-		if (!partOfTransaction) {
-			await this.transactionMutex.unlock();
 		}
 	};
 
