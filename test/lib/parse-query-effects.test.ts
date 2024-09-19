@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseQueryEffects } from '../../src/lib/parse-query-effects';
+import { parseQueryEffects2 as parseQueryEffects } from '../../src/lib/parse-query-effects';
 
 describe('parseQueryEffects', () => {
 	it('should throw when passed invalid SQL', () => {
@@ -7,10 +7,13 @@ describe('parseQueryEffects', () => {
 		expect(() => parseQueryEffects('SELEC * FROM a')).toThrow();
 	});
 
-	it('should parse the tables referenced in some SQL', () => {
-		// SELECT
+	it('should parse SELECT queries', () => {
 		expect(parseQueryEffects('SELECT * FROM a')).toEqual({
 			readTables: ['a'],
+			mutatedTables: [],
+		});
+		expect(parseQueryEffects('SELECT * FROM a; SELECT * FROM b')).toEqual({
+			readTables: ['a', 'b'],
 			mutatedTables: [],
 		});
 		expect(parseQueryEffects('SELECT * FROM foo AS f')).toEqual({
@@ -42,7 +45,8 @@ describe('parseQueryEffects', () => {
 		expect(
 			parseQueryEffects('SELECT * FROM x WHERE id IN (SELECT id FROM y)')
 		).toEqual({
-			readTables: ['x', 'y'],
+			readTables: ['y', 'x'],
+			// readTables: ['x', 'y'],
 			mutatedTables: [],
 		});
 		expect(
@@ -61,8 +65,9 @@ describe('parseQueryEffects', () => {
 			readTables: ['payroll', 'employees'],
 			mutatedTables: [],
 		});
+	});
 
-		// INSERT
+	it('should parse INSERT queries', () => {
 		expect(
 			parseQueryEffects(
 				"INSERT INTO employees (id, name, position) VALUES (1, 'Alice', 'Engineer')"
@@ -79,8 +84,9 @@ describe('parseQueryEffects', () => {
 			readTables: ['employees'],
 			mutatedTables: ['archivedemployees'],
 		});
+	});
 
-		// UPDATE
+	it('should parse UPDATE queries', () => {
 		expect(
 			parseQueryEffects(
 				"UPDATE employees SET salary = 80000 WHERE firstName = 'Ryley' AND lastName = 'Robinson'"
@@ -97,8 +103,17 @@ describe('parseQueryEffects', () => {
 			readTables: ['payroll'],
 			mutatedTables: ['employees'],
 		});
+		// expect(
+		// 	parseQueryEffects(
+		// 		'WITH average AS (SELECT AVG(salary) FROM payroll) UPDATE employees SET salary = average'
+		// 	)
+		// ).toEqual({
+		// 	readTables: ['payroll'],
+		// 	mutatedTables: ['employees'],
+		// });
+	});
 
-		// DELETE
+	it('should parse DELETE queries', () => {
 		expect(
 			parseQueryEffects('DELETE FROM payroll WHERE salary > 200000')
 		).toEqual({

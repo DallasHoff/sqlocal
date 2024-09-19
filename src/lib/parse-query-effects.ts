@@ -1,4 +1,49 @@
 import { type FromClause, cstVisitor, parse } from 'sql-parser-cst';
+import { Parser } from 'node-sql-parser/build/sqlite.js';
+
+export function parseQueryEffects2(sql: string): {
+	readTables: string[];
+	mutatedTables: string[];
+} {
+	if (!sql) throw new Error('No SQL specified.');
+
+	const parser = new Parser();
+	const { tableList, ast } = parser.parse(sql);
+	const aliases = Array.isArray(ast)
+		? ast
+				.map((a) => {
+					return a.type === 'select'
+						? a.with?.map((cte) => cte.name.value) ?? []
+						: [];
+				})
+				.flat()
+		: ast.type === 'select'
+			? ast.with?.map((cte) => cte.name.value) ?? []
+			: [];
+
+	const readTables: string[] = [];
+	const mutatedTables: string[] = [];
+
+	tableList.forEach((table) => {
+		const [queryType, _, tableName] = table.split('::');
+
+		switch (queryType) {
+			case 'select':
+				readTables.push(tableName.toLowerCase());
+				break;
+			case 'update':
+			case 'delete':
+			case 'insert':
+				mutatedTables.push(tableName.toLowerCase());
+				break;
+		}
+	});
+
+	return {
+		readTables: readTables.filter((t) => !aliases.some((a) => a === t)),
+		mutatedTables: mutatedTables.filter((t) => !aliases.some((a) => a === t)),
+	};
+}
 
 export function parseQueryEffects(sql: string): {
 	readTables: string[];
