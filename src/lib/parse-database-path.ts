@@ -1,4 +1,11 @@
-export function parseDatabasePath(path: string) {
+type DatabasePathInfo = {
+	directories: string[];
+	fileName: string;
+	tempFileNames: string[];
+	getDirectoryHandle: () => Promise<FileSystemDirectoryHandle>;
+};
+
+export function parseDatabasePath(path: string): DatabasePathInfo {
 	const directories = path.split(/[\\/]/).filter((part) => part !== '');
 	const fileName = directories.pop();
 

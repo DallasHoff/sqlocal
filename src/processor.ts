@@ -148,7 +148,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected editConfig = (message: ConfigMessage) => {
+	protected editConfig = (message: ConfigMessage): void => {
 		this.config = message.config;
 		this.init();
 	};
