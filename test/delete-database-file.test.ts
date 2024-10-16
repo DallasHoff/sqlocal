@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
+import { sleep } from './test-utils/sleep.js';
 
 describe('deleteDatabaseFile', () => {
 	it('should delete the database file', async () => {
@@ -80,5 +81,41 @@ describe('deleteDatabaseFile', () => {
 
 		const num2 = await db.sql`SELECT double(2) AS num`;
 		expect(num2).toEqual([{ num: 4 }]);
+	});
+
+	it('should not interrupt a transaction with database deletion', async () => {
+		const { sql, transaction, deleteDatabaseFile, destroy } = new SQLocal(
+			'delete-db-transaction-test.sqlite3'
+		);
+		const createTable = async () => {
+			await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
+		};
+
+		const order: number[] = [];
+
+		await createTable();
+		await Promise.all([
+			transaction(async (tx) => {
+				order.push(1);
+				await tx.sql`INSERT INTO nums (num) VALUES (1)`;
+				await sleep(100);
+				order.push(3);
+				await tx.sql`INSERT INTO nums (num) VALUES (3)`;
+			}),
+			(async () => {
+				await sleep(50);
+				order.push(2);
+				await deleteDatabaseFile();
+				await createTable();
+				await sql`INSERT INTO nums (num) VALUES (2)`;
+			})(),
+		]);
+
+		const data = await sql`SELECT * FROM nums`;
+		expect(data).toEqual([{ num: 2 }]);
+		expect(order).toEqual([1, 2, 3]);
+
+		await deleteDatabaseFile();
+		await destroy();
 	});
 });

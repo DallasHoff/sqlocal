@@ -317,19 +317,25 @@ export class SQLocal {
 			query: Transaction['query'];
 		}) => Promise<Result>
 	): Promise<Result> => {
-		const tx = await this.beginTransaction();
+		return await mutationLock('exclusive', false, this.config, async () => {
+			let tx: Transaction | undefined;
+			this.bypassMutationLock = true;
 
-		try {
-			const result = await transaction({
-				sql: tx.sql,
-				query: tx.query,
-			});
-			await tx.commit();
-			return result;
-		} catch (err) {
-			await tx.rollback();
-			throw err;
-		}
+			try {
+				tx = await this.beginTransaction();
+				const result = await transaction({
+					sql: tx.sql,
+					query: tx.query,
+				});
+				await tx.commit();
+				return result;
+			} catch (err) {
+				await tx?.rollback();
+				throw err;
+			} finally {
+				this.bypassMutationLock = false;
+			}
+		});
 	};
 
 	createCallbackFunction = async (

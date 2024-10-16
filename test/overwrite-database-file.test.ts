@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
+import { sleep } from './test-utils/sleep.js';
 
 describe('overwriteDatabaseFile', () => {
 	it('should replace the contents of a database', async () => {
@@ -102,5 +103,44 @@ describe('overwriteDatabaseFile', () => {
 
 		const num2 = await db.sql`SELECT double(2) AS num`;
 		expect(num2).toEqual([{ num: 4 }]);
+	});
+
+	it('should not interrupt a transaction with database overwrite', async () => {
+		const {
+			sql,
+			transaction,
+			getDatabaseFile,
+			overwriteDatabaseFile,
+			deleteDatabaseFile,
+			destroy,
+		} = new SQLocal('overwrite-test-db-transaction.sqlite3');
+
+		const order: number[] = [];
+
+		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
+		const dbFile = await getDatabaseFile();
+
+		await Promise.all([
+			transaction(async (tx) => {
+				order.push(1);
+				await tx.sql`INSERT INTO nums (num) VALUES (1)`;
+				await sleep(100);
+				order.push(3);
+				await tx.sql`INSERT INTO nums (num) VALUES (3)`;
+			}),
+			(async () => {
+				await sleep(50);
+				order.push(2);
+				await overwriteDatabaseFile(dbFile);
+				await sql`INSERT INTO nums (num) VALUES (2)`;
+			})(),
+		]);
+
+		const data = await sql`SELECT * FROM nums`;
+		expect(data).toEqual([{ num: 2 }]);
+		expect(order).toEqual([1, 2, 3]);
+
+		await deleteDatabaseFile();
+		await destroy();
 	});
 });
