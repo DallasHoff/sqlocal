@@ -58,6 +58,10 @@ export default defineConfig({
 						link: '/api/overwritedatabasefile',
 					},
 					{
+						text: 'deleteDatabaseFile',
+						link: '/api/deletedatabasefile',
+					},
+					{
 						text: 'createCallbackFunction',
 						link: '/api/createcallbackfunction',
 					},
