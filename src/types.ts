@@ -117,7 +117,7 @@ export type ConfigMessage = {
 export type ImportMessage = {
 	type: 'import';
 	queryKey: QueryKey;
-	database: ArrayBuffer | Uint8Array;
+	database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
 };
 export type GetInfoMessage = {
 	type: 'getinfo';

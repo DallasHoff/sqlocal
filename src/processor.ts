@@ -321,11 +321,23 @@ export class SQLocalProcessor {
 			return;
 		}
 
+		let data:
+			| ArrayBuffer
+			| Uint8Array
+			| (() => Promise<Uint8Array | undefined>);
+
+		if (database instanceof ReadableStream) {
+			const databaseReader = database.getReader();
+			data = async () => {
+				const chunk = await databaseReader.read();
+				return chunk.value;
+			};
+		} else {
+			data = database;
+		}
+
 		try {
-			await this.sqlite3.oo1.OpfsDb.importDb(
-				this.config.databasePath,
-				database
-			);
+			await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
 			await this.init();
 			this.emitMessage({
 				type: 'success',
