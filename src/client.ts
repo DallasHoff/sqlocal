@@ -369,7 +369,12 @@ export class SQLocal {
 	};
 
 	overwriteDatabaseFile = async (
-		databaseFile: File | Blob | ArrayBuffer | Uint8Array
+		databaseFile:
+			| File
+			| Blob
+			| ArrayBuffer
+			| Uint8Array
+			| ReadableStream<Uint8Array>
 	): Promise<void> => {
 		let database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
 

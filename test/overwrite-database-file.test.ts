@@ -18,12 +18,34 @@ describe('overwriteDatabaseFile', async () => {
 	});
 
 	it('should replace the contents of a database', async () => {
-		const db2File = await db2.getDatabaseFile();
-		await db1.overwriteDatabaseFile(db2File);
+		const lettersFile = await db1.getDatabaseFile();
+		const numsFile = await db2.getDatabaseFile();
+		const letters = [{ letter: 'a' }, { letter: 'b' }, { letter: 'c' }];
+		const nums = [{ num: 1 }, { num: 2 }, { num: 3 }];
 
-		const letters = db1.sql`SELECT * FROM letters`;
-		await expect(letters).rejects.toThrow();
-		const nums = db1.sql`SELECT * FROM nums`;
-		await expect(nums).resolves.toEqual([{ num: 1 }, { num: 2 }, { num: 3 }]);
+		// With a File
+		await db1.overwriteDatabaseFile(numsFile);
+
+		const letters1 = db1.sql`SELECT * FROM letters`;
+		await expect(letters1).rejects.toThrow();
+		const nums1 = db1.sql`SELECT * FROM nums`;
+		await expect(nums1).resolves.toEqual(nums);
+
+		// With a ReadableStream
+		await db1.overwriteDatabaseFile(lettersFile.stream());
+
+		const letters2 = db1.sql`SELECT * FROM letters`;
+		await expect(letters2).resolves.toEqual(letters);
+		const nums2 = db1.sql`SELECT * FROM nums`;
+		await expect(nums2).rejects.toThrow();
+
+		// With an ArrayBuffer
+		const numsBuffer = await numsFile.arrayBuffer();
+		await db1.overwriteDatabaseFile(numsBuffer);
+
+		const letters3 = db1.sql`SELECT * FROM letters`;
+		await expect(letters3).rejects.toThrow();
+		const nums3 = db1.sql`SELECT * FROM nums`;
+		await expect(nums3).resolves.toEqual(nums);
 	});
 });
