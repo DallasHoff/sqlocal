@@ -9,7 +9,7 @@ Access or destructure `transaction` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { transaction } = new SQLocal('database.sqlite3');
+const { transaction } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->

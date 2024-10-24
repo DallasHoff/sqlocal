@@ -9,7 +9,7 @@ Access or destructure `getDatabaseFile` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { getDatabaseFile } = new SQLocal('database.sqlite3');
+const { getDatabaseFile } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->

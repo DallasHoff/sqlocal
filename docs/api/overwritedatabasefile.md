@@ -9,7 +9,7 @@ Access or destructure `overwriteDatabaseFile` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { overwriteDatabaseFile } = new SQLocal('database.sqlite3');
+const { overwriteDatabaseFile } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->

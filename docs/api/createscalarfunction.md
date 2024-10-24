@@ -9,7 +9,7 @@ Access or destructure `createScalarFunction` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { createScalarFunction } = new SQLocal('database.sqlite3');
+const { createScalarFunction } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->

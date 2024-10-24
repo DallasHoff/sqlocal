@@ -9,7 +9,7 @@ Access or destructure `destroy` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { destroy } = new SQLocal('database.sqlite3');
+const { destroy } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->

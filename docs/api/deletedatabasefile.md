@@ -9,7 +9,7 @@ Access or destructure `deleteDatabaseFile` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { deleteDatabaseFile } = new SQLocal('database.sqlite3');
+const { deleteDatabaseFile } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->

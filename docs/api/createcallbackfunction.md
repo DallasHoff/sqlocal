@@ -9,7 +9,7 @@ Access or destructure `createCallbackFunction` from the `SQLocal` client.
 ```javascript
 import { SQLocal } from 'sqlocal';
 
-export const { createCallbackFunction } = new SQLocal('database.sqlite3');
+const { createCallbackFunction } = new SQLocal('database.sqlite3');
 ```
 
 <!-- @include: ../_partials/initialization-note.md -->
