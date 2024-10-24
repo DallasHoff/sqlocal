@@ -19,9 +19,11 @@ import type {
 	ConfigMessage,
 	QueryKey,
 	TransactionMessage,
+	DeleteMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
+import { parseDatabasePath } from './lib/parse-database-path.js';
 
 export class SQLocalProcessor {
 	protected sqlite3?: Sqlite3;
@@ -35,6 +37,7 @@ export class SQLocalProcessor {
 	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
+	protected reinitChannel: BroadcastChannel | undefined;
 
 	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
@@ -74,7 +77,17 @@ export class SQLocalProcessor {
 				);
 			}
 
+			this.reinitChannel = new BroadcastChannel(
+				`_sqlocal_reinit_(${databasePath})`
+			);
+			this.reinitChannel.onmessage = (message: MessageEvent<QueryKey>) => {
+				if (this.config.clientKey !== message.data) {
+					this.init();
+				}
+			};
+
 			this.userFunctions.forEach(this.initUserFunction);
+			this.emitMessage({ type: 'event', event: 'connect' });
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
@@ -115,6 +128,9 @@ export class SQLocalProcessor {
 			case 'import':
 				this.importDb(message);
 				break;
+			case 'delete':
+				this.deleteDb(message);
+				break;
 			case 'destroy':
 				this.destroy(message);
 				break;
@@ -132,7 +148,7 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected editConfig = (message: ConfigMessage) => {
+	protected editConfig = (message: ConfigMessage): void => {
 		this.config = message.config;
 		this.init();
 	};
@@ -309,6 +325,7 @@ export class SQLocalProcessor {
 		if (!this.sqlite3 || !this.config.databasePath) return;
 
 		const { queryKey, database } = message;
+		let errored = false;
 
 		if (!('opfs' in this.sqlite3)) {
 			this.emitMessage({
@@ -337,16 +354,67 @@ export class SQLocalProcessor {
 		}
 
 		try {
+			this.destroy();
 			await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
-			await this.init();
-			this.emitMessage({
-				type: 'success',
-				queryKey,
-			});
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
 				error,
+				queryKey,
+			});
+			errored = true;
+		} finally {
+			await this.init();
+		}
+
+		if (!errored) {
+			this.emitMessage({
+				type: 'success',
+				queryKey,
+			});
+		}
+	};
+
+	protected deleteDb = async (message: DeleteMessage): Promise<void> => {
+		if (!this.config.databasePath) return;
+
+		const { queryKey } = message;
+		let errored = false;
+
+		try {
+			const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
+				this.config.databasePath
+			);
+			const dirHandle = await getDirectoryHandle();
+			const fileNames = [fileName, ...tempFileNames];
+
+			this.destroy();
+
+			await Promise.all(
+				fileNames.map(async (name) => {
+					return dirHandle.removeEntry(name).catch((err) => {
+						if (
+							!(err instanceof DOMException && err.name === 'NotFoundError')
+						) {
+							throw err;
+						}
+					});
+				})
+			);
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				error,
+				queryKey,
+			});
+			errored = true;
+		} finally {
+			await this.init();
+		}
+
+		if (!errored) {
+			this.emitMessage({
+				type: 'success',
 				queryKey,
 			});
 		}
@@ -358,6 +426,11 @@ export class SQLocalProcessor {
 			this.db.close();
 			this.db = undefined;
 			this.dbStorageType = undefined;
+		}
+
+		if (this.reinitChannel) {
+			this.reinitChannel.close();
+			this.reinitChannel = undefined;
 		}
 
 		if (message) {

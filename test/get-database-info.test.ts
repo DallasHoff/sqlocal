@@ -2,13 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
 describe('getDatabaseInfo', () => {
-	const { sql, getDatabaseInfo } = new SQLocal(
+	const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(
 		'get-database-info-test.sqlite3'
 	);
 
 	afterEach(async () => {
-		const opfs = await navigator.storage.getDirectory();
-		await opfs.removeEntry('get-database-info-test.sqlite3');
+		await deleteDatabaseFile();
 	});
 
 	it('should return information about the database', async () => {

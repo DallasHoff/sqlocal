@@ -53,9 +53,15 @@ export type ClientConfig = {
 	databasePath: string;
 	readOnly?: boolean;
 	verbose?: boolean;
+	onConnect?: () => void;
 };
 
-export type ProcessorConfig = Partial<ClientConfig>;
+export type ProcessorConfig = {
+	databasePath?: string;
+	readOnly?: boolean;
+	verbose?: boolean;
+	clientKey?: QueryKey;
+};
 
 export type DatabaseInfo = {
 	databasePath?: string;
@@ -80,6 +86,7 @@ export type InputMessage =
 	| ConfigMessage
 	| ImportMessage
 	| GetInfoMessage
+	| DeleteMessage
 	| DestroyMessage;
 export type QueryMessage = {
 	type: 'query';
@@ -123,6 +130,10 @@ export type GetInfoMessage = {
 	type: 'getinfo';
 	queryKey: QueryKey;
 };
+export type DeleteMessage = {
+	type: 'delete';
+	queryKey: QueryKey;
+};
 export type DestroyMessage = {
 	type: 'destroy';
 	queryKey: QueryKey;
@@ -133,7 +144,8 @@ export type OutputMessage =
 	| ErrorMessage
 	| DataMessage
 	| CallbackMessage
-	| InfoMessage;
+	| InfoMessage
+	| EventMessage;
 export type SuccessMessage = {
 	type: 'success';
 	queryKey: QueryKey;
@@ -160,6 +172,10 @@ export type InfoMessage = {
 	type: 'info';
 	queryKey: QueryKey;
 	info: DatabaseInfo;
+};
+export type EventMessage = {
+	type: 'event';
+	event: 'connect';
 };
 
 // User functions

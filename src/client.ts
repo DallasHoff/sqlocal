@@ -21,18 +21,22 @@ import type {
 	TransactionMessage,
 	StatementInput,
 	Transaction,
+	DeleteMessage,
 } from './types.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
+import { parseDatabasePath } from './lib/parse-database-path.js';
+import { mutationLock } from './lib/mutation-lock.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
+	protected clientKey: QueryKey;
 	protected worker?: Worker;
-	protected proxy?: WorkerProxy;
 	protected isWorkerDestroyed: boolean = false;
+	protected bypassMutationLock: boolean = false;
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
 	protected queriesInProgress = new Map<
 		QueryKey,
@@ -42,11 +46,23 @@ export class SQLocal {
 		]
 	>();
 
+	protected proxy?: WorkerProxy;
+	protected reinitChannel: BroadcastChannel;
+
 	constructor(databasePath: string);
 	constructor(config: ClientConfig);
 	constructor(config: string | ClientConfig) {
-		this.config =
+		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
+		this.config = clientConfig;
+		this.clientKey = getQueryKey();
+
+		const { onConnect, ...commonConfig } = clientConfig;
+		const processorConfig = { ...commonConfig, clientKey: this.clientKey };
+
+		this.reinitChannel = new BroadcastChannel(
+			`_sqlocal_reinit_(${clientConfig.databasePath})`
+		);
 
 		if (typeof globalThis.Worker !== 'undefined') {
 			this.worker = new Worker(new URL('./worker', import.meta.url), {
@@ -57,7 +73,7 @@ export class SQLocal {
 			this.proxy = coincident(this.worker) as WorkerProxy;
 			this.worker.postMessage({
 				type: 'config',
-				config: this.config,
+				config: processorConfig,
 			} satisfies ConfigMessage);
 		}
 	}
@@ -93,61 +109,76 @@ export class SQLocal {
 					userCallback(...(message.args ?? []));
 				}
 				break;
+
+			case 'event':
+				this.config.onConnect?.();
+				break;
 		}
 	};
 
-	protected createQuery = (
+	protected createQuery = async (
 		message: OmitQueryKey<
 			| QueryMessage
 			| BatchMessage
 			| TransactionMessage
-			| DestroyMessage
 			| FunctionMessage
 			| ImportMessage
 			| GetInfoMessage
+			| DeleteMessage
+			| DestroyMessage
 		>
 	): Promise<OutputMessage> => {
-		if (!this.worker) {
-			throw new Error(
-				'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
-			);
-		}
+		return await mutationLock(
+			'shared',
+			this.bypassMutationLock ||
+				message.type === 'import' ||
+				message.type === 'delete',
+			this.config,
+			async () => {
+				if (!this.worker) {
+					throw new Error(
+						'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
+					);
+				}
 
-		if (this.isWorkerDestroyed === true) {
-			throw new Error(
-				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
-			);
-		}
+				if (this.isWorkerDestroyed === true) {
+					throw new Error(
+						'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
+					);
+				}
 
-		const queryKey = getQueryKey();
+				const queryKey = getQueryKey();
 
-		switch (message.type) {
-			case 'import':
-				this.worker.postMessage(
-					{
-						...message,
-						queryKey,
-					} satisfies ImportMessage,
-					[message.database]
-				);
-				break;
-			default:
-				this.worker.postMessage({
-					...message,
-					queryKey,
-				} satisfies
-					| QueryMessage
-					| BatchMessage
-					| TransactionMessage
-					| DestroyMessage
-					| FunctionMessage
-					| GetInfoMessage);
-				break;
-		}
+				switch (message.type) {
+					case 'import':
+						this.worker.postMessage(
+							{
+								...message,
+								queryKey,
+							} satisfies ImportMessage,
+							[message.database]
+						);
+						break;
+					default:
+						this.worker.postMessage({
+							...message,
+							queryKey,
+						} satisfies
+							| QueryMessage
+							| BatchMessage
+							| TransactionMessage
+							| FunctionMessage
+							| GetInfoMessage
+							| DeleteMessage
+							| DestroyMessage);
+						break;
+				}
 
-		return new Promise<OutputMessage>((resolve, reject) => {
-			this.queriesInProgress.set(queryKey, [resolve, reject]);
-		});
+				return await new Promise<OutputMessage>((resolve, reject) => {
+					this.queriesInProgress.set(queryKey, [resolve, reject]);
+				});
+			}
+		);
 	};
 
 	protected exec = async (
@@ -286,19 +317,25 @@ export class SQLocal {
 			query: Transaction['query'];
 		}) => Promise<Result>
 	): Promise<Result> => {
-		const tx = await this.beginTransaction();
+		return await mutationLock('exclusive', false, this.config, async () => {
+			let tx: Transaction | undefined;
+			this.bypassMutationLock = true;
 
-		try {
-			const result = await transaction({
-				sql: tx.sql,
-				query: tx.query,
-			});
-			await tx.commit();
-			return result;
-		} catch (err) {
-			await tx.rollback();
-			throw err;
-		}
+			try {
+				tx = await this.beginTransaction();
+				const result = await transaction({
+					sql: tx.sql,
+					query: tx.query,
+				});
+				await tx.commit();
+				return result;
+			} catch (err) {
+				await tx?.rollback();
+				throw err;
+			} finally {
+				this.bypassMutationLock = false;
+			}
+		});
 	};
 
 	createCallbackFunction = async (
@@ -340,24 +377,15 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		const path = this.config.databasePath
-			.split(/[\\/]/)
-			.filter((part) => part !== '');
-		const fileName = path.pop();
-
+		const { directories, fileName, getDirectoryHandle } = parseDatabasePath(
+			this.config.databasePath
+		);
 		const tempFileName = `backup-${Date.now()}--${fileName}`;
-		const tempFilePath = `${path.join('/')}/${tempFileName}`;
-
-		if (!fileName) {
-			throw new Error('Failed to parse the database file name.');
-		}
+		const tempFilePath = `${directories.join('/')}/${tempFileName}`;
 
 		await this.exec('VACUUM INTO ?', [tempFilePath]);
 
-		let dirHandle = await navigator.storage.getDirectory();
-		for (let dirName of path)
-			dirHandle = await dirHandle.getDirectoryHandle(dirName);
-
+		const dirHandle = await getDirectoryHandle();
 		const fileHandle = await dirHandle.getFileHandle(tempFileName);
 		const file = await fileHandle.getFile();
 		const fileBuffer = await file.arrayBuffer();
@@ -374,7 +402,8 @@ export class SQLocal {
 			| Blob
 			| ArrayBuffer
 			| Uint8Array
-			| ReadableStream<Uint8Array>
+			| ReadableStream<Uint8Array>,
+		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
 		let database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
 
@@ -384,9 +413,43 @@ export class SQLocal {
 			database = databaseFile;
 		}
 
-		await this.createQuery({
-			type: 'import',
-			database,
+		await mutationLock('exclusive', false, this.config, async () => {
+			try {
+				await this.createQuery({
+					type: 'import',
+					database,
+				});
+
+				if (typeof beforeUnlock === 'function') {
+					this.bypassMutationLock = true;
+					await beforeUnlock();
+				}
+
+				this.reinitChannel.postMessage(this.clientKey);
+			} finally {
+				this.bypassMutationLock = false;
+			}
+		});
+	};
+
+	deleteDatabaseFile = async (
+		beforeUnlock?: () => void | Promise<void>
+	): Promise<void> => {
+		await mutationLock('exclusive', false, this.config, async () => {
+			try {
+				await this.createQuery({
+					type: 'delete',
+				});
+
+				if (typeof beforeUnlock === 'function') {
+					this.bypassMutationLock = true;
+					await beforeUnlock();
+				}
+
+				this.reinitChannel.postMessage(this.clientKey);
+			} finally {
+				this.bypassMutationLock = false;
+			}
 		});
 	};
 
@@ -395,6 +458,7 @@ export class SQLocal {
 		this.worker?.removeEventListener('message', this.processMessageEvent);
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
+		this.reinitChannel.close();
 		this.worker?.terminate();
 		this.isWorkerDestroyed = true;
 	};

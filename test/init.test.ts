@@ -3,7 +3,7 @@ import { SQLocal } from '../src/index.js';
 
 describe('init', () => {
 	const databasePath = 'init-test.sqlite3';
-	const { sql } = new SQLocal({ databasePath });
+	const { sql, deleteDatabaseFile } = new SQLocal({ databasePath });
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
@@ -15,8 +15,7 @@ describe('init', () => {
 	});
 
 	afterAll(async () => {
-		const opfs = await navigator.storage.getDirectory();
-		await opfs.removeEntry(databasePath);
+		await deleteDatabaseFile();
 	});
 
 	it('should be cross-origin isolated', () => {
@@ -31,7 +30,7 @@ describe('init', () => {
 	});
 
 	it('should enable read-only mode', async () => {
-		const { sql } = new SQLocal({
+		const { sql, destroy } = new SQLocal({
 			databasePath,
 			readOnly: true,
 		});
@@ -40,18 +39,15 @@ describe('init', () => {
 			await sql`INSERT INTO nums (num) VALUES (1)`;
 		};
 		await expect(write).rejects.toThrowError(
-			'SQLITE_IOERR_WRITE: sqlite3 result code 778: disk I/O error'
+			'SQLITE_READONLY: sqlite3 result code 8: attempt to write a readonly database'
 		);
 
-		// TODO: regression in sqlite-wasm
-		// https://www.sqlite.org/forum/forumpost/cf37d5ff11
+		const read = async () => {
+			return await sql`SELECT * FROM nums`;
+		};
+		const data = await read();
+		expect(data).toEqual([{ num: 0 }]);
 
-		// const read = async () => {
-		// 	return await sql`SELECT * FROM nums`;
-		// };
-		// const data = await read();
-		// expect(data).toEqual([{ num: 0 }]);
-
-		// await destroy();
+		await destroy();
 	});
 });

@@ -40,3 +40,13 @@ const fileInput = document.querySelector('input[type="file"]');
 const databaseFile = fileInput.files[0];
 await overwriteDatabaseFile(databaseFile);
 ```
+
+The method also accepts a second, optional argument: a callback function to run after the overwrite but before connections from other SQLocal client instances are allowed to access the new database, a good time to run migrations.
+
+```javascript
+await overwriteDatabaseFile(databaseFile, async () => {
+	// Run your migrations
+});
+```
+
+Since calling `overwriteDatabaseFile` will reset all connections to the database file, the [`onConnect` hook](../guide/setup.md#options) will re-run on any SQLocal clients connected to the database when it is overwritten. The client that initiated the overwrite will have its `onConnect` hook run first, before the method's callback, and the other clients' `onConnect` hooks will run after the callback.

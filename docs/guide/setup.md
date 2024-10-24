@@ -64,12 +64,14 @@ export const db = new SQLocal({
 	databasePath: 'database.sqlite3',
 	readOnly: true,
 	verbose: true,
+	onConnect: () => {},
 });
 ```
 
 - **`databasePath`** (`string`) - The file name for the database file. This is the only required option.
 - **`readOnly`** (`boolean`) - If `true`, connect to the database in read-only mode. Attempts to run queries that would mutate the database will throw an error.
 - **`verbose`** (`boolean`) - If `true`, any SQL executed on the database will be logged to the console.
+- **`onConnect`** (`function`) - A callback that will be run when the client has connected to the database. This will happen at initialization and after [`overwriteDatabaseFile`](/api/overwritedatabasefile) or [`deleteDatabaseFile`](/api/deletedatabasefile) is called on any SQLocal client connected to the same database. This callback is a good place to set up any `PRAGMA` settings, temporary tables, views, or triggers for the connection.
 
 ## Vite Configuration
 
