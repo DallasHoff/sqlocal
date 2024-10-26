@@ -2,13 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
 
-describe('deleteDatabaseFile', () => {
+describe.each([
+	{ type: 'opfs', path: 'delete-db-test.sqlite3' },
+	// { type: 'memory', path: ':memory:' }, // TODO
+])('deleteDatabaseFile ($type)', ({ path }) => {
 	it('should delete the database file', async () => {
 		let onConnectCalled = false;
 		let beforeUnlockCalled = false;
 
 		const { sql, deleteDatabaseFile, destroy } = new SQLocal({
-			databasePath: 'delete-db-test.sqlite3',
+			databasePath: path,
 			onConnect: () => (onConnectCalled = true),
 		});
 
@@ -46,11 +49,11 @@ describe('deleteDatabaseFile', () => {
 		let onConnectCalled2 = false;
 
 		const db1 = new SQLocal({
-			databasePath: 'delete-db-shared-test.sqlite3',
+			databasePath: path,
 			onConnect: () => (onConnectCalled1 = true),
 		});
 		const db2 = new SQLocal({
-			databasePath: 'delete-db-shared-test.sqlite3',
+			databasePath: path,
 			onConnect: () => (onConnectCalled2 = true),
 		});
 
@@ -71,7 +74,7 @@ describe('deleteDatabaseFile', () => {
 	});
 
 	it('should restore user functions', async () => {
-		const db = new SQLocal('delete-db-test-functions.sqlite3');
+		const db = new SQLocal(path);
 		await db.createScalarFunction('double', (num: number) => num * 2);
 
 		const num1 = await db.sql`SELECT double(1) AS num`;
@@ -81,12 +84,12 @@ describe('deleteDatabaseFile', () => {
 
 		const num2 = await db.sql`SELECT double(2) AS num`;
 		expect(num2).toEqual([{ num: 4 }]);
+
+		await db.destroy();
 	});
 
 	it('should not interrupt a transaction with database deletion', async () => {
-		const { sql, transaction, deleteDatabaseFile, destroy } = new SQLocal(
-			'delete-db-transaction-test.sqlite3'
-		);
+		const { sql, transaction, deleteDatabaseFile, destroy } = new SQLocal(path);
 		const createTable = async () => {
 			await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
 		};

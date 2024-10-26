@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe('getDatabaseFile', () => {
-	const fileName = 'get-database-file-test.sqlite3';
+describe.each([
+	{ type: 'opfs', path: 'get-database-file-test.sqlite3' },
+	// { type: 'memory', path: ':memory:' }, // TODO
+])('getDatabaseFile ($type)', ({ path, type }) => {
+	const fileName = path;
 	const paths = [[], [''], ['top'], ['one', 'two']];
 
 	it('should return the requested database file', async () => {
@@ -27,7 +30,8 @@ describe('getDatabaseFile', () => {
 	});
 
 	it('should not throw when requested database has not been created', async () => {
-		const { getDatabaseFile } = new SQLocal('blank.sqlite3');
+		const databasePath = type === 'opfs' ? 'new.sqlite3' : path;
+		const { getDatabaseFile } = new SQLocal(databasePath);
 		await expect(getDatabaseFile()).resolves.not.toThrow();
 	});
 });

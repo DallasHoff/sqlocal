@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe('getDatabaseInfo', () => {
-	const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(
-		'get-database-info-test.sqlite3'
-	);
+describe.each([
+	{ type: 'opfs', path: 'get-database-info-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('getDatabaseInfo ($type)', ({ type, path }) => {
+	const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(path);
 
 	afterEach(async () => {
 		await deleteDatabaseFile();
@@ -13,9 +14,9 @@ describe('getDatabaseInfo', () => {
 	it('should return information about the database', async () => {
 		const info1 = await getDatabaseInfo();
 		expect(info1).toEqual({
-			databasePath: 'get-database-info-test.sqlite3',
+			databasePath: path,
 			databaseSizeBytes: 0,
-			storageType: 'opfs',
+			storageType: type,
 			persisted: false,
 		});
 

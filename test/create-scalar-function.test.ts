@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe('createScalarFunction', () => {
-	const { sql, createScalarFunction } = new SQLocal(
-		'create-scalar-function-test.sqlite3'
-	);
+describe.each([
+	{ type: 'opfs', path: 'create-scalar-function-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('createScalarFunction ($type)', ({ path }) => {
+	const { sql, createScalarFunction } = new SQLocal(path);
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE nums (num REAL NOT NULL)`;

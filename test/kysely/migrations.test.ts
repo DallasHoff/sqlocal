@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { SQLocalKysely } from '../../src/kysely/index.js';
 import { Kysely, Migrator } from 'kysely';
 
-describe('kysely migrations', () => {
-	const databasePath = 'kysely-migrations-test.sqlite3';
-	const { dialect, deleteDatabaseFile } = new SQLocalKysely(databasePath);
+describe.each([
+	{ type: 'opfs', path: 'kysely-migrations-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('kysely migrations ($type)', ({ path }) => {
+	const { dialect, deleteDatabaseFile } = new SQLocalKysely(path);
 	const db = new Kysely({ dialect });
 
 	const migrator = new Migrator({

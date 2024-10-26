@@ -5,10 +5,11 @@ import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { desc, eq, relations, sql as dsql } from 'drizzle-orm';
 import { sleep } from '../test-utils/sleep.js';
 
-describe('drizzle driver', () => {
-	const { sql, driver, batchDriver, transaction } = new SQLocalDrizzle(
-		'drizzle-driver-test.sqlite3'
-	);
+describe.each([
+	{ type: 'opfs', path: 'drizzle-driver-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('drizzle driver ($type)', ({ path }) => {
+	const { sql, driver, batchDriver, transaction } = new SQLocalDrizzle(path);
 
 	const groceries = sqliteTable('groceries', {
 		id: int('id').primaryKey({ autoIncrement: true }),

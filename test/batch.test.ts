@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe('batch', () => {
-	const { sql, batch } = new SQLocal('batch-test.sqlite3');
+describe.each([
+	{ type: 'opfs', path: 'batch-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('batch ($type)', ({ path }) => {
+	const { sql, batch } = new SQLocal(path);
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;

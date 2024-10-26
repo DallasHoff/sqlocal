@@ -2,15 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
 
-describe('overwriteDatabaseFile', () => {
+describe.each([
+	{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
+	// { type: 'memory', path: ':memory:' }, // TODO
+])('overwriteDatabaseFile ($type)', ({ path, type }) => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();
 		const db1 = new SQLocal({
-			databasePath: 'overwrite-test-db1.sqlite3',
+			databasePath: type === 'opfs' ? 'overwrite-test-db1.sqlite3' : path,
 			onConnect: () => eventValues.add('connect1'),
 		});
 		const db2 = new SQLocal({
-			databasePath: 'overwrite-test-db2.sqlite3',
+			databasePath: type === 'opfs' ? 'overwrite-test-db2.sqlite3' : path,
 			onConnect: () => eventValues.add('connect2'),
 		});
 
@@ -70,11 +73,11 @@ describe('overwriteDatabaseFile', () => {
 	it('should notify other instances of an overwrite', async () => {
 		const eventValues = new Set<string>();
 		const db1 = new SQLocal({
-			databasePath: 'overwrite-test-db-shared.sqlite3',
+			databasePath: path,
 			onConnect: () => eventValues.add('connect1'),
 		});
 		const db2 = new SQLocal({
-			databasePath: 'overwrite-test-db-shared.sqlite3',
+			databasePath: path,
 			onConnect: () => eventValues.add('connect2'),
 		});
 
@@ -113,7 +116,7 @@ describe('overwriteDatabaseFile', () => {
 	});
 
 	it('should restore user functions', async () => {
-		const db = new SQLocal('overwrite-test-db-functions.sqlite3');
+		const db = new SQLocal(path);
 		await db.createScalarFunction('double', (num: number) => num * 2);
 
 		const num1 = await db.sql`SELECT double(1) AS num`;
@@ -124,6 +127,9 @@ describe('overwriteDatabaseFile', () => {
 
 		const num2 = await db.sql`SELECT double(2) AS num`;
 		expect(num2).toEqual([{ num: 4 }]);
+
+		await db.deleteDatabaseFile();
+		await db.destroy();
 	});
 
 	it('should not interrupt a transaction with database overwrite', async () => {
@@ -134,7 +140,7 @@ describe('overwriteDatabaseFile', () => {
 			overwriteDatabaseFile,
 			deleteDatabaseFile,
 			destroy,
-		} = new SQLocal('overwrite-test-db-transaction.sqlite3');
+		} = new SQLocal(path);
 
 		const order: number[] = [];
 
