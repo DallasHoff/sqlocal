@@ -86,8 +86,9 @@ export type InputMessage =
 	| TransactionMessage
 	| FunctionMessage
 	| ConfigMessage
-	| ImportMessage
 	| GetInfoMessage
+	| ImportMessage
+	| ExportMessage
 	| DeleteMessage
 	| DestroyMessage;
 export type QueryMessage = {
@@ -123,13 +124,17 @@ export type ConfigMessage = {
 	type: 'config';
 	config: ProcessorConfig;
 };
+export type GetInfoMessage = {
+	type: 'getinfo';
+	queryKey: QueryKey;
+};
 export type ImportMessage = {
 	type: 'import';
 	queryKey: QueryKey;
 	database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
 };
-export type GetInfoMessage = {
-	type: 'getinfo';
+export type ExportMessage = {
+	type: 'export';
 	queryKey: QueryKey;
 };
 export type DeleteMessage = {
@@ -145,6 +150,7 @@ export type OutputMessage =
 	| SuccessMessage
 	| ErrorMessage
 	| DataMessage
+	| BufferMessage
 	| CallbackMessage
 	| InfoMessage
 	| EventMessage;
@@ -164,6 +170,11 @@ export type DataMessage = {
 		columns: string[];
 		rows: unknown[] | unknown[][];
 	}[];
+};
+export type BufferMessage = {
+	type: 'buffer';
+	queryKey: QueryKey;
+	buffer: Uint8Array;
 };
 export type CallbackMessage = {
 	type: 'callback';

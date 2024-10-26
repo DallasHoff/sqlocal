@@ -23,6 +23,7 @@ import type {
 	Transaction,
 	DeleteMessage,
 	DatabasePath,
+	ExportMessage,
 } from './types.js';
 import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
@@ -93,8 +94,9 @@ export class SQLocal {
 		switch (message.type) {
 			case 'success':
 			case 'data':
-			case 'error':
+			case 'buffer':
 			case 'info':
+			case 'error':
 				if (message.queryKey && queries.has(message.queryKey)) {
 					const [resolve, reject] = queries.get(message.queryKey)!;
 					if (message.type === 'error') {
@@ -128,8 +130,9 @@ export class SQLocal {
 			| BatchMessage
 			| TransactionMessage
 			| FunctionMessage
-			| ImportMessage
 			| GetInfoMessage
+			| ImportMessage
+			| ExportMessage
 			| DeleteMessage
 			| DestroyMessage
 		>
@@ -175,6 +178,7 @@ export class SQLocal {
 							| TransactionMessage
 							| FunctionMessage
 							| GetInfoMessage
+							| ExportMessage
 							| DeleteMessage
 							| DestroyMessage);
 						break;
@@ -389,19 +393,33 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		const { directories, fileName, getDirectoryHandle } = parseDatabasePath(
-			this.config.databasePath
-		);
-		const tempFileName = `backup-${Date.now()}--${fileName}`;
-		const tempFilePath = `${directories.join('/')}/${tempFileName}`;
+		let fileName, fileBuffer;
+		const { storageType } = await this.getDatabaseInfo();
 
-		await this.exec('VACUUM INTO ?', [tempFilePath]);
+		if (storageType === 'opfs') {
+			const path = parseDatabasePath(this.config.databasePath);
+			const { directories, getDirectoryHandle } = path;
+			fileName = path.fileName;
+			const tempFileName = `backup-${Date.now()}--${fileName}`;
+			const tempFilePath = `${directories.join('/')}/${tempFileName}`;
 
-		const dirHandle = await getDirectoryHandle();
-		const fileHandle = await dirHandle.getFileHandle(tempFileName);
-		const file = await fileHandle.getFile();
-		const fileBuffer = await file.arrayBuffer();
-		await dirHandle.removeEntry(tempFileName);
+			await this.exec('VACUUM INTO ?', [tempFilePath]);
+
+			const dirHandle = await getDirectoryHandle();
+			const fileHandle = await dirHandle.getFileHandle(tempFileName);
+			const file = await fileHandle.getFile();
+			fileBuffer = await file.arrayBuffer();
+			await dirHandle.removeEntry(tempFileName);
+		} else {
+			const message = await this.createQuery({ type: 'export' });
+
+			if (message.type === 'buffer') {
+				fileName = 'database.sqlite3';
+				fileBuffer = message.buffer;
+			} else {
+				throw new Error('The database failed to export.');
+			}
+		}
 
 		return new File([fileBuffer], fileName, {
 			type: 'application/x-sqlite3',

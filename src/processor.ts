@@ -20,6 +20,7 @@ import type {
 	QueryKey,
 	TransactionMessage,
 	DeleteMessage,
+	ExportMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
@@ -132,6 +133,9 @@ export class SQLocalProcessor {
 				break;
 			case 'import':
 				this.importDb(message);
+				break;
+			case 'export':
+				this.exportDb(message);
 				break;
 			case 'delete':
 				this.deleteDb(message);
@@ -375,6 +379,31 @@ export class SQLocalProcessor {
 		if (!errored) {
 			this.emitMessage({
 				type: 'success',
+				queryKey,
+			});
+		}
+	};
+
+	protected exportDb = (message: ExportMessage): void => {
+		if (!this.sqlite3 || !this.db) return;
+
+		const { queryKey } = message;
+
+		try {
+			const buffer = this.sqlite3.capi.sqlite3_js_db_export(this.db);
+
+			this.emitMessage(
+				{
+					type: 'buffer',
+					queryKey,
+					buffer,
+				},
+				[buffer]
+			);
+		} catch (error) {
+			this.emitMessage({
+				type: 'error',
+				error,
 				queryKey,
 			});
 		}
