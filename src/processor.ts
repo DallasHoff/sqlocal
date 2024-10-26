@@ -41,8 +41,9 @@ export class SQLocalProcessor {
 
 	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
-	constructor(worker: typeof globalThis) {
-		this.proxy = coincident(worker) as WorkerProxy;
+	constructor(sameContext: boolean) {
+		const proxy = sameContext ? globalThis : coincident(globalThis);
+		this.proxy = proxy as WorkerProxy;
 		this.init();
 	}
 
@@ -102,11 +103,10 @@ export class SQLocalProcessor {
 	};
 
 	postMessage = async (
-		message: InputMessage | MessageEvent<InputMessage>
+		event: InputMessage | MessageEvent<InputMessage>,
+		_transfer?: Transferable
 	): Promise<void> => {
-		if (message instanceof MessageEvent) {
-			message = message.data;
-		}
+		const message = event instanceof MessageEvent ? event.data : event;
 
 		await this.initMutex.lock();
 

@@ -1,6 +1,6 @@
 import { SQLocalProcessor } from './processor.js';
 
-const processor = new SQLocalProcessor(self);
+const processor = new SQLocalProcessor(false);
 
 self.onmessage = (message) => {
 	processor.postMessage(message);

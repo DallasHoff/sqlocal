@@ -22,7 +22,9 @@ import type {
 	StatementInput,
 	Transaction,
 	DeleteMessage,
+	DatabasePath,
 } from './types.js';
+import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
@@ -34,8 +36,8 @@ import { mutationLock } from './lib/mutation-lock.js';
 export class SQLocal {
 	protected config: ClientConfig;
 	protected clientKey: QueryKey;
-	protected worker?: Worker;
-	protected isWorkerDestroyed: boolean = false;
+	protected processor?: SQLocalProcessor | Worker;
+	protected isDestroyed: boolean = false;
 	protected bypassMutationLock: boolean = false;
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
 	protected queriesInProgress = new Map<
@@ -49,9 +51,9 @@ export class SQLocal {
 	protected proxy?: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
 
-	constructor(databasePath: string);
+	constructor(databasePath: DatabasePath);
 	constructor(config: ClientConfig);
-	constructor(config: string | ClientConfig) {
+	constructor(config: DatabasePath | ClientConfig) {
 		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
 		this.config = clientConfig;
@@ -65,23 +67,23 @@ export class SQLocal {
 		);
 
 		if (typeof globalThis.Worker !== 'undefined') {
-			this.worker = new Worker(new URL('./worker', import.meta.url), {
+			this.processor = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
 			});
-			this.worker.addEventListener('message', this.processMessageEvent);
-
-			this.proxy = coincident(this.worker) as WorkerProxy;
-			this.worker.postMessage({
-				type: 'config',
-				config: processorConfig,
-			} satisfies ConfigMessage);
+			this.processor.addEventListener('message', this.processMessageEvent);
+			this.proxy = coincident(this.processor) as WorkerProxy;
 		}
+
+		this.processor?.postMessage({
+			type: 'config',
+			config: processorConfig,
+		} satisfies ConfigMessage);
 	}
 
 	protected processMessageEvent = (
-		event: MessageEvent<OutputMessage>
+		event: OutputMessage | MessageEvent<OutputMessage>
 	): void => {
-		const message = event.data;
+		const message = event instanceof MessageEvent ? event.data : event;
 		const queries = this.queriesInProgress;
 
 		switch (message.type) {
@@ -135,13 +137,13 @@ export class SQLocal {
 				message.type === 'delete',
 			this.config,
 			async () => {
-				if (!this.worker) {
+				if (!this.processor) {
 					throw new Error(
 						'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
 					);
 				}
 
-				if (this.isWorkerDestroyed === true) {
+				if (this.isDestroyed === true) {
 					throw new Error(
 						'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
 					);
@@ -151,7 +153,7 @@ export class SQLocal {
 
 				switch (message.type) {
 					case 'import':
-						this.worker.postMessage(
+						this.processor.postMessage(
 							{
 								...message,
 								queryKey,
@@ -160,7 +162,7 @@ export class SQLocal {
 						);
 						break;
 					default:
-						this.worker.postMessage({
+						this.processor.postMessage({
 							...message,
 							queryKey,
 						} satisfies
@@ -355,14 +357,20 @@ export class SQLocal {
 		funcName: string,
 		func: ScalarUserFunction['func']
 	): Promise<void> => {
+		const key = `_sqlocal_func_${funcName}`;
+
+		if (this.proxy === globalThis) {
+			this.proxy[key] = func;
+		}
+
 		await this.createQuery({
 			type: 'function',
 			functionName: funcName,
 			functionType: 'scalar',
 		});
 
-		if (this.proxy) {
-			this.proxy[`_sqlocal_func_${funcName}`] = func;
+		if (this.proxy && this.proxy !== globalThis) {
+			this.proxy[key] = func;
 		}
 	};
 
@@ -455,11 +463,15 @@ export class SQLocal {
 
 	destroy = async (): Promise<void> => {
 		await this.createQuery({ type: 'destroy' });
-		this.worker?.removeEventListener('message', this.processMessageEvent);
+
+		if (this.processor instanceof Worker) {
+			this.processor.removeEventListener('message', this.processMessageEvent);
+			this.processor.terminate();
+		}
+
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
 		this.reinitChannel.close();
-		this.worker?.terminate();
-		this.isWorkerDestroyed = true;
+		this.isDestroyed = true;
 	};
 }

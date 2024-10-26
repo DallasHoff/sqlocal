@@ -49,22 +49,24 @@ export type RawResultData = {
 
 // Database status
 
+export type DatabasePath = string;
+
 export type ClientConfig = {
-	databasePath: string;
+	databasePath: DatabasePath;
 	readOnly?: boolean;
 	verbose?: boolean;
 	onConnect?: () => void;
 };
 
 export type ProcessorConfig = {
-	databasePath?: string;
+	databasePath?: DatabasePath;
 	readOnly?: boolean;
 	verbose?: boolean;
 	clientKey?: QueryKey;
 };
 
 export type DatabaseInfo = {
-	databasePath?: string;
+	databasePath?: DatabasePath;
 	databaseSizeBytes?: number;
 	storageType?: Sqlite3StorageType;
 	persisted?: boolean;
@@ -75,7 +77,7 @@ export type DatabaseInfo = {
 export type Message = InputMessage | OutputMessage;
 export type QueryKey = string;
 export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
-export type WorkerProxy = ProxyHandler<Worker> &
+export type WorkerProxy = (typeof globalThis | ProxyHandler<Worker>) &
 	Record<string, (...args: any) => any>;
 
 export type InputMessage =
