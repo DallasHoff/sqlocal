@@ -76,6 +76,8 @@ export class SQLocal {
 				config: processorConfig,
 			} satisfies ConfigMessage);
 		}
+
+		this.getDatabaseFile = this.getDatabaseFile.bind(this);
 	}
 
 	protected processMessageEvent = (
@@ -376,7 +378,10 @@ export class SQLocal {
 		}
 	};
 
-	getDatabaseFile = async (): Promise<File> => {
+	protected getDatabaseCopy = async (): Promise<{
+		file: File;
+		deleteCopy: () => Promise<void>;
+	}> => {
 		const { directories, fileName, getDirectoryHandle } = parseDatabasePath(
 			this.config.databasePath
 		);
@@ -388,13 +393,54 @@ export class SQLocal {
 		const dirHandle = await getDirectoryHandle();
 		const fileHandle = await dirHandle.getFileHandle(tempFileName);
 		const file = await fileHandle.getFile();
-		const fileBuffer = await file.arrayBuffer();
-		await dirHandle.removeEntry(tempFileName);
 
-		return new File([fileBuffer], fileName, {
-			type: 'application/x-sqlite3',
-		});
+		return {
+			file: new File([file], fileName, {
+				type: 'application/x-sqlite3',
+			}),
+			deleteCopy: async () => {
+				await dirHandle.removeEntry(tempFileName);
+			},
+		};
 	};
+
+	getDatabaseFile(asStream?: false): Promise<File>;
+	getDatabaseFile(asStream: true): Promise<ReadableStream<Uint8Array>>;
+	async getDatabaseFile(
+		asStream?: boolean
+	): Promise<File | ReadableStream<Uint8Array>> {
+		const { file, deleteCopy } = await this.getDatabaseCopy();
+
+		if (asStream !== true) {
+			const { name, type } = file;
+			const fileBuffer = await file.arrayBuffer();
+			await deleteCopy();
+
+			return new File([fileBuffer], name, { type });
+		} else {
+			const stream = file.stream();
+			const reader = stream.getReader();
+
+			return new ReadableStream<Uint8Array>({
+				start(controller) {
+					const close = () => {
+						deleteCopy();
+						controller.close();
+					};
+
+					const push = () => {
+						reader.read().then(({ value, done }) => {
+							if (done) return close();
+							controller.enqueue(value);
+							push();
+						});
+					};
+
+					push();
+				},
+			});
+		}
+	}
 
 	overwriteDatabaseFile = async (
 		databaseFile:

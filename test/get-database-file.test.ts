@@ -30,4 +30,27 @@ describe('getDatabaseFile', () => {
 		const { getDatabaseFile } = new SQLocal('blank.sqlite3');
 		await expect(getDatabaseFile()).resolves.not.toThrow();
 	});
+
+	it('should stream the database file', async () => {
+		const db1 = new SQLocal('get-database-stream.sqlite3');
+		const db2 = new SQLocal('get-database-stream-copy.sqlite3');
+		const dataLength = 50000;
+
+		await db1.sql`CREATE TABLE nums (num REAL NOT NULL)`;
+		await db1.batch((sql) => {
+			const nums = new Array(dataLength).fill(0).map(() => Math.random());
+			return nums.map((num) => sql`INSERT INTO nums (num) VALUES (${num})`);
+		});
+
+		const dbSize = await db1.getDatabaseInfo();
+		expect(dbSize.databaseSizeBytes).toBeGreaterThan(800000);
+
+		const stream = await db1.getDatabaseFile(true);
+		await db1.deleteDatabaseFile();
+		await db2.overwriteDatabaseFile(stream);
+
+		const data = await db2.sql`SELECT count(*) as dataLength FROM nums`;
+		await db2.deleteDatabaseFile();
+		expect(data).toEqual([{ dataLength }]);
+	});
 });
