@@ -4,8 +4,8 @@ import { sleep } from './test-utils/sleep.js';
 
 describe.each([
 	{ type: 'opfs', path: 'delete-db-test.sqlite3' },
-	// { type: 'memory', path: ':memory:' }, // TODO
-])('deleteDatabaseFile ($type)', ({ path }) => {
+	{ type: 'memory', path: ':memory:' },
+])('deleteDatabaseFile ($type)', ({ path, type }) => {
 	it('should delete the database file', async () => {
 		let onConnectCalled = false;
 		let beforeUnlockCalled = false;
@@ -44,7 +44,7 @@ describe.each([
 		await destroy();
 	});
 
-	it('should notify other instances of a delete', async () => {
+	it('should or should not notify other instances of a delete', async () => {
 		let onConnectCalled1 = false;
 		let onConnectCalled2 = false;
 
@@ -63,10 +63,15 @@ describe.each([
 		onConnectCalled2 = false;
 
 		await db1.deleteDatabaseFile();
-		await vi.waitUntil(() => onConnectCalled2 === true);
+
+		if (type !== 'memory') {
+			await vi.waitUntil(() => onConnectCalled2 === true);
+			expect(onConnectCalled2).toBe(true);
+		} else {
+			expect(onConnectCalled2).toBe(false);
+		}
 
 		expect(onConnectCalled1).toBe(true);
-		expect(onConnectCalled2).toBe(true);
 
 		await db2.deleteDatabaseFile();
 		await db2.destroy();

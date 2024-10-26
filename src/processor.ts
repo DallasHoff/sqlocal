@@ -81,14 +81,16 @@ export class SQLocalProcessor {
 				}
 			}
 
-			this.reinitChannel = new BroadcastChannel(
-				`_sqlocal_reinit_(${databasePath})`
-			);
-			this.reinitChannel.onmessage = (message: MessageEvent<QueryKey>) => {
-				if (this.config.clientKey !== message.data) {
-					this.init();
-				}
-			};
+			if (this.dbStorageType !== 'memory') {
+				this.reinitChannel = new BroadcastChannel(
+					`_sqlocal_reinit_(${databasePath})`
+				);
+				this.reinitChannel.onmessage = (message: MessageEvent<QueryKey>) => {
+					if (this.config.clientKey !== message.data) {
+						this.init();
+					}
+				};
+			}
 
 			this.userFunctions.forEach(this.initUserFunction);
 			this.emitMessage({ type: 'event', event: 'connect' });
@@ -385,25 +387,28 @@ export class SQLocalProcessor {
 		let errored = false;
 
 		try {
-			const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
-				this.config.databasePath
-			);
-			const dirHandle = await getDirectoryHandle();
-			const fileNames = [fileName, ...tempFileNames];
+			if (this.dbStorageType === 'opfs') {
+				const { getDirectoryHandle, fileName, tempFileNames } =
+					parseDatabasePath(this.config.databasePath);
+				const dirHandle = await getDirectoryHandle();
+				const fileNames = [fileName, ...tempFileNames];
 
-			this.destroy();
+				this.destroy();
 
-			await Promise.all(
-				fileNames.map(async (name) => {
-					return dirHandle.removeEntry(name).catch((err) => {
-						if (
-							!(err instanceof DOMException && err.name === 'NotFoundError')
-						) {
-							throw err;
-						}
-					});
-				})
-			);
+				await Promise.all(
+					fileNames.map(async (name) => {
+						return dirHandle.removeEntry(name).catch((err) => {
+							if (
+								!(err instanceof DOMException && err.name === 'NotFoundError')
+							) {
+								throw err;
+							}
+						});
+					})
+				);
+			} else {
+				this.destroy();
+			}
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
