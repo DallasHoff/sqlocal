@@ -49,7 +49,7 @@ export type RawResultData = {
 
 // Database status
 
-export type DatabasePath = string;
+export type DatabasePath = (string & {}) | ':memory:';
 
 export type ClientConfig = {
 	databasePath: DatabasePath;

@@ -66,7 +66,11 @@ export class SQLocal {
 			`_sqlocal_reinit_(${clientConfig.databasePath})`
 		);
 
-		if (typeof globalThis.Worker !== 'undefined') {
+		if (processorConfig.databasePath === ':memory:') {
+			this.processor = new SQLocalProcessor(true);
+			this.processor.onmessage = (message) => this.processMessageEvent(message);
+			this.proxy = globalThis as WorkerProxy;
+		} else if (typeof globalThis.Worker !== 'undefined') {
 			this.processor = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
 			});

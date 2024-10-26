@@ -67,15 +67,18 @@ export class SQLocalProcessor {
 				this.destroy();
 			}
 
-			if ('opfs' in this.sqlite3) {
+			if ('opfs' in this.sqlite3 && databasePath !== ':memory:') {
 				this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
 				this.dbStorageType = 'opfs';
 			} else {
 				this.db = new this.sqlite3.oo1.DB(databasePath, flags);
 				this.dbStorageType = 'memory';
-				console.warn(
-					`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
-				);
+
+				if (databasePath !== ':memory:') {
+					console.warn(
+						`The origin private file system is not available, so ${databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
+					);
+				}
 			}
 
 			this.reinitChannel = new BroadcastChannel(
