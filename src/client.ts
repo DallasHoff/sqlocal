@@ -38,7 +38,7 @@ import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 export class SQLocal {
 	protected config: ClientConfig;
 	protected clientKey: QueryKey;
-	protected processor?: SQLocalProcessor | Worker;
+	protected processor: SQLocalProcessor | Worker;
 	protected isDestroyed: boolean = false;
 	protected bypassMutationLock: boolean = false;
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
@@ -50,7 +50,7 @@ export class SQLocal {
 		]
 	>();
 
-	protected proxy?: WorkerProxy;
+	protected proxy: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
 
 	constructor(databasePath: DatabasePath);
@@ -148,12 +148,6 @@ export class SQLocal {
 				message.type === 'delete',
 			this.config,
 			async () => {
-				if (!this.processor) {
-					throw new Error(
-						'This SQLocal client is not connected to a database. This is likely due to the client being initialized in a server-side environment.'
-					);
-				}
-
 				if (this.isDestroyed === true) {
 					throw new Error(
 						'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.'
@@ -381,7 +375,7 @@ export class SQLocal {
 			functionType: 'scalar',
 		});
 
-		if (this.proxy && this.proxy !== globalThis) {
+		if (this.proxy !== globalThis) {
 			this.proxy[key] = func;
 		}
 	};

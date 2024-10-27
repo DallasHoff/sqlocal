@@ -40,7 +40,7 @@ export class SQLocalProcessor {
 	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
-	protected reinitChannel: BroadcastChannel | undefined;
+	protected reinitChannel?: BroadcastChannel;
 
 	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
