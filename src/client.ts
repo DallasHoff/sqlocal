@@ -68,19 +68,22 @@ export class SQLocal {
 			`_sqlocal_reinit_(${clientConfig.databasePath})`
 		);
 
-		if (processorConfig.databasePath === ':memory:') {
-			this.processor = new SQLocalProcessor(true);
-			this.processor.onmessage = (message) => this.processMessageEvent(message);
-			this.proxy = globalThis as WorkerProxy;
-		} else if (typeof globalThis.Worker !== 'undefined') {
+		if (
+			typeof globalThis.Worker !== 'undefined' &&
+			processorConfig.databasePath !== ':memory:'
+		) {
 			this.processor = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
 			});
 			this.processor.addEventListener('message', this.processMessageEvent);
 			this.proxy = coincident(this.processor) as WorkerProxy;
+		} else {
+			this.processor = new SQLocalProcessor(true);
+			this.processor.onmessage = (message) => this.processMessageEvent(message);
+			this.proxy = globalThis as WorkerProxy;
 		}
 
-		this.processor?.postMessage({
+		this.processor.postMessage({
 			type: 'config',
 			config: processorConfig,
 		} satisfies ConfigMessage);
