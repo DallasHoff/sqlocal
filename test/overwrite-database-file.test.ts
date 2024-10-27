@@ -4,7 +4,7 @@ import { sleep } from './test-utils/sleep.js';
 
 describe.each([
 	{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
-	// { type: 'memory', path: ':memory:' }, // TODO
+	{ type: 'memory', path: ':memory:' },
 ])('overwriteDatabaseFile ($type)', ({ path, type }) => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();
@@ -39,8 +39,11 @@ describe.each([
 		});
 
 		expect(eventValues.has('unlock1')).toBe(true);
-		expect(eventValues.has('connect1')).toBe(true);
-		expect(eventValues.has('connect2')).toBe(false);
+
+		if (type !== 'memory') {
+			expect(eventValues.has('connect1')).toBe(true);
+			expect(eventValues.has('connect2')).toBe(false);
+		}
 
 		const letters1 = db1.sql`SELECT * FROM letters`;
 		await expect(letters1).rejects.toThrow();
@@ -64,13 +67,19 @@ describe.each([
 		const nums3 = db1.sql`SELECT * FROM nums`;
 		await expect(nums3).resolves.toEqual(nums);
 
+		// Ensure data can still be added
+		await db1.sql`INSERT INTO nums (num) VALUES (4), (5)`;
+		const nums4 = db1.sql`SELECT * FROM nums`;
+		await expect(nums4).resolves.toEqual([...nums, { num: 4 }, { num: 5 }]);
+
+		// Clean up
 		await db1.deleteDatabaseFile();
 		await db2.deleteDatabaseFile();
 		await db1.destroy();
 		await db2.destroy();
 	});
 
-	it('should notify other instances of an overwrite', async () => {
+	it('should or should not notify other instances of an overwrite', async () => {
 		const eventValues = new Set<string>();
 		const db1 = new SQLocal({
 			databasePath: path,
@@ -89,8 +98,10 @@ describe.each([
 		});
 		eventValues.clear();
 
-		const nums1 = await db1.sql`SELECT * FROM nums`;
-		expect(nums1).toEqual([{ num: 123 }]);
+		if (type !== 'memory') {
+			const nums1 = await db1.sql`SELECT * FROM nums`;
+			expect(nums1).toEqual([{ num: 123 }]);
+		}
 
 		const dbFile = await db2.getDatabaseFile();
 		await db2.sql`INSERT INTO nums (num) VALUES (456)`;
@@ -99,16 +110,24 @@ describe.each([
 			eventValues.add('unlock1');
 		});
 
-		await vi.waitUntil(() => eventValues.size === 3);
-		expect(eventValues.has('unlock1')).toBe(true);
-		expect(eventValues.has('connect1')).toBe(true);
-		expect(eventValues.has('connect2')).toBe(true);
+		if (type !== 'memory') {
+			await vi.waitUntil(() => eventValues.size === 3);
+			expect(eventValues.has('unlock1')).toBe(true);
+			expect(eventValues.has('connect1')).toBe(true);
+			expect(eventValues.has('connect2')).toBe(true);
+		} else {
+			await vi.waitUntil(() => eventValues.size === 1);
+			expect(eventValues.has('unlock1')).toBe(true);
+		}
 
 		const expectedNums = [{ num: 123 }, { num: 789 }];
 		const nums2 = await db1.sql`SELECT * FROM nums`;
 		expect(nums2).toEqual(expectedNums);
-		const nums3 = await db2.sql`SELECT * FROM nums`;
-		expect(nums3).toEqual(expectedNums);
+
+		if (type !== 'memory') {
+			const nums3 = await db2.sql`SELECT * FROM nums`;
+			expect(nums3).toEqual(expectedNums);
+		}
 
 		await db1.destroy();
 		await db2.deleteDatabaseFile();

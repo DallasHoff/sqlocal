@@ -25,12 +25,14 @@ import type {
 import { createMutex } from './lib/create-mutex.js';
 import { execOnDb } from './lib/exec-on-db.js';
 import { parseDatabasePath } from './lib/parse-database-path.js';
+import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 
 export class SQLocalProcessor {
 	protected sqlite3?: Sqlite3;
 	protected db?: Sqlite3Db;
 	protected dbStorageType?: Sqlite3StorageType;
 	protected config: ProcessorConfig = {};
+	protected pointers: number[] = [];
 	protected userFunctions = new Map<string, UserFunction>();
 
 	protected initMutex = createMutex();
@@ -331,40 +333,32 @@ export class SQLocalProcessor {
 	};
 
 	protected importDb = async (message: ImportMessage): Promise<void> => {
-		if (!this.sqlite3 || !this.config.databasePath) return;
+		if (!this.sqlite3 || !this.config.databasePath || !this.db) return;
 
 		const { queryKey, database } = message;
 		let errored = false;
 
-		if (!('opfs' in this.sqlite3)) {
-			this.emitMessage({
-				type: 'error',
-				error: new Error(
-					'The origin private file system is not available, so a database cannot be imported. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).'
-				),
-				queryKey,
-			});
-			return;
-		}
-
-		let data:
-			| ArrayBuffer
-			| Uint8Array
-			| (() => Promise<Uint8Array | undefined>);
-
-		if (database instanceof ReadableStream) {
-			const databaseReader = database.getReader();
-			data = async () => {
-				const chunk = await databaseReader.read();
-				return chunk.value;
-			};
-		} else {
-			data = database;
-		}
-
 		try {
-			this.destroy();
-			await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
+			if (this.dbStorageType === 'opfs') {
+				this.destroy();
+				const data = await normalizeDatabaseFile(database, 'callback');
+				await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
+			} else {
+				const data = await normalizeDatabaseFile(database, 'buffer');
+				const dataPointer = this.sqlite3.wasm.allocFromTypedArray(data);
+				this.pointers.push(dataPointer);
+				const resultCode = this.sqlite3.capi.sqlite3_deserialize(
+					this.db,
+					'main',
+					dataPointer,
+					data.byteLength,
+					data.byteLength,
+					this.config.readOnly
+						? this.sqlite3.capi.SQLITE_DESERIALIZE_READONLY
+						: this.sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE
+				);
+				this.db.checkRc(resultCode);
+			}
 		} catch (error) {
 			this.emitMessage({
 				type: 'error',
@@ -373,7 +367,9 @@ export class SQLocalProcessor {
 			});
 			errored = true;
 		} finally {
-			await this.init();
+			if (this.dbStorageType !== 'memory') {
+				await this.init();
+			}
 		}
 
 		if (!errored) {
@@ -469,6 +465,9 @@ export class SQLocalProcessor {
 			this.reinitChannel.close();
 			this.reinitChannel = undefined;
 		}
+
+		this.pointers.forEach((pointer) => this.sqlite3?.wasm.dealloc(pointer));
+		this.pointers = [];
 
 		if (message) {
 			this.emitMessage({

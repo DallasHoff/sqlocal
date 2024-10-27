@@ -33,6 +33,7 @@ import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
 import { parseDatabasePath } from './lib/parse-database-path.js';
 import { mutationLock } from './lib/mutation-lock.js';
+import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -435,16 +436,10 @@ export class SQLocal {
 			| ReadableStream<Uint8Array>,
 		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
-		let database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
-
-		if (databaseFile instanceof Blob) {
-			database = databaseFile.stream();
-		} else {
-			database = databaseFile;
-		}
-
 		await mutationLock('exclusive', false, this.config, async () => {
 			try {
+				const database = await normalizeDatabaseFile(databaseFile);
+
 				await this.createQuery({
 					type: 'import',
 					database,
