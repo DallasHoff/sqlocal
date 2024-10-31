@@ -29,6 +29,7 @@
 	],
 	"scripts": {
 		"build": "tsc --project tsconfig.build.json",
+		"typecheck": "tsc --noEmit",
 		"test": "vitest",
 		"test:ui": "vitest --ui",
 		"test:ci": "vitest run",
