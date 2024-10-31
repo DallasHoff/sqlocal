@@ -15,3 +15,14 @@ jobs:
         run: 'npm ci'
       - name: Run Tests
         run: 'npm run test:ci'
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+      - name: Install Dependencies
+        run: 'npm ci'
+      - name: Check Formatting
+        run: 'npm run format:check'
