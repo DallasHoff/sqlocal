@@ -2,15 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
 
-describe('overwriteDatabaseFile', () => {
+describe.each([
+	{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('overwriteDatabaseFile ($type)', ({ path, type }) => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();
 		const db1 = new SQLocal({
-			databasePath: 'overwrite-test-db1.sqlite3',
+			databasePath: type === 'opfs' ? 'overwrite-test-db1.sqlite3' : path,
 			onConnect: () => eventValues.add('connect1'),
 		});
 		const db2 = new SQLocal({
-			databasePath: 'overwrite-test-db2.sqlite3',
+			databasePath: type === 'opfs' ? 'overwrite-test-db2.sqlite3' : path,
 			onConnect: () => eventValues.add('connect2'),
 		});
 
@@ -36,8 +39,11 @@ describe('overwriteDatabaseFile', () => {
 		});
 
 		expect(eventValues.has('unlock1')).toBe(true);
-		expect(eventValues.has('connect1')).toBe(true);
-		expect(eventValues.has('connect2')).toBe(false);
+
+		if (type !== 'memory') {
+			expect(eventValues.has('connect1')).toBe(true);
+			expect(eventValues.has('connect2')).toBe(false);
+		}
 
 		const letters1 = db1.sql`SELECT * FROM letters`;
 		await expect(letters1).rejects.toThrow();
@@ -61,20 +67,26 @@ describe('overwriteDatabaseFile', () => {
 		const nums3 = db1.sql`SELECT * FROM nums`;
 		await expect(nums3).resolves.toEqual(nums);
 
+		// Ensure data can still be added
+		await db1.sql`INSERT INTO nums (num) VALUES (4), (5)`;
+		const nums4 = db1.sql`SELECT * FROM nums`;
+		await expect(nums4).resolves.toEqual([...nums, { num: 4 }, { num: 5 }]);
+
+		// Clean up
 		await db1.deleteDatabaseFile();
 		await db2.deleteDatabaseFile();
 		await db1.destroy();
 		await db2.destroy();
 	});
 
-	it('should notify other instances of an overwrite', async () => {
+	it('should or should not notify other instances of an overwrite', async () => {
 		const eventValues = new Set<string>();
 		const db1 = new SQLocal({
-			databasePath: 'overwrite-test-db-shared.sqlite3',
+			databasePath: path,
 			onConnect: () => eventValues.add('connect1'),
 		});
 		const db2 = new SQLocal({
-			databasePath: 'overwrite-test-db-shared.sqlite3',
+			databasePath: path,
 			onConnect: () => eventValues.add('connect2'),
 		});
 
@@ -86,8 +98,10 @@ describe('overwriteDatabaseFile', () => {
 		});
 		eventValues.clear();
 
-		const nums1 = await db1.sql`SELECT * FROM nums`;
-		expect(nums1).toEqual([{ num: 123 }]);
+		if (type !== 'memory') {
+			const nums1 = await db1.sql`SELECT * FROM nums`;
+			expect(nums1).toEqual([{ num: 123 }]);
+		}
 
 		const dbFile = await db2.getDatabaseFile();
 		await db2.sql`INSERT INTO nums (num) VALUES (456)`;
@@ -96,16 +110,24 @@ describe('overwriteDatabaseFile', () => {
 			eventValues.add('unlock1');
 		});
 
-		await vi.waitUntil(() => eventValues.size === 3);
-		expect(eventValues.has('unlock1')).toBe(true);
-		expect(eventValues.has('connect1')).toBe(true);
-		expect(eventValues.has('connect2')).toBe(true);
+		if (type !== 'memory') {
+			await vi.waitUntil(() => eventValues.size === 3);
+			expect(eventValues.has('unlock1')).toBe(true);
+			expect(eventValues.has('connect1')).toBe(true);
+			expect(eventValues.has('connect2')).toBe(true);
+		} else {
+			await vi.waitUntil(() => eventValues.size === 1);
+			expect(eventValues.has('unlock1')).toBe(true);
+		}
 
 		const expectedNums = [{ num: 123 }, { num: 789 }];
 		const nums2 = await db1.sql`SELECT * FROM nums`;
 		expect(nums2).toEqual(expectedNums);
-		const nums3 = await db2.sql`SELECT * FROM nums`;
-		expect(nums3).toEqual(expectedNums);
+
+		if (type !== 'memory') {
+			const nums3 = await db2.sql`SELECT * FROM nums`;
+			expect(nums3).toEqual(expectedNums);
+		}
 
 		await db1.destroy();
 		await db2.deleteDatabaseFile();
@@ -113,7 +135,7 @@ describe('overwriteDatabaseFile', () => {
 	});
 
 	it('should restore user functions', async () => {
-		const db = new SQLocal('overwrite-test-db-functions.sqlite3');
+		const db = new SQLocal(path);
 		await db.createScalarFunction('double', (num: number) => num * 2);
 
 		const num1 = await db.sql`SELECT double(1) AS num`;
@@ -124,6 +146,9 @@ describe('overwriteDatabaseFile', () => {
 
 		const num2 = await db.sql`SELECT double(2) AS num`;
 		expect(num2).toEqual([{ num: 4 }]);
+
+		await db.deleteDatabaseFile();
+		await db.destroy();
 	});
 
 	it('should not interrupt a transaction with database overwrite', async () => {
@@ -134,7 +159,7 @@ describe('overwriteDatabaseFile', () => {
 			overwriteDatabaseFile,
 			deleteDatabaseFile,
 			destroy,
-		} = new SQLocal('overwrite-test-db-transaction.sqlite3');
+		} = new SQLocal(path);
 
 		const order: number[] = [];
 

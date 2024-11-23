@@ -1,16 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe('destroy', () => {
-	const { sql, destroy } = new SQLocal('destroy-test.sqlite3');
+describe.each([
+	{ type: 'opfs', path: 'destroy-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('destroy ($type)', ({ path }) => {
+	const { sql, destroy } = new SQLocal(path);
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
 	});
 
 	afterEach(async () => {
-		const { sql } = new SQLocal('destroy-test.sqlite3');
-		await sql`DROP TABLE groceries`;
+		const { sql } = new SQLocal(path);
+		await sql`DROP TABLE IF EXISTS groceries`;
 	});
 
 	it('should destroy the client', async () => {

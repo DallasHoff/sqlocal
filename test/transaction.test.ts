@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
 
-describe('transaction', () => {
-	const { sql, batch, transaction } = new SQLocal('transaction-test.sqlite3');
+describe.each([
+	{ type: 'opfs', path: 'transaction-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('transaction ($type)', ({ path }) => {
+	const { sql, batch, transaction } = new SQLocal(path);
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
@@ -103,11 +106,11 @@ describe('transaction', () => {
 			transaction(async (tx) => {
 				await tx.sql`INSERT INTO groceries (name) VALUES ('a') RETURNING name`;
 				await sleep(100);
-				return await tx.sql`SELECT name FROM groceries`;
+				return tx.sql`SELECT name FROM groceries`;
 			}),
 			transaction(async (tx) => {
 				await sleep(50);
-				return await tx.sql`INSERT INTO groceries (name) VALUES ('b') RETURNING name`;
+				return tx.sql`INSERT INTO groceries (name) VALUES ('b') RETURNING name`;
 			}),
 		]);
 

@@ -5,10 +5,11 @@ import { jsonArrayFrom } from 'kysely/helpers/sqlite';
 import { SQLocalKysely } from '../../src/kysely/index.js';
 import { sleep } from '../test-utils/sleep.js';
 
-describe('kysely dialect', () => {
-	const { dialect, transaction } = new SQLocalKysely(
-		'kysely-dialect-test.sqlite3'
-	);
+describe.each([
+	{ type: 'opfs', path: 'kysely-dialect-test.sqlite3' },
+	{ type: 'memory', path: ':memory:' },
+])('kysely dialect ($type)', ({ path }) => {
+	const { dialect, transaction } = new SQLocalKysely(path);
 	const db = new Kysely<DB>({
 		dialect,
 		plugins: [new ParseJSONResultsPlugin()],
