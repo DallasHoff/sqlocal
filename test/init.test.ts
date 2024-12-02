@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from 'vitest';
 import { SQLocal } from '../src/index.js';
 
 describe.each([
@@ -34,6 +42,25 @@ describe.each([
 		} else {
 			await expect(opfs.getFileHandle(path)).rejects.toThrowError();
 		}
+	});
+
+	it('should call onInit and onConnect', async () => {
+		let onInitCalled = false;
+		let onConnectCalled = false;
+
+		const db = new SQLocal({
+			databasePath: path,
+			onInit: () => {
+				onInitCalled = true;
+			},
+			onConnect: () => {
+				onConnectCalled = true;
+			},
+		});
+
+		expect(onInitCalled).toBe(true);
+		await vi.waitUntil(() => onConnectCalled === true);
+		await db.destroy();
 	});
 
 	it('should enable read-only mode', async () => {

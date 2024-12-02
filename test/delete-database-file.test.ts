@@ -1,22 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
+import type { ClientConfig, ConnectReason } from '../src/types.js';
 
 describe.each([
 	{ type: 'opfs', path: 'delete-db-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
 ])('deleteDatabaseFile ($type)', ({ path, type }) => {
 	it('should delete the database file', async () => {
-		let onConnectCalled = false;
+		let onConnectReason: ConnectReason | null = null;
 		let beforeUnlockCalled = false;
 
 		const { sql, deleteDatabaseFile, destroy } = new SQLocal({
 			databasePath: path,
-			onConnect: () => (onConnectCalled = true),
+			onConnect: (reason) => (onConnectReason = reason),
 		});
 
-		await vi.waitUntil(() => onConnectCalled === true);
-		onConnectCalled = false;
+		await vi.waitUntil(() => onConnectReason === 'initial');
+		onConnectReason = null;
 
 		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
 		await sql`INSERT INTO nums (num) VALUES (123)`;
@@ -28,7 +29,7 @@ describe.each([
 			beforeUnlockCalled = true;
 		});
 
-		expect(onConnectCalled).toBe(true);
+		expect(onConnectReason).toBe('delete');
 		expect(beforeUnlockCalled).toBe(true);
 
 		await sql`CREATE TABLE letters (letter TEXT NOT NULL)`;
@@ -45,33 +46,33 @@ describe.each([
 	});
 
 	it('should or should not notify other instances of a delete', async () => {
-		let onConnectCalled1 = false;
-		let onConnectCalled2 = false;
+		let onConnectReason1: ConnectReason | null = null;
+		let onConnectReason2: ConnectReason | null = null;
 
 		const db1 = new SQLocal({
 			databasePath: path,
-			onConnect: () => (onConnectCalled1 = true),
+			onConnect: (reason) => (onConnectReason1 = reason),
 		});
 		const db2 = new SQLocal({
 			databasePath: path,
-			onConnect: () => (onConnectCalled2 = true),
+			onConnect: (reason) => (onConnectReason2 = reason),
 		});
 
-		await vi.waitUntil(() => onConnectCalled1 === true);
-		onConnectCalled1 = false;
-		await vi.waitUntil(() => onConnectCalled2 === true);
-		onConnectCalled2 = false;
+		await vi.waitUntil(() => onConnectReason1 === 'initial');
+		onConnectReason1 = null;
+		await vi.waitUntil(() => onConnectReason2 === 'initial');
+		onConnectReason2 = null;
 
 		await db1.deleteDatabaseFile();
 
 		if (type !== 'memory') {
-			await vi.waitUntil(() => onConnectCalled2 === true);
-			expect(onConnectCalled2).toBe(true);
+			await vi.waitUntil(() => onConnectReason2 === 'delete');
+			expect(onConnectReason2).toBe('delete');
 		} else {
-			expect(onConnectCalled2).toBe(false);
+			expect(onConnectReason2).toBe(null);
 		}
 
-		expect(onConnectCalled1).toBe(true);
+		expect(onConnectReason1).toBe('delete');
 
 		await db2.deleteDatabaseFile();
 		await db2.destroy();
@@ -125,5 +126,33 @@ describe.each([
 
 		await deleteDatabaseFile();
 		await destroy();
+	});
+
+	it('should run onInit statements before other queries after deletion', async () => {
+		const databasePath = path;
+		const onInit: ClientConfig['onInit'] = (sql) => {
+			return [sql`PRAGMA foreign_keys = ON`];
+		};
+
+		const results: number[] = [];
+
+		const db1 = new SQLocal({ databasePath, onInit });
+		const db2 = new SQLocal({ databasePath, onInit });
+
+		const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
+		results.push(result1);
+		await db1.sql`PRAGMA foreign_keys = OFF`;
+		const [{ foreign_keys: result2 }] = await db1.sql`PRAGMA foreign_keys`;
+		results.push(result2);
+		await db1.deleteDatabaseFile();
+		const [{ foreign_keys: result3 }] = await db1.sql`PRAGMA foreign_keys`;
+		results.push(result3);
+		const [{ foreign_keys: result4 }] = await db2.sql`PRAGMA foreign_keys`;
+		results.push(result4);
+
+		expect(results).toEqual([1, 0, 1, 1]);
+
+		await db1.destroy();
+		await db2.destroy();
 	});
 });

@@ -4,7 +4,7 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'create-scalar-function-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-])('createScalarFunction ($type)', ({ path }) => {
+])('createScalarFunction ($type)', ({ path, type }) => {
 	const { sql, createScalarFunction } = new SQLocal(path);
 
 	beforeEach(async () => {
@@ -63,5 +63,19 @@ describe.each([
 		const results3 =
 			await sql`SELECT num FROM nums WHERE num REGEXP '^(4|5).*[89]$'`;
 		expect(results3).toEqual([{ num: 4578 }, { num: 59 }, { num: 5428 }]);
+	});
+
+	it('should not overwrite a function from a different client instance', async () => {
+		const db1 = new SQLocal(type === 'opfs' ? 'dupe-fn-db1.sqlite3' : path);
+		const db2 = new SQLocal(type === 'opfs' ? 'dupe-fn-db2.sqlite3' : path);
+
+		await db1.createScalarFunction('addTax', (num: number) => num * 1.06);
+		await db2.createScalarFunction('addTax', (num: number) => num * 1.07);
+
+		const [result1] = await db1.sql`SELECT addTax(2) as withTax`;
+		const [result2] = await db2.sql`SELECT addTax(2) as withTax`;
+
+		expect(result1.withTax).toBe(2.12);
+		expect(result2.withTax).toBe(2.14);
 	});
 });

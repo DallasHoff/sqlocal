@@ -24,6 +24,7 @@ import type {
 	DeleteMessage,
 	DatabasePath,
 	ExportMessage,
+	ReinitMessage,
 } from './types.js';
 import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
@@ -58,19 +59,17 @@ export class SQLocal {
 	constructor(config: DatabasePath | ClientConfig) {
 		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
+		const { onInit, onConnect, ...commonConfig } = clientConfig;
+
 		this.config = clientConfig;
 		this.clientKey = getQueryKey();
-
-		const { onConnect, ...commonConfig } = clientConfig;
-		const processorConfig = { ...commonConfig, clientKey: this.clientKey };
-
 		this.reinitChannel = new BroadcastChannel(
-			`_sqlocal_reinit_(${clientConfig.databasePath})`
+			`_sqlocal_reinit_(${commonConfig.databasePath})`
 		);
 
 		if (
 			typeof globalThis.Worker !== 'undefined' &&
-			processorConfig.databasePath !== ':memory:'
+			commonConfig.databasePath !== ':memory:'
 		) {
 			this.processor = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
@@ -85,7 +84,11 @@ export class SQLocal {
 
 		this.processor.postMessage({
 			type: 'config',
-			config: processorConfig,
+			config: {
+				...commonConfig,
+				clientKey: this.clientKey,
+				onInitStatements: onInit?.(sqlTag) ?? [],
+			},
 		} satisfies ConfigMessage);
 	}
 
@@ -123,7 +126,7 @@ export class SQLocal {
 				break;
 
 			case 'event':
-				this.config.onConnect?.();
+				this.config.onConnect?.(message.reason);
 				break;
 		}
 	};
@@ -447,7 +450,10 @@ export class SQLocal {
 					await beforeUnlock();
 				}
 
-				this.reinitChannel.postMessage(this.clientKey);
+				this.reinitChannel.postMessage({
+					clientKey: this.clientKey,
+					reason: 'overwrite',
+				} satisfies ReinitMessage);
 			} finally {
 				this.bypassMutationLock = false;
 			}
@@ -468,7 +474,10 @@ export class SQLocal {
 					await beforeUnlock();
 				}
 
-				this.reinitChannel.postMessage(this.clientKey);
+				this.reinitChannel.postMessage({
+					clientKey: this.clientKey,
+					reason: 'delete',
+				} satisfies ReinitMessage);
 			} finally {
 				this.bypassMutationLock = false;
 			}

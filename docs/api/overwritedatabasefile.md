@@ -49,4 +49,4 @@ await overwriteDatabaseFile(databaseFile, async () => {
 });
 ```
 
-Since calling `overwriteDatabaseFile` will reset all connections to the database file, the [`onConnect` hook](../guide/setup.md#options) will re-run on any SQLocal clients connected to the database when it is overwritten. The client that initiated the overwrite will have its `onConnect` hook run first, before the method's callback, and the other clients' `onConnect` hooks will run after the callback.
+Since calling `overwriteDatabaseFile` will reset all connections to the database file, the configured `onInit` statements and `onConnect` hook (see [Options](../guide/setup.md#options)) will re-run on any SQLocal clients connected to the database when it is overwritten. The client that initiated the overwrite will have its `onConnect` hook run first, before the method's callback, and the other clients' `onConnect` hooks will run after the callback.

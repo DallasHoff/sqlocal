@@ -55,7 +55,8 @@ export type ClientConfig = {
 	databasePath: DatabasePath;
 	readOnly?: boolean;
 	verbose?: boolean;
-	onConnect?: () => void;
+	onInit?: (sql: typeof sqlTag) => void | Statement[];
+	onConnect?: (reason: ConnectReason) => void;
 };
 
 export type ProcessorConfig = {
@@ -63,6 +64,7 @@ export type ProcessorConfig = {
 	readOnly?: boolean;
 	verbose?: boolean;
 	clientKey?: QueryKey;
+	onInitStatements?: Statement[];
 };
 
 export type DatabaseInfo = {
@@ -79,6 +81,7 @@ export type QueryKey = string;
 export type OmitQueryKey<T> = T extends Message ? Omit<T, 'queryKey'> : never;
 export type WorkerProxy = (typeof globalThis | ProxyHandler<Worker>) &
 	Record<string, (...args: any) => any>;
+export type ConnectReason = 'initial' | 'overwrite' | 'delete';
 
 export type InputMessage =
 	| QueryMessage
@@ -189,6 +192,12 @@ export type InfoMessage = {
 export type EventMessage = {
 	type: 'event';
 	event: 'connect';
+	reason: ConnectReason;
+};
+
+export type ReinitMessage = {
+	clientKey: QueryKey;
+	reason: ConnectReason;
 };
 
 // User functions

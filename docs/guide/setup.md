@@ -64,14 +64,16 @@ export const db = new SQLocal({
 	databasePath: 'database.sqlite3',
 	readOnly: true,
 	verbose: true,
-	onConnect: () => {},
+	onInit: (sql) => {},
+	onConnect: (reason) => {},
 });
 ```
 
 - **`databasePath`** (`string`) - The file name for the database file. This is the only required option.
 - **`readOnly`** (`boolean`) - If `true`, connect to the database in read-only mode. Attempts to run queries that would mutate the database will throw an error.
 - **`verbose`** (`boolean`) - If `true`, any SQL executed on the database will be logged to the console.
-- **`onConnect`** (`function`) - A callback that will be run when the client has connected to the database. This will happen at initialization and after [`overwriteDatabaseFile`](/api/overwritedatabasefile) or [`deleteDatabaseFile`](/api/deletedatabasefile) is called on any SQLocal client connected to the same database. This callback is a good place to set up any `PRAGMA` settings, temporary tables, views, or triggers for the connection.
+- **`onInit`** (`function`) - A callback that will be run once when the client has initialized but before it has connected to the database. This callback should return an array of SQL statements (using the passed `sql` tagged template function, similar to the [`batch` method](../api/batch.md)) that should be executed before any other statements on the database connection. The `onInit` callback will be called only once, but the statements will be executed every time the client creates a new database connection. This makes it the best way to set up any `PRAGMA` settings, temporary tables, views, or triggers for the connection.
+- **`onConnect`** (`function`) - A callback that will be run after the client has connected to the database. This will happen at initialization and any time [`overwriteDatabaseFile`](/api/overwritedatabasefile) or [`deleteDatabaseFile`](/api/deletedatabasefile) is called on any SQLocal client connected to the same database. The callback is passed a string (`'initial' | 'overwrite' | 'delete'`) that indicates why the callback was executed. This callback is useful for syncing your application's state with data from the newly-connected database.
 
 ## Vite Configuration
 
