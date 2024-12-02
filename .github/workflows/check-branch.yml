@@ -1,6 +1,9 @@
-name: Test pull request
+name: Check branch
 on:
   pull_request:
+    branches:
+      - main
+  push:
     branches:
       - main
 jobs:
