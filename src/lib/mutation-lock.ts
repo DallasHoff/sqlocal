@@ -7,12 +7,12 @@ export async function mutationLock<T>(
 	mutation: () => Promise<T>
 ): Promise<T> {
 	if (!bypass && 'locks' in navigator) {
-		return await navigator.locks.request(
+		return navigator.locks.request(
 			`_sqlocal_mutation_(${config.databasePath})`,
 			{ mode },
 			mutation
 		);
 	} else {
-		return await mutation();
+		return mutation();
 	}
 }

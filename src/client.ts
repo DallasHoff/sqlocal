@@ -144,7 +144,7 @@ export class SQLocal {
 			| DestroyMessage
 		>
 	): Promise<OutputMessage> => {
-		return await mutationLock(
+		return mutationLock(
 			'shared',
 			this.bypassMutationLock ||
 				message.type === 'import' ||
@@ -185,7 +185,7 @@ export class SQLocal {
 						break;
 				}
 
-				return await new Promise<OutputMessage>((resolve, reject) => {
+				return new Promise<OutputMessage>((resolve, reject) => {
 					this.queriesInProgress.set(queryKey, [resolve, reject]);
 				});
 			}
@@ -328,7 +328,7 @@ export class SQLocal {
 			query: Transaction['query'];
 		}) => Promise<Result>
 	): Promise<Result> => {
-		return await mutationLock('exclusive', false, this.config, async () => {
+		return mutationLock('exclusive', false, this.config, async () => {
 			let tx: Transaction | undefined;
 			this.bypassMutationLock = true;
 
