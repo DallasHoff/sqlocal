@@ -132,31 +132,35 @@ describe.each([
 		await destroy();
 	});
 
-	it('should run onInit statements before other queries after deletion', async () => {
-		const databasePath = path;
-		const onInit: ClientConfig['onInit'] = (sql) => {
-			return [sql`PRAGMA foreign_keys = ON`];
-		};
+	it(
+		'should run onInit statements before other queries after deletion',
+		{ timeout: type === 'opfs' ? 1500 : undefined },
+		async () => {
+			const databasePath = path;
+			const onInit: ClientConfig['onInit'] = (sql) => {
+				return [sql`PRAGMA foreign_keys = ON`];
+			};
 
-		const results: number[] = [];
+			const results: number[] = [];
 
-		const db1 = new SQLocal({ databasePath, onInit });
-		const db2 = new SQLocal({ databasePath, onInit });
+			const db1 = new SQLocal({ databasePath, onInit });
+			const db2 = new SQLocal({ databasePath, onInit });
 
-		const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
-		results.push(result1);
-		await db1.sql`PRAGMA foreign_keys = OFF`;
-		const [{ foreign_keys: result2 }] = await db1.sql`PRAGMA foreign_keys`;
-		results.push(result2);
-		await db1.deleteDatabaseFile();
-		const [{ foreign_keys: result3 }] = await db1.sql`PRAGMA foreign_keys`;
-		results.push(result3);
-		const [{ foreign_keys: result4 }] = await db2.sql`PRAGMA foreign_keys`;
-		results.push(result4);
+			const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
+			results.push(result1);
+			await db1.sql`PRAGMA foreign_keys = OFF`;
+			const [{ foreign_keys: result2 }] = await db1.sql`PRAGMA foreign_keys`;
+			results.push(result2);
+			await db1.deleteDatabaseFile();
+			const [{ foreign_keys: result3 }] = await db1.sql`PRAGMA foreign_keys`;
+			results.push(result3);
+			const [{ foreign_keys: result4 }] = await db2.sql`PRAGMA foreign_keys`;
+			results.push(result4);
 
-		expect(results).toEqual([1, 0, 1, 1]);
+			expect(results).toEqual([1, 0, 1, 1]);
 
-		await db1.destroy();
-		await db2.destroy();
-	});
+			await db1.destroy();
+			await db2.destroy();
+		}
+	);
 });
