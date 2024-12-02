@@ -83,63 +83,67 @@ describe.each([
 		await db2.destroy();
 	});
 
-	it('should or should not notify other instances of an overwrite', async () => {
-		const eventValues = new Set<string>();
-		const db1 = new SQLocal({
-			databasePath: path,
-			onConnect: (reason) => eventValues.add(`connect1(${reason})`),
-		});
-		const db2 = new SQLocal({
-			databasePath: path,
-			onConnect: (reason) => eventValues.add(`connect2(${reason})`),
-		});
+	it(
+		'should or should not notify other instances of an overwrite',
+		{ timeout: type === 'opfs' ? 2000 : undefined },
+		async () => {
+			const eventValues = new Set<string>();
+			const db1 = new SQLocal({
+				databasePath: path,
+				onConnect: (reason) => eventValues.add(`connect1(${reason})`),
+			});
+			const db2 = new SQLocal({
+				databasePath: path,
+				onConnect: (reason) => eventValues.add(`connect2(${reason})`),
+			});
 
-		await db2.sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
-		await db2.sql`INSERT INTO nums (num) VALUES (123)`;
+			await db2.sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
+			await db2.sql`INSERT INTO nums (num) VALUES (123)`;
 
-		await vi.waitUntil(() => {
-			return (
-				eventValues.has('connect1(initial)') &&
-				eventValues.has('connect2(initial)')
-			);
-		});
-		eventValues.clear();
+			await vi.waitUntil(() => {
+				return (
+					eventValues.has('connect1(initial)') &&
+					eventValues.has('connect2(initial)')
+				);
+			});
+			eventValues.clear();
 
-		if (type !== 'memory') {
-			const nums1 = await db1.sql`SELECT * FROM nums`;
-			expect(nums1).toEqual([{ num: 123 }]);
+			if (type !== 'memory') {
+				const nums1 = await db1.sql`SELECT * FROM nums`;
+				expect(nums1).toEqual([{ num: 123 }]);
+			}
+
+			const dbFile = await db2.getDatabaseFile();
+			await db2.sql`INSERT INTO nums (num) VALUES (456)`;
+			await db1.overwriteDatabaseFile(dbFile, async () => {
+				await db1.sql`INSERT INTO nums (num) VALUES (789)`;
+				eventValues.add('unlock1');
+			});
+
+			if (type !== 'memory') {
+				await vi.waitUntil(() => eventValues.size === 3);
+				expect(eventValues.has('unlock1')).toBe(true);
+				expect(eventValues.has('connect1(overwrite)')).toBe(true);
+				expect(eventValues.has('connect2(overwrite)')).toBe(true);
+			} else {
+				await vi.waitUntil(() => eventValues.size === 1);
+				expect(eventValues.has('unlock1')).toBe(true);
+			}
+
+			const expectedNums = [{ num: 123 }, { num: 789 }];
+			const nums2 = await db1.sql`SELECT * FROM nums`;
+			expect(nums2).toEqual(expectedNums);
+
+			if (type !== 'memory') {
+				const nums3 = await db2.sql`SELECT * FROM nums`;
+				expect(nums3).toEqual(expectedNums);
+			}
+
+			await db1.destroy();
+			await db2.deleteDatabaseFile();
+			await db2.destroy();
 		}
-
-		const dbFile = await db2.getDatabaseFile();
-		await db2.sql`INSERT INTO nums (num) VALUES (456)`;
-		await db1.overwriteDatabaseFile(dbFile, async () => {
-			await db1.sql`INSERT INTO nums (num) VALUES (789)`;
-			eventValues.add('unlock1');
-		});
-
-		if (type !== 'memory') {
-			await vi.waitUntil(() => eventValues.size === 3);
-			expect(eventValues.has('unlock1')).toBe(true);
-			expect(eventValues.has('connect1(overwrite)')).toBe(true);
-			expect(eventValues.has('connect2(overwrite)')).toBe(true);
-		} else {
-			await vi.waitUntil(() => eventValues.size === 1);
-			expect(eventValues.has('unlock1')).toBe(true);
-		}
-
-		const expectedNums = [{ num: 123 }, { num: 789 }];
-		const nums2 = await db1.sql`SELECT * FROM nums`;
-		expect(nums2).toEqual(expectedNums);
-
-		if (type !== 'memory') {
-			const nums3 = await db2.sql`SELECT * FROM nums`;
-			expect(nums3).toEqual(expectedNums);
-		}
-
-		await db1.destroy();
-		await db2.deleteDatabaseFile();
-		await db2.destroy();
-	});
+	);
 
 	it('should restore user functions', async () => {
 		const db = new SQLocal(path);
@@ -197,32 +201,36 @@ describe.each([
 		await destroy();
 	});
 
-	it('should run onInit statements before other queries after overwrite', async () => {
-		const databasePath = path;
-		const onInit: ClientConfig['onInit'] = (sql) => {
-			return [sql`PRAGMA foreign_keys = ON`];
-		};
+	it(
+		'should run onInit statements before other queries after overwrite',
+		{ timeout: type === 'opfs' ? 1500 : undefined },
+		async () => {
+			const databasePath = path;
+			const onInit: ClientConfig['onInit'] = (sql) => {
+				return [sql`PRAGMA foreign_keys = ON`];
+			};
 
-		const results: number[] = [];
+			const results: number[] = [];
 
-		const db1 = new SQLocal({ databasePath, onInit });
-		const db2 = new SQLocal({ databasePath, onInit });
+			const db1 = new SQLocal({ databasePath, onInit });
+			const db2 = new SQLocal({ databasePath, onInit });
 
-		const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
-		results.push(result1);
-		await db1.sql`PRAGMA foreign_keys = OFF`;
-		const [{ foreign_keys: result2 }] = await db1.sql`PRAGMA foreign_keys`;
-		results.push(result2);
-		const file = await db2.getDatabaseFile();
-		await db1.overwriteDatabaseFile(file);
-		const [{ foreign_keys: result3 }] = await db1.sql`PRAGMA foreign_keys`;
-		results.push(result3);
-		const [{ foreign_keys: result4 }] = await db2.sql`PRAGMA foreign_keys`;
-		results.push(result4);
+			const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
+			results.push(result1);
+			await db1.sql`PRAGMA foreign_keys = OFF`;
+			const [{ foreign_keys: result2 }] = await db1.sql`PRAGMA foreign_keys`;
+			results.push(result2);
+			const file = await db2.getDatabaseFile();
+			await db1.overwriteDatabaseFile(file);
+			const [{ foreign_keys: result3 }] = await db1.sql`PRAGMA foreign_keys`;
+			results.push(result3);
+			const [{ foreign_keys: result4 }] = await db2.sql`PRAGMA foreign_keys`;
+			results.push(result4);
 
-		expect(results).toEqual([1, 0, 1, 1]);
+			expect(results).toEqual([1, 0, 1, 1]);
 
-		await db1.destroy();
-		await db2.destroy();
-	});
+			await db1.destroy();
+			await db2.destroy();
+		}
+	);
 });

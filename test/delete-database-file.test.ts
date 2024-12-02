@@ -45,39 +45,43 @@ describe.each([
 		await destroy();
 	});
 
-	it('should or should not notify other instances of a delete', async () => {
-		let onConnectReason1: ConnectReason | null = null;
-		let onConnectReason2: ConnectReason | null = null;
+	it(
+		'should or should not notify other instances of a delete',
+		{ timeout: type === 'opfs' ? 2000 : undefined },
+		async () => {
+			let onConnectReason1: ConnectReason | null = null;
+			let onConnectReason2: ConnectReason | null = null;
 
-		const db1 = new SQLocal({
-			databasePath: path,
-			onConnect: (reason) => (onConnectReason1 = reason),
-		});
-		const db2 = new SQLocal({
-			databasePath: path,
-			onConnect: (reason) => (onConnectReason2 = reason),
-		});
+			const db1 = new SQLocal({
+				databasePath: path,
+				onConnect: (reason) => (onConnectReason1 = reason),
+			});
+			const db2 = new SQLocal({
+				databasePath: path,
+				onConnect: (reason) => (onConnectReason2 = reason),
+			});
 
-		await vi.waitUntil(() => onConnectReason1 === 'initial');
-		onConnectReason1 = null;
-		await vi.waitUntil(() => onConnectReason2 === 'initial');
-		onConnectReason2 = null;
+			await vi.waitUntil(() => onConnectReason1 === 'initial');
+			onConnectReason1 = null;
+			await vi.waitUntil(() => onConnectReason2 === 'initial');
+			onConnectReason2 = null;
 
-		await db1.deleteDatabaseFile();
+			await db1.deleteDatabaseFile();
 
-		if (type !== 'memory') {
-			await vi.waitUntil(() => onConnectReason2 === 'delete');
-			expect(onConnectReason2).toBe('delete');
-		} else {
-			expect(onConnectReason2).toBe(null);
+			if (type !== 'memory') {
+				await vi.waitUntil(() => onConnectReason2 === 'delete');
+				expect(onConnectReason2).toBe('delete');
+			} else {
+				expect(onConnectReason2).toBe(null);
+			}
+
+			expect(onConnectReason1).toBe('delete');
+
+			await db2.deleteDatabaseFile();
+			await db2.destroy();
+			await db1.destroy();
 		}
-
-		expect(onConnectReason1).toBe('delete');
-
-		await db2.deleteDatabaseFile();
-		await db2.destroy();
-		await db1.destroy();
-	});
+	);
 
 	it('should restore user functions', async () => {
 		const db = new SQLocal(path);

@@ -3,9 +3,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	test: {
-		testTimeout: 1500,
-		hookTimeout: 1500,
-		teardownTimeout: 1500,
+		testTimeout: 1000,
+		hookTimeout: 1000,
+		teardownTimeout: 1000,
 		includeTaskLocation: true,
 		browser: {
 			enabled: true,
