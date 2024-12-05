@@ -64,6 +64,7 @@ export const db = new SQLocal({
 	databasePath: 'database.sqlite3',
 	readOnly: true,
 	verbose: true,
+	enableSyncAccessHandlePool: true,
 	onInit: (sql) => {},
 	onConnect: (reason) => {},
 });
@@ -72,6 +73,7 @@ export const db = new SQLocal({
 - **`databasePath`** (`string`) - The file name for the database file. This is the only required option.
 - **`readOnly`** (`boolean`) - If `true`, connect to the database in read-only mode. Attempts to run queries that would mutate the database will throw an error.
 - **`verbose`** (`boolean`) - If `true`, any SQL executed on the database will be logged to the console.
+- **`enableSyncAccessHandlePool`** (`boolean`) - If `true`, the [Sync Access Handle Pool](https://sqlite.org/wasm/doc/trunk/persistence.md#vfs-opfs-sahpool) will be enabled for the database. This provides better performance, but restricts access to the database file to one browser tab at a time. This also allows the database to function without the need for cross-origin isolation headers.
 - **`onInit`** (`function`) - A callback that will be run once when the client has initialized but before it has connected to the database. This callback should return an array of SQL statements (using the passed `sql` tagged template function, similar to the [`batch` method](../api/batch.md)) that should be executed before any other statements on the database connection. The `onInit` callback will be called only once, but the statements will be executed every time the client creates a new database connection. This makes it the best way to set up any `PRAGMA` settings, temporary tables, views, or triggers for the connection.
 - **`onConnect`** (`function`) - A callback that will be run after the client has connected to the database. This will happen at initialization and any time [`overwriteDatabaseFile`](/api/overwritedatabasefile) or [`deleteDatabaseFile`](/api/deletedatabasefile) is called on any SQLocal client connected to the same database. The callback is passed a string (`'initial' | 'overwrite' | 'delete'`) that indicates why the callback was executed. This callback is useful for syncing your application's state with data from the newly-connected database.
 

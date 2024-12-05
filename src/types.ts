@@ -57,6 +57,7 @@ export type ClientConfig = {
 	verbose?: boolean;
 	onInit?: (sql: typeof sqlTag) => void | Statement[];
 	onConnect?: (reason: ConnectReason) => void;
+	enableSyncAccessHandlePool?: boolean;
 };
 
 export type ProcessorConfig = {
@@ -65,6 +66,7 @@ export type ProcessorConfig = {
 	verbose?: boolean;
 	clientKey?: QueryKey;
 	onInitStatements?: Statement[];
+	enableSyncAccessHandlePool?: boolean;
 };
 
 export type DatabaseInfo = {

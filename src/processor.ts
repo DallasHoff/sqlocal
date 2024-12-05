@@ -66,6 +66,9 @@ export class SQLocalProcessor {
 		try {
 			if (!this.sqlite3) {
 				this.sqlite3 = await sqlite3InitModule();
+				if (this.config.enableSyncAccessHandlePool) {
+					await this.sqlite3.installOpfsSAHPoolVfs({});
+				}
 			}
 
 			if (this.db) {
@@ -487,5 +490,9 @@ export class SQLocalProcessor {
 				queryKey: message.queryKey,
 			});
 		}
+	};
+
+	getVfsList = () => {
+		return this.sqlite3?.capi.sqlite3_vfs_find(null);
 	};
 }
