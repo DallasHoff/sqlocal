@@ -491,8 +491,4 @@ export class SQLocalProcessor {
 			});
 		}
 	};
-
-	getVfsList = () => {
-		return this.sqlite3?.capi.sqlite3_vfs_find(null);
-	};
 }
