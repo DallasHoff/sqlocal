@@ -67,7 +67,9 @@ export class SQLocalProcessor {
 			if (!this.sqlite3) {
 				this.sqlite3 = await sqlite3InitModule();
 				if (this.config.enableSyncAccessHandlePool) {
-					await this.sqlite3.installOpfsSAHPoolVfs({});
+					await this.sqlite3.installOpfsSAHPoolVfs({
+						directory: this.config.databasePath,
+					});
 				}
 			}
 
