@@ -392,18 +392,37 @@ export class SQLocalProcessor {
 		}
 	};
 
-	protected exportDb = (message: ExportMessage): void => {
-		if (!this.sqlite3 || !this.db) return;
+	protected exportDb = async (message: ExportMessage): Promise<void> => {
+		if (!this.sqlite3 || !this.db || !this.config.databasePath) return;
 
+		let bufferName, buffer;
 		const { queryKey } = message;
 
 		try {
-			const buffer = this.sqlite3.capi.sqlite3_js_db_export(this.db);
+			if (this.dbStorageType === 'opfs') {
+				const path = parseDatabasePath(this.config.databasePath);
+				const { directories, getDirectoryHandle } = path;
+				bufferName = path.fileName;
+				const tempFileName = `backup-${Date.now()}--${bufferName}`;
+				const tempFilePath = `${directories.join('/')}/${tempFileName}`;
+
+				this.db.exec({ sql: 'VACUUM INTO ?', bind: [tempFilePath] });
+
+				const dirHandle = await getDirectoryHandle();
+				const fileHandle = await dirHandle.getFileHandle(tempFileName);
+				const file = await fileHandle.getFile();
+				buffer = await file.arrayBuffer();
+				await dirHandle.removeEntry(tempFileName);
+			} else {
+				bufferName = 'database.sqlite3';
+				buffer = this.sqlite3.capi.sqlite3_js_db_export(this.db);
+			}
 
 			this.emitMessage(
 				{
 					type: 'buffer',
 					queryKey,
+					bufferName,
 					buffer,
 				},
 				[buffer]

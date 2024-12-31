@@ -32,7 +32,6 @@ import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
-import { parseDatabasePath } from './lib/parse-database-path.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 
@@ -394,37 +393,15 @@ export class SQLocal {
 	};
 
 	getDatabaseFile = async (): Promise<File> => {
-		let fileName, fileBuffer;
-		const { storageType } = await this.getDatabaseInfo();
+		const message = await this.createQuery({ type: 'export' });
 
-		if (storageType === 'opfs') {
-			const path = parseDatabasePath(this.config.databasePath);
-			const { directories, getDirectoryHandle } = path;
-			fileName = path.fileName;
-			const tempFileName = `backup-${Date.now()}--${fileName}`;
-			const tempFilePath = `${directories.join('/')}/${tempFileName}`;
-
-			await this.exec('VACUUM INTO ?', [tempFilePath]);
-
-			const dirHandle = await getDirectoryHandle();
-			const fileHandle = await dirHandle.getFileHandle(tempFileName);
-			const file = await fileHandle.getFile();
-			fileBuffer = await file.arrayBuffer();
-			await dirHandle.removeEntry(tempFileName);
+		if (message.type === 'buffer') {
+			return new File([message.buffer], message.bufferName, {
+				type: 'application/x-sqlite3',
+			});
 		} else {
-			const message = await this.createQuery({ type: 'export' });
-
-			if (message.type === 'buffer') {
-				fileName = 'database.sqlite3';
-				fileBuffer = message.buffer;
-			} else {
-				throw new Error('The database failed to export.');
-			}
+			throw new Error('The database failed to export.');
 		}
-
-		return new File([fileBuffer], fileName, {
-			type: 'application/x-sqlite3',
-		});
 	};
 
 	overwriteDatabaseFile = async (

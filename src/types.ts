@@ -177,7 +177,8 @@ export type DataMessage = {
 export type BufferMessage = {
 	type: 'buffer';
 	queryKey: QueryKey;
-	buffer: Uint8Array;
+	bufferName: string;
+	buffer: ArrayBuffer | Uint8Array;
 };
 export type CallbackMessage = {
 	type: 'callback';
@@ -194,6 +195,8 @@ export type EventMessage = {
 	event: 'connect';
 	reason: ConnectReason;
 };
+
+// Broadcast messages
 
 export type ReinitMessage = {
 	clientKey: QueryKey;
