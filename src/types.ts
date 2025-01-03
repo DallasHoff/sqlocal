@@ -47,6 +47,35 @@ export type RawResultData = {
 	columns: string[];
 };
 
+// Driver
+
+export interface SQLocalDriver {
+	readonly storageType: Sqlite3StorageType;
+	init: (config: DriverConfig) => Promise<void>;
+	exec: (statement: DriverStatement) => Promise<RawResultData>;
+	execBatch: (statements: DriverStatement[]) => Promise<RawResultData[]>;
+	getStorageSizeBytes: () => Promise<number>;
+	createFunction: (fn: UserFunction) => Promise<void>;
+	import: (
+		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+	) => Promise<void>;
+	export: () => Promise<{ name: string; data: ArrayBuffer | Uint8Array }>;
+	clear: () => Promise<void>;
+	destroy: () => Promise<void>;
+}
+
+export type DriverConfig = {
+	databasePath?: DatabasePath;
+	readOnly?: boolean;
+	verbose?: boolean;
+};
+
+export type DriverStatement = {
+	sql: string;
+	params?: any[];
+	method?: Sqlite3Method;
+};
+
 // Database status
 
 export type DatabasePath = (string & {}) | ':memory:';

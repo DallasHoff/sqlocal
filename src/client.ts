@@ -34,6 +34,7 @@ import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
+import { SQLocalMemoryDriver } from './drivers/memory-driver.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -59,26 +60,32 @@ export class SQLocal {
 		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
 		const { onInit, onConnect, ...commonConfig } = clientConfig;
+		const { databasePath } = commonConfig;
 
 		this.config = clientConfig;
 		this.clientKey = getQueryKey();
 		this.reinitChannel = new BroadcastChannel(
-			`_sqlocal_reinit_(${commonConfig.databasePath})`
+			`_sqlocal_reinit_(${databasePath})`
 		);
 
 		if (
 			typeof globalThis.Worker !== 'undefined' &&
-			commonConfig.databasePath !== ':memory:'
+			databasePath !== ':memory:'
 		) {
 			this.processor = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
 			});
-			this.processor.addEventListener('message', this.processMessageEvent);
-			this.proxy = coincident(this.processor) as WorkerProxy;
 		} else {
-			this.processor = new SQLocalProcessor(true);
+			const driver = new SQLocalMemoryDriver();
+			this.processor = new SQLocalProcessor(driver, true);
+		}
+
+		if (this.processor instanceof SQLocalProcessor) {
 			this.processor.onmessage = (message) => this.processMessageEvent(message);
 			this.proxy = globalThis as WorkerProxy;
+		} else {
+			this.processor.addEventListener('message', this.processMessageEvent);
+			this.proxy = coincident(this.processor) as WorkerProxy;
 		}
 
 		this.processor.postMessage({
