@@ -394,6 +394,7 @@ export class SQLocalProcessor {
 	};
 
 	protected destroy = async (message?: DestroyMessage): Promise<void> => {
+		await this.driver.exec({ sql: 'PRAGMA optimize' });
 		await this.driver.destroy();
 
 		if (this.reinitChannel) {
