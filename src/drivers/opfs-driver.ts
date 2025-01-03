@@ -38,6 +38,10 @@ export class SQLiteOpfsDriver
 		this.config = config;
 	}
 
+	override async isDatabasePersisted(): Promise<boolean> {
+		return navigator.storage?.persisted();
+	}
+
 	override async import(
 		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
 	): Promise<void> {

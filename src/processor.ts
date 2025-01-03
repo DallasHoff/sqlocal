@@ -236,20 +236,15 @@ export class SQLocalProcessor {
 		message: GetInfoMessage
 	): Promise<void> => {
 		try {
-			const databasePath = this.config.databasePath;
-			const storageType = this.driver.storageType;
-			const databaseSizeBytes = await this.driver.getDatabaseSizeBytes();
-			const persisted =
-				storageType !== undefined
-					? storageType !== 'memory'
-						? await navigator.storage?.persisted()
-						: false
-					: undefined;
-
 			this.emitMessage({
 				type: 'info',
 				queryKey: message.queryKey,
-				info: { databasePath, databaseSizeBytes, storageType, persisted },
+				info: {
+					databasePath: this.config.databasePath,
+					storageType: this.driver.storageType,
+					databaseSizeBytes: await this.driver.getDatabaseSizeBytes(),
+					persisted: await this.driver.isDatabasePersisted(),
+				},
 			});
 		} catch (error) {
 			this.emitMessage({

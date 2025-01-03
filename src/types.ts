@@ -55,6 +55,7 @@ export interface SQLocalDriver {
 	init: (config: DriverConfig) => Promise<void>;
 	exec: (statement: DriverStatement) => Promise<RawResultData>;
 	execBatch: (statements: DriverStatement[]) => Promise<RawResultData[]>;
+	isDatabasePersisted: () => Promise<boolean>;
 	getDatabaseSizeBytes: () => Promise<number>;
 	createFunction: (fn: UserFunction) => Promise<void>;
 	import: (

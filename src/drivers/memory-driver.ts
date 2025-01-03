@@ -56,6 +56,10 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		return results;
 	}
 
+	async isDatabasePersisted(): Promise<boolean> {
+		return false;
+	}
+
 	async getDatabaseSizeBytes(): Promise<number> {
 		const sizeResult = await this.exec({
 			sql: `SELECT page_count * page_size AS size 
