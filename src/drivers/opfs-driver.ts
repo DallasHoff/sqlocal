@@ -6,10 +6,10 @@ import type {
 } from '../types.js';
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 import { parseDatabasePath } from '../lib/parse-database-path.js';
-import { SQLocalMemoryDriver } from './memory-driver.js';
+import { SQLiteMemoryDriver } from './memory-driver.js';
 
-export class SQLocalOpfsDriver
-	extends SQLocalMemoryDriver
+export class SQLiteOpfsDriver
+	extends SQLiteMemoryDriver
 	implements SQLocalDriver
 {
 	override readonly storageType: Sqlite3StorageType = 'opfs';

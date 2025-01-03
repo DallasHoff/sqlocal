@@ -55,7 +55,7 @@ export interface SQLocalDriver {
 	init: (config: DriverConfig) => Promise<void>;
 	exec: (statement: DriverStatement) => Promise<RawResultData>;
 	execBatch: (statements: DriverStatement[]) => Promise<RawResultData[]>;
-	getStorageSizeBytes: () => Promise<number>;
+	getDatabaseSizeBytes: () => Promise<number>;
 	createFunction: (fn: UserFunction) => Promise<void>;
 	import: (
 		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>

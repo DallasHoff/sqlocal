@@ -22,7 +22,7 @@ import type {
 	SQLocalDriver,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
-import { SQLocalMemoryDriver } from './drivers/memory-driver.js';
+import { SQLiteMemoryDriver } from './drivers/memory-driver.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
@@ -56,7 +56,7 @@ export class SQLocalProcessor {
 			try {
 				await this.driver.init(this.config);
 			} catch {
-				this.driver = new SQLocalMemoryDriver();
+				this.driver = new SQLiteMemoryDriver();
 				await this.driver.init(this.config);
 			}
 
@@ -238,7 +238,7 @@ export class SQLocalProcessor {
 		try {
 			const databasePath = this.config.databasePath;
 			const storageType = this.driver.storageType;
-			const databaseSizeBytes = await this.driver.getStorageSizeBytes();
+			const databaseSizeBytes = await this.driver.getDatabaseSizeBytes();
 			const persisted =
 				storageType !== undefined
 					? storageType !== 'memory'

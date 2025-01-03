@@ -11,7 +11,7 @@ import type {
 } from '../types.js';
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 
-export class SQLocalMemoryDriver implements SQLocalDriver {
+export class SQLiteMemoryDriver implements SQLocalDriver {
 	protected sqlite3?: Sqlite3;
 	protected db?: Sqlite3Db;
 	protected config?: DriverConfig;
@@ -56,7 +56,7 @@ export class SQLocalMemoryDriver implements SQLocalDriver {
 		return results;
 	}
 
-	async getStorageSizeBytes(): Promise<number> {
+	async getDatabaseSizeBytes(): Promise<number> {
 		const sizeResult = await this.exec({
 			sql: `SELECT page_count * page_size AS size 
 				FROM pragma_page_count(), pragma_page_size()`,

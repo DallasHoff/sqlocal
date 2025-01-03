@@ -7,7 +7,8 @@ import {
 	it,
 	vi,
 } from 'vitest';
-import { SQLocal } from '../src/index.js';
+import { SQLocal, SQLocalProcessor } from '../src/index.js';
+import { SQLiteMemoryDriver } from '../src/drivers/memory-driver.js';
 
 describe.each([
 	{ type: 'opfs', path: 'init-test.sqlite3' },
@@ -91,5 +92,19 @@ describe.each([
 		}
 
 		await destroy();
+	});
+
+	it('should accept custom processors', async () => {
+		const driver = new SQLiteMemoryDriver();
+		const processor = new SQLocalProcessor(driver);
+		const db = new SQLocal({ databasePath: ':custom:', processor });
+		const info = await db.getDatabaseInfo();
+
+		expect(info).toEqual({
+			databasePath: ':custom:',
+			databaseSizeBytes: 0,
+			storageType: 'memory',
+			persisted: false,
+		});
 	});
 });
