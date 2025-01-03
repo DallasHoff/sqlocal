@@ -59,7 +59,7 @@ export class SQLocal {
 	constructor(config: DatabasePath | ClientConfig) {
 		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
-		const { onInit, onConnect, ...commonConfig } = clientConfig;
+		const { onInit, onConnect, processor, ...commonConfig } = clientConfig;
 		const { databasePath } = commonConfig;
 
 		this.config = clientConfig;
@@ -68,7 +68,9 @@ export class SQLocal {
 			`_sqlocal_reinit_(${databasePath})`
 		);
 
-		if (
+		if (typeof processor !== 'undefined') {
+			this.processor = processor;
+		} else if (
 			typeof globalThis.Worker !== 'undefined' &&
 			databasePath !== ':memory:'
 		) {
@@ -77,7 +79,7 @@ export class SQLocal {
 			});
 		} else {
 			const driver = new SQLocalMemoryDriver();
-			this.processor = new SQLocalProcessor(driver, true);
+			this.processor = new SQLocalProcessor(driver);
 		}
 
 		if (this.processor instanceof SQLocalProcessor) {

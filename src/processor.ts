@@ -38,8 +38,11 @@ export class SQLocalProcessor {
 
 	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
-	constructor(driver: SQLocalDriver, sameContext: boolean) {
-		const proxy = sameContext ? globalThis : coincident(globalThis);
+	constructor(driver: SQLocalDriver) {
+		const isInWorker =
+			typeof WorkerGlobalScope !== 'undefined' &&
+			globalThis instanceof WorkerGlobalScope;
+		const proxy = isInWorker ? coincident(globalThis) : globalThis;
 		this.proxy = proxy as WorkerProxy;
 		this.driver = driver;
 	}

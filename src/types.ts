@@ -3,6 +3,7 @@ import type { CompiledQuery as KyselyQuery } from 'kysely';
 import type { RunnableQuery as DrizzleQuery } from 'drizzle-orm/runnable-query';
 import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
 import type { sqlTag } from './lib/sql-tag.js';
+import type { SQLocalProcessor } from './processor.js';
 
 // SQLite
 
@@ -86,6 +87,7 @@ export type ClientConfig = {
 	verbose?: boolean;
 	onInit?: (sql: typeof sqlTag) => void | Statement[];
 	onConnect?: (reason: ConnectReason) => void;
+	processor?: SQLocalProcessor | Worker;
 };
 
 export type ProcessorConfig = {
