@@ -58,14 +58,8 @@ export class SQLocalProcessor {
 			} catch {
 				this.driver = new SQLiteMemoryDriver();
 				await this.driver.init(this.config);
-			}
-
-			if (
-				this.driver.storageType === 'memory' &&
-				this.config.databasePath !== ':memory:'
-			) {
 				console.warn(
-					`The origin private file system is not available, so ${this.config.databasePath} will not be persisted. Make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
+					`Persistence failed, so ${this.config.databasePath} will not be saved. For origin private file system persistence, make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
 				);
 			}
 
