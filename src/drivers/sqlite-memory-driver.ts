@@ -1,10 +1,10 @@
-import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import type {
 	DriverConfig,
 	DriverStatement,
 	RawResultData,
 	Sqlite3,
 	Sqlite3Db,
+	Sqlite3InitModule,
 	Sqlite3StorageType,
 	SQLocalDriver,
 	UserFunction,
@@ -19,12 +19,21 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 	readonly storageType: Sqlite3StorageType = 'memory';
 
+	constructor(protected sqlite3InitModule?: Sqlite3InitModule) {}
+
 	async init(config: DriverConfig): Promise<void> {
 		const { databasePath } = config;
 		const flags = this.getFlags(config);
 
+		if (!this.sqlite3InitModule) {
+			const { default: sqlite3InitModule } = await import(
+				'@sqlite.org/sqlite-wasm'
+			);
+			this.sqlite3InitModule = sqlite3InitModule;
+		}
+
 		if (!this.sqlite3) {
-			this.sqlite3 = await sqlite3InitModule();
+			this.sqlite3 = await this.sqlite3InitModule();
 		}
 
 		if (this.db) {
