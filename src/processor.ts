@@ -22,7 +22,7 @@ import type {
 	SQLocalDriver,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
-import { SQLiteMemoryDriver } from './drivers/memory-driver.js';
+import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;

@@ -8,7 +8,7 @@ import {
 	vi,
 } from 'vitest';
 import { SQLocal, SQLocalProcessor } from '../src/index.js';
-import { SQLiteMemoryDriver } from '../src/drivers/memory-driver.js';
+import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
 
 describe.each([
 	{ type: 'opfs', path: 'init-test.sqlite3' },

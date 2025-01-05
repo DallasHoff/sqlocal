@@ -34,7 +34,7 @@ import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
-import { SQLiteMemoryDriver } from './drivers/memory-driver.js';
+import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 
 export class SQLocal {
 	protected config: ClientConfig;

@@ -1,4 +1,4 @@
-import { SQLiteOpfsDriver } from './drivers/opfs-driver.js';
+import { SQLiteOpfsDriver } from './drivers/sqlite-opfs-driver.js';
 import { SQLocalProcessor } from './processor.js';
 
 const driver = new SQLiteOpfsDriver();

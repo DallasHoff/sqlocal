@@ -6,7 +6,7 @@ import type {
 } from '../types.js';
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 import { parseDatabasePath } from '../lib/parse-database-path.js';
-import { SQLiteMemoryDriver } from './memory-driver.js';
+import { SQLiteMemoryDriver } from './sqlite-memory-driver.js';
 
 export class SQLiteOpfsDriver
 	extends SQLiteMemoryDriver
