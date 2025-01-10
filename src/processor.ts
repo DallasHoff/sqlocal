@@ -307,10 +307,6 @@ export class SQLocalProcessor {
 		let errored = false;
 
 		try {
-			if (this.driver.storageType !== 'memory') {
-				await this.destroy();
-			}
-
 			await this.driver.import(database);
 
 			if (this.driver.storageType === 'memory') {
@@ -366,7 +362,6 @@ export class SQLocalProcessor {
 		let errored = false;
 
 		try {
-			await this.destroy();
 			await this.driver.clear();
 		} catch (error) {
 			this.emitMessage({

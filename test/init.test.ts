@@ -13,6 +13,8 @@ import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
 describe.each([
 	{ type: 'opfs', path: 'init-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('init ($type)', ({ path, type }) => {
 	const { sql, deleteDatabaseFile } = new SQLocal(path);
 

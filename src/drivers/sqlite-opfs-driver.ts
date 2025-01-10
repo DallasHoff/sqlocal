@@ -55,6 +55,8 @@ export class SQLiteOpfsDriver
 			throw new Error('Driver not initialized');
 		}
 
+		await this.destroy();
+
 		const data = await normalizeDatabaseFile(database, 'callback');
 		await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
 	}
@@ -88,6 +90,8 @@ export class SQLiteOpfsDriver
 
 	override async clear(): Promise<void> {
 		if (!this.config?.databasePath) throw new Error('Driver not initialized');
+
+		await this.destroy();
 
 		const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
 			this.config.databasePath
