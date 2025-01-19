@@ -48,10 +48,11 @@ describe.each([
 		let onInitCalled = false;
 		let onConnectCalled = false;
 
-		const db = new SQLocal({
+		const { sql, destroy } = new SQLocal({
 			databasePath: path,
-			onInit: () => {
+			onInit: (sql) => {
 				onInitCalled = true;
+				return [sql`PRAGMA foreign_keys = ON`];
 			},
 			onConnect: () => {
 				onConnectCalled = true;
@@ -60,7 +61,11 @@ describe.each([
 
 		expect(onInitCalled).toBe(true);
 		await vi.waitUntil(() => onConnectCalled === true);
-		await db.destroy();
+
+		const [foreignKeys] = await sql`PRAGMA foreign_keys`;
+		expect(foreignKeys).toEqual({ foreign_keys: 1 });
+
+		await destroy();
 	});
 
 	it('should enable read-only mode', async () => {
