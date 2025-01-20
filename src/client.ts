@@ -35,7 +35,6 @@ import { normalizeSql } from './lib/normalize-sql.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
-import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -71,15 +70,6 @@ export class SQLocal {
 
 		if (typeof processor !== 'undefined') {
 			this.processor = processor;
-		} else if (databasePath === 'local' || databasePath === ':localStorage:') {
-			const driver = new SQLiteKvvfsDriver('local');
-			this.processor = new SQLocalProcessor(driver);
-		} else if (
-			databasePath === 'session' ||
-			databasePath === ':sessionStorage:'
-		) {
-			const driver = new SQLiteKvvfsDriver('session');
-			this.processor = new SQLocalProcessor(driver);
 		} else if (
 			typeof globalThis.Worker !== 'undefined' &&
 			databasePath !== ':memory:'

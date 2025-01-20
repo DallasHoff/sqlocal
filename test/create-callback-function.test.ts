@@ -4,8 +4,6 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'create-callback-function-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('createCallbackFunction ($type)', ({ path }) => {
 	const { sql, createCallbackFunction } = new SQLocal(path);
 

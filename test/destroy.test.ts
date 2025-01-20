@@ -4,8 +4,6 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'destroy-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('destroy ($type)', ({ path }) => {
 	const { sql, destroy } = new SQLocal(path);
 

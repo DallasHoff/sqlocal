@@ -4,8 +4,6 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'batch-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('batch ($type)', ({ path }) => {
 	const { sql, batch } = new SQLocal(path);
 

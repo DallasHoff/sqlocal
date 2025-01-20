@@ -5,8 +5,6 @@ import { sleep } from './test-utils/sleep.js';
 describe.each([
 	{ type: 'opfs', path: 'transaction-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('transaction ($type)', ({ path }) => {
 	const { sql, batch, transaction } = new SQLocal(path);
 

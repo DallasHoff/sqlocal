@@ -6,8 +6,6 @@ import type { ClientConfig, ConnectReason } from '../src/types.js';
 describe.each([
 	{ type: 'opfs', path: 'delete-db-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('deleteDatabaseFile ($type)', ({ path, type }) => {
 	it('should delete the database file', async () => {
 		let onConnectReason: ConnectReason | null = null;

@@ -4,8 +4,6 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'get-database-file-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('getDatabaseFile ($type)', ({ path, type }) => {
 	const fileName = type !== 'opfs' ? 'database.sqlite3' : path;
 	const paths = [[], [''], ['top'], ['one', 'two']];

@@ -4,8 +4,6 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'create-scalar-function-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('createScalarFunction ($type)', ({ path, type }) => {
 	const { sql, createScalarFunction } = new SQLocal(path);
 

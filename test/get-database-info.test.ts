@@ -4,8 +4,6 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'get-database-info-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('getDatabaseInfo ($type)', ({ type, path }) => {
 	const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(path);
 

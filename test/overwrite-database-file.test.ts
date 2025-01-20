@@ -6,8 +6,6 @@ import type { ClientConfig } from '../src/types.js';
 describe.each([
 	{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('overwriteDatabaseFile ($type)', ({ path, type }) => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();

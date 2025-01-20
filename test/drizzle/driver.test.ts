@@ -8,8 +8,6 @@ import { sleep } from '../test-utils/sleep.js';
 describe.each([
 	{ type: 'opfs', path: 'drizzle-driver-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
 ])('drizzle driver ($type)', ({ path }) => {
 	const { sql, driver, batchDriver, transaction } = new SQLocalDrizzle(path);
 
