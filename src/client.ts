@@ -24,7 +24,7 @@ import type {
 	DeleteMessage,
 	DatabasePath,
 	ExportMessage,
-	ReinitMessage,
+	BroadcastMessage,
 } from './types.js';
 import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
@@ -198,6 +198,10 @@ export class SQLocal {
 				});
 			}
 		);
+	};
+
+	protected broadcast = (message: BroadcastMessage): void => {
+		this.reinitChannel.postMessage(message);
 	};
 
 	protected exec = async (
@@ -424,6 +428,11 @@ export class SQLocal {
 	): Promise<void> => {
 		await mutationLock('exclusive', false, this.config, async () => {
 			try {
+				this.broadcast({
+					type: 'close',
+					clientKey: this.clientKey,
+				});
+
 				const database = await normalizeDatabaseFile(databaseFile);
 
 				await this.createQuery({
@@ -436,10 +445,11 @@ export class SQLocal {
 					await beforeUnlock();
 				}
 
-				this.reinitChannel.postMessage({
+				this.broadcast({
+					type: 'reinit',
 					clientKey: this.clientKey,
 					reason: 'overwrite',
-				} satisfies ReinitMessage);
+				});
 			} finally {
 				this.bypassMutationLock = false;
 			}
@@ -451,6 +461,11 @@ export class SQLocal {
 	): Promise<void> => {
 		await mutationLock('exclusive', false, this.config, async () => {
 			try {
+				this.broadcast({
+					type: 'close',
+					clientKey: this.clientKey,
+				});
+
 				await this.createQuery({
 					type: 'delete',
 				});
@@ -460,10 +475,11 @@ export class SQLocal {
 					await beforeUnlock();
 				}
 
-				this.reinitChannel.postMessage({
+				this.broadcast({
+					type: 'reinit',
 					clientKey: this.clientKey,
 					reason: 'delete',
-				} satisfies ReinitMessage);
+				});
 			} finally {
 				this.bypassMutationLock = false;
 			}

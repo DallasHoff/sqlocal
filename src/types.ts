@@ -231,9 +231,15 @@ export type EventMessage = {
 
 // Broadcast messages
 
-export type ReinitMessage = {
+export type BroadcastMessage = ReinitBroadcast | CloseBroadcast;
+export type ReinitBroadcast = {
+	type: 'reinit';
 	clientKey: QueryKey;
 	reason: ConnectReason;
+};
+export type CloseBroadcast = {
+	type: 'close';
+	clientKey: QueryKey;
 };
 
 // User functions

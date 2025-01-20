@@ -18,8 +18,8 @@ import type {
 	DeleteMessage,
 	ExportMessage,
 	ConnectReason,
-	ReinitMessage,
 	SQLocalDriver,
+	BroadcastMessage,
 } from './types.js';
 import { createMutex } from './lib/create-mutex.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
@@ -67,9 +67,20 @@ export class SQLocalProcessor {
 				this.reinitChannel = new BroadcastChannel(
 					`_sqlocal_reinit_(${this.config.databasePath})`
 				);
-				this.reinitChannel.onmessage = (event: MessageEvent<ReinitMessage>) => {
-					if (this.config.clientKey !== event.data.clientKey) {
-						this.init(event.data.reason);
+
+				this.reinitChannel.onmessage = (
+					event: MessageEvent<BroadcastMessage>
+				) => {
+					const message = event.data;
+					if (this.config.clientKey === message.clientKey) return;
+
+					switch (message.type) {
+						case 'reinit':
+							this.init(message.reason);
+							break;
+						case 'close':
+							this.driver.destroy();
+							break;
 					}
 				};
 			}
