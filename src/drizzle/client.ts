@@ -9,6 +9,7 @@ export class SQLocalDrizzle extends SQLocal {
 	): Promise<RawResultData> => {
 		if (
 			/^begin\b/i.test(sql) &&
+			typeof globalThis.sessionStorage !== 'undefined' &&
 			!sessionStorage._sqlocal_sent_drizzle_transaction_warning
 		) {
 			console.warn(

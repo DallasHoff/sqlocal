@@ -499,7 +499,10 @@ export class SQLocal {
 	destroy = async (): Promise<void> => {
 		await this.createQuery({ type: 'destroy' });
 
-		if (this.processor instanceof Worker) {
+		if (
+			typeof globalThis.Worker !== 'undefined' &&
+			this.processor instanceof Worker
+		) {
 			this.processor.removeEventListener('message', this.processMessageEvent);
 			this.processor.terminate();
 		}
