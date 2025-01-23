@@ -15,6 +15,12 @@ export class SQLiteKvvfsDriver
 	override async init(config: DriverConfig): Promise<void> {
 		const flags = this.getFlags(config);
 
+		if (config.readOnly) {
+			throw new Error(
+				`SQLite storage type "${this.storageType}" does not support read-only mode.`
+			);
+		}
+
 		if (!this.sqlite3InitModule) {
 			const { default: sqlite3InitModule } = await import(
 				'@sqlite.org/sqlite-wasm'
@@ -30,10 +36,11 @@ export class SQLiteKvvfsDriver
 			await this.destroy();
 		}
 
+		// @ts-expect-error TODO: sqlite-wasm's option types are wrong
 		this.db = new this.sqlite3.oo1.JsStorageDb({
 			filename: this.storageType,
 			flags,
-		} as any); // TODO: sqlite-wasm's types are wrong
+		});
 		this.config = config;
 	}
 

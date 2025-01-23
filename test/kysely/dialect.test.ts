@@ -8,6 +8,8 @@ import { sleep } from '../test-utils/sleep.js';
 describe.each([
 	{ type: 'opfs', path: 'kysely-dialect-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('kysely dialect ($type)', ({ path }) => {
 	const { dialect, transaction } = new SQLocalKysely(path);
 	const db = new Kysely<DB>({

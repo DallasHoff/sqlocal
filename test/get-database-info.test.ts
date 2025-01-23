@@ -4,6 +4,8 @@ import { SQLocal } from '../src/index.js';
 describe.each([
 	{ type: 'opfs', path: 'get-database-info-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('getDatabaseInfo ($type)', ({ type, path }) => {
 	const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(path);
 
@@ -26,5 +28,7 @@ describe.each([
 
 		const info2 = await getDatabaseInfo();
 		expect(info2.databaseSizeBytes).toBeGreaterThan(0);
+
+		await deleteDatabaseFile();
 	});
 });
