@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+/// <reference types="@vitest/browser/providers/webdriverio" />
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -12,7 +13,7 @@ export default defineConfig({
 			headless: true,
 			screenshotFailures: false,
 			provider: 'webdriverio',
-			name: 'chrome',
+			instances: [{ browser: 'chrome' }],
 		},
 	},
 	optimizeDeps: {
