@@ -9,11 +9,15 @@ export default defineConfig({
 		teardownTimeout: 1000,
 		includeTaskLocation: true,
 		browser: {
-			enabled: true,
 			headless: true,
 			screenshotFailures: false,
 			provider: 'webdriverio',
 			instances: [{ browser: 'chrome' }],
+		},
+		poolOptions: {
+			forks: {
+				execArgv: ['--experimental-sqlite'],
+			},
 		},
 	},
 	optimizeDeps: {

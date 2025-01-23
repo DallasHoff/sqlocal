@@ -10,12 +10,16 @@ import {
 import { SQLocal, SQLocalProcessor } from '../src/index.js';
 import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
 
-describe.each([
-	{ type: 'opfs', path: 'init-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('init ($type)', ({ path, type }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'init-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/init-test.sqlite3' }]
+)('init ($type)', ({ path, type }) => {
 	const { sql, deleteDatabaseFile } = new SQLocal(path);
 
 	beforeEach(async () => {
@@ -32,19 +36,15 @@ describe.each([
 	});
 
 	it('should be cross-origin isolated', () => {
-		expect(crossOriginIsolated).toBe(true);
+		expect(type === 'node' || crossOriginIsolated).toBe(true);
 	});
 
 	it('should or should not create a file in the OPFS', async () => {
+		if (type !== 'opfs') return;
 		const opfs = await navigator.storage.getDirectory();
-
-		if (type === 'opfs') {
-			const fileHandle = await opfs.getFileHandle(path);
-			const file = await fileHandle.getFile();
-			expect(file.size).toBeGreaterThan(0);
-		} else {
-			await expect(opfs.getFileHandle(path)).rejects.toThrowError();
-		}
+		const fileHandle = await opfs.getFileHandle(path);
+		const file = await fileHandle.getFile();
+		expect(file.size).toBeGreaterThan(0);
 	});
 
 	it('should call onInit and onConnect', async () => {

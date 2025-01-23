@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe.each([
-	{ type: 'opfs', path: 'create-scalar-function-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('createScalarFunction ($type)', ({ path, type }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'create-scalar-function-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/create-scalar-function-test.sqlite3' }]
+)('createScalarFunction ($type)', ({ path, type }) => {
 	const { sql, createScalarFunction } = new SQLocal(path);
 
 	beforeEach(async () => {

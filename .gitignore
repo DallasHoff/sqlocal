@@ -3,6 +3,7 @@ docs/.vitepress/dist
 docs/.vitepress/cache
 
 # Logs
+.db/*
 logs
 *.log
 npm-debug.log*

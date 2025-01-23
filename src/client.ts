@@ -36,6 +36,7 @@ import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
+import { NodeSQLiteDriver } from './drivers/node-sqlite-driver.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -88,7 +89,7 @@ export class SQLocal {
 				type: 'module',
 			});
 		} else {
-			const driver = new SQLiteMemoryDriver();
+			const driver = new NodeSQLiteDriver();
 			this.processor = new SQLocalProcessor(driver);
 		}
 

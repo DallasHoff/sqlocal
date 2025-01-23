@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe.each([
-	{ type: 'opfs', path: 'get-database-info-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('getDatabaseInfo ($type)', ({ type, path }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'get-database-info-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/get-database-info-test.sqlite3' }]
+)('getDatabaseInfo ($type)', ({ type, path }) => {
 	const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(path);
 
 	beforeEach(async () => {
@@ -20,7 +24,7 @@ describe.each([
 			databasePath: path,
 			databaseSizeBytes: 0,
 			storageType: type,
-			persisted: false,
+			persisted: type === 'node',
 		});
 
 		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;

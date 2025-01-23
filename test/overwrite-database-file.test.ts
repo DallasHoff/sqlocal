@@ -3,12 +3,16 @@ import { SQLocal } from '../src/index.js';
 import { sleep } from './test-utils/sleep.js';
 import type { ClientConfig } from '../src/types.js';
 
-describe.each([
-	{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('overwriteDatabaseFile ($type)', ({ path, type }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/overwrite-db-test.sqlite3' }]
+)('overwriteDatabaseFile ($type)', ({ path, type }) => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();
 		const isKvvfs = ['local', 'session'].includes(type);

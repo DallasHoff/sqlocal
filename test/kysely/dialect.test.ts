@@ -5,12 +5,16 @@ import { jsonArrayFrom } from 'kysely/helpers/sqlite';
 import { SQLocalKysely } from '../../src/kysely/index.js';
 import { sleep } from '../test-utils/sleep.js';
 
-describe.each([
-	{ type: 'opfs', path: 'kysely-dialect-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('kysely dialect ($type)', ({ path }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'kysely-dialect-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/kysely-dialect-test.sqlite3' }]
+)('kysely dialect ($type)', ({ path }) => {
 	const { dialect, transaction } = new SQLocalKysely(path);
 	const db = new Kysely<DB>({
 		dialect,

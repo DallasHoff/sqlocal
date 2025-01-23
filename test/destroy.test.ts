@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe.each([
-	{ type: 'opfs', path: 'destroy-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('destroy ($type)', ({ path }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'destroy-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/destroy-test.sqlite3' }]
+)('destroy ($type)', ({ path }) => {
 	const { sql, destroy } = new SQLocal(path);
 
 	beforeEach(async () => {

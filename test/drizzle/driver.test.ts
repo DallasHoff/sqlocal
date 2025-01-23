@@ -5,12 +5,16 @@ import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { desc, eq, relations, sql as dsql } from 'drizzle-orm';
 import { sleep } from '../test-utils/sleep.js';
 
-describe.each([
-	{ type: 'opfs', path: 'drizzle-driver-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('drizzle driver ($type)', ({ path }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'drizzle-driver-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/drizzle-driver-test.sqlite3' }]
+)('drizzle driver ($type)', ({ path }) => {
 	const { sql, driver, batchDriver, transaction } = new SQLocalDrizzle(path);
 
 	const groceries = sqliteTable('groceries', {

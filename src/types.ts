@@ -11,7 +11,12 @@ export type Sqlite3 = Sqlite3Static;
 export type Sqlite3InitModule = () => Promise<Sqlite3>;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
-export type Sqlite3StorageType = 'memory' | 'opfs' | 'local' | 'session';
+export type Sqlite3StorageType =
+	| 'memory'
+	| 'opfs'
+	| 'local'
+	| 'session'
+	| 'node';
 
 // Queries
 
