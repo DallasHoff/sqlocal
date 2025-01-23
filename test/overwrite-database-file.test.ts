@@ -6,9 +6,17 @@ import type { ClientConfig } from '../src/types.js';
 describe.each([
 	{ type: 'opfs', path: 'overwrite-db-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('overwriteDatabaseFile ($type)', ({ path, type }) => {
 	it('should replace the contents of a database', async () => {
 		const eventValues = new Set<string>();
+		const isKvvfs = ['local', 'session'].includes(type);
+
+		// KVVFS instances always point to the same database, so
+		// we can skip this test
+		if (isKvvfs) return;
+
 		const db1 = new SQLocal({
 			databasePath: type === 'opfs' ? 'overwrite-test-db1.sqlite3' : path,
 			onConnect: (reason) => eventValues.add(`connect1(${reason})`),
@@ -78,8 +86,8 @@ describe.each([
 
 		// Clean up
 		await db1.deleteDatabaseFile();
-		await db2.deleteDatabaseFile();
 		await db1.destroy();
+		await db2.deleteDatabaseFile();
 		await db2.destroy();
 	});
 
@@ -230,6 +238,7 @@ describe.each([
 			expect(results).toEqual([1, 0, 1, 1]);
 
 			await db1.destroy();
+			await db2.deleteDatabaseFile();
 			await db2.destroy();
 		}
 	);

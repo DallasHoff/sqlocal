@@ -5,6 +5,8 @@ import { Kysely, Migrator } from 'kysely';
 describe.each([
 	{ type: 'opfs', path: 'kysely-migrations-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('kysely migrations ($type)', ({ path }) => {
 	const { dialect, deleteDatabaseFile } = new SQLocalKysely(path);
 	const db = new Kysely({ dialect });

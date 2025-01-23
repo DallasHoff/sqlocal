@@ -24,7 +24,7 @@ import type {
 	DeleteMessage,
 	DatabasePath,
 	ExportMessage,
-	ReinitMessage,
+	BroadcastMessage,
 } from './types.js';
 import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
@@ -34,6 +34,8 @@ import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
+import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
+import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -58,27 +60,44 @@ export class SQLocal {
 	constructor(config: DatabasePath | ClientConfig) {
 		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
-		const { onInit, onConnect, ...commonConfig } = clientConfig;
+		const { onInit, onConnect, processor, ...commonConfig } = clientConfig;
+		const { databasePath } = commonConfig;
 
 		this.config = clientConfig;
 		this.clientKey = getQueryKey();
 		this.reinitChannel = new BroadcastChannel(
-			`_sqlocal_reinit_(${commonConfig.databasePath})`
+			`_sqlocal_reinit_(${databasePath})`
 		);
 
-		if (
+		if (typeof processor !== 'undefined') {
+			this.processor = processor;
+		} else if (databasePath === 'local' || databasePath === ':localStorage:') {
+			const driver = new SQLiteKvvfsDriver('local');
+			this.processor = new SQLocalProcessor(driver);
+		} else if (
+			databasePath === 'session' ||
+			databasePath === ':sessionStorage:'
+		) {
+			const driver = new SQLiteKvvfsDriver('session');
+			this.processor = new SQLocalProcessor(driver);
+		} else if (
 			typeof globalThis.Worker !== 'undefined' &&
-			commonConfig.databasePath !== ':memory:'
+			databasePath !== ':memory:'
 		) {
 			this.processor = new Worker(new URL('./worker', import.meta.url), {
 				type: 'module',
 			});
-			this.processor.addEventListener('message', this.processMessageEvent);
-			this.proxy = coincident(this.processor) as WorkerProxy;
 		} else {
-			this.processor = new SQLocalProcessor(true);
+			const driver = new SQLiteMemoryDriver();
+			this.processor = new SQLocalProcessor(driver);
+		}
+
+		if (this.processor instanceof SQLocalProcessor) {
 			this.processor.onmessage = (message) => this.processMessageEvent(message);
 			this.proxy = globalThis as WorkerProxy;
+		} else {
+			this.processor.addEventListener('message', this.processMessageEvent);
+			this.proxy = coincident(this.processor) as WorkerProxy;
 		}
 
 		this.processor.postMessage({
@@ -189,6 +208,10 @@ export class SQLocal {
 				});
 			}
 		);
+	};
+
+	protected broadcast = (message: BroadcastMessage): void => {
+		this.reinitChannel.postMessage(message);
 	};
 
 	protected exec = async (
@@ -415,6 +438,11 @@ export class SQLocal {
 	): Promise<void> => {
 		await mutationLock('exclusive', false, this.config, async () => {
 			try {
+				this.broadcast({
+					type: 'close',
+					clientKey: this.clientKey,
+				});
+
 				const database = await normalizeDatabaseFile(databaseFile);
 
 				await this.createQuery({
@@ -427,10 +455,11 @@ export class SQLocal {
 					await beforeUnlock();
 				}
 
-				this.reinitChannel.postMessage({
+				this.broadcast({
+					type: 'reinit',
 					clientKey: this.clientKey,
 					reason: 'overwrite',
-				} satisfies ReinitMessage);
+				});
 			} finally {
 				this.bypassMutationLock = false;
 			}
@@ -442,6 +471,11 @@ export class SQLocal {
 	): Promise<void> => {
 		await mutationLock('exclusive', false, this.config, async () => {
 			try {
+				this.broadcast({
+					type: 'close',
+					clientKey: this.clientKey,
+				});
+
 				await this.createQuery({
 					type: 'delete',
 				});
@@ -451,10 +485,11 @@ export class SQLocal {
 					await beforeUnlock();
 				}
 
-				this.reinitChannel.postMessage({
+				this.broadcast({
+					type: 'reinit',
 					clientKey: this.clientKey,
 					reason: 'delete',
-				} satisfies ReinitMessage);
+				});
 			} finally {
 				this.bypassMutationLock = false;
 			}

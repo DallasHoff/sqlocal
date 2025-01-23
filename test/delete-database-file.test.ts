@@ -6,6 +6,8 @@ import type { ClientConfig, ConnectReason } from '../src/types.js';
 describe.each([
 	{ type: 'opfs', path: 'delete-db-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('deleteDatabaseFile ($type)', ({ path, type }) => {
 	it('should delete the database file', async () => {
 		let onConnectReason: ConnectReason | null = null;
@@ -160,6 +162,7 @@ describe.each([
 			expect(results).toEqual([1, 0, 1, 1]);
 
 			await db1.destroy();
+			await db2.deleteDatabaseFile();
 			await db2.destroy();
 		}
 	);

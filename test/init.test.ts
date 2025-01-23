@@ -7,11 +7,14 @@ import {
 	it,
 	vi,
 } from 'vitest';
-import { SQLocal } from '../src/index.js';
+import { SQLocal, SQLocalProcessor } from '../src/index.js';
+import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
 
 describe.each([
 	{ type: 'opfs', path: 'init-test.sqlite3' },
 	{ type: 'memory', path: ':memory:' },
+	{ type: 'local', path: ':localStorage:' },
+	{ type: 'session', path: ':sessionStorage:' },
 ])('init ($type)', ({ path, type }) => {
 	const { sql, deleteDatabaseFile } = new SQLocal(path);
 
@@ -69,15 +72,16 @@ describe.each([
 	});
 
 	it('should enable read-only mode', async () => {
-		const { sql, destroy } = new SQLocal({
+		const { sql, getDatabaseInfo, destroy } = new SQLocal({
 			databasePath: path,
 			readOnly: true,
 		});
+		const { storageType } = await getDatabaseInfo();
 
 		const expectedError =
 			'SQLITE_READONLY: sqlite3 result code 8: attempt to write a readonly database';
 
-		if (type === 'memory') {
+		if (storageType === 'memory') {
 			const write = async () => {
 				await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
 			};
@@ -96,5 +100,19 @@ describe.each([
 		}
 
 		await destroy();
+	});
+
+	it('should accept custom processors', async () => {
+		const driver = new SQLiteMemoryDriver();
+		const processor = new SQLocalProcessor(driver);
+		const db = new SQLocal({ databasePath: ':custom:', processor });
+		const info = await db.getDatabaseInfo();
+
+		expect(info).toEqual({
+			databasePath: ':custom:',
+			databaseSizeBytes: 0,
+			storageType: 'memory',
+			persisted: false,
+		});
 	});
 });
