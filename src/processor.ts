@@ -1,26 +1,28 @@
 import coincident from 'coincident';
 import type {
-	DataMessage,
-	DestroyMessage,
-	QueryMessage,
-	BatchMessage,
 	ProcessorConfig,
-	FunctionMessage,
 	UserFunction,
-	OutputMessage,
-	InputMessage,
-	ImportMessage,
-	WorkerProxy,
-	GetInfoMessage,
-	ConfigMessage,
 	QueryKey,
-	TransactionMessage,
-	DeleteMessage,
-	ExportMessage,
 	ConnectReason,
 	SQLocalDriver,
-	BroadcastMessage,
 } from './types.js';
+import type {
+	BatchMessage,
+	BroadcastMessage,
+	ConfigMessage,
+	DataMessage,
+	DeleteMessage,
+	DestroyMessage,
+	ExportMessage,
+	FunctionMessage,
+	GetInfoMessage,
+	ImportMessage,
+	InputMessage,
+	OutputMessage,
+	QueryMessage,
+	TransactionMessage,
+	WorkerProxy,
+} from './messages.js';
 import { createMutex } from './lib/create-mutex.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 

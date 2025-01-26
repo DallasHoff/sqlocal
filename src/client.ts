@@ -1,31 +1,33 @@
 import coincident from 'coincident';
 import type {
 	CallbackUserFunction,
-	ConfigMessage,
-	DestroyMessage,
-	FunctionMessage,
-	ImportMessage,
-	OmitQueryKey,
-	OutputMessage,
 	QueryKey,
-	QueryMessage,
 	RawResultData,
 	Sqlite3Method,
-	BatchMessage,
-	WorkerProxy,
 	ScalarUserFunction,
-	GetInfoMessage,
 	Statement,
 	DatabaseInfo,
 	ClientConfig,
-	TransactionMessage,
 	StatementInput,
 	Transaction,
-	DeleteMessage,
 	DatabasePath,
-	ExportMessage,
-	BroadcastMessage,
 } from './types.js';
+import type {
+	BatchMessage,
+	BroadcastMessage,
+	ConfigMessage,
+	DeleteMessage,
+	DestroyMessage,
+	ExportMessage,
+	FunctionMessage,
+	GetInfoMessage,
+	ImportMessage,
+	OmitQueryKey,
+	OutputMessage,
+	QueryMessage,
+	TransactionMessage,
+	WorkerProxy,
+} from './messages.js';
 import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
