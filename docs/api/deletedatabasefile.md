@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { deleteDatabaseFile } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 The `deleteDatabaseFile` method returns a `Promise` to delete the `SQLocal` instance's associated database file and [temporary files](https://www.sqlite.org/tempfiles.html). After this method completes, the `SQLocal` client will reinitialize, and any subsequent mutation queries will create a new database file.
 

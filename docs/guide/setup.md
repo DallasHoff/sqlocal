@@ -53,7 +53,7 @@ If your application needs to query multiple databases, you can initialize anothe
 
 With the client initialized, you are ready to [start making queries](/api/sql).
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 ## Options
 

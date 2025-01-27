@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { sql } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 `sql` is used as a [tagged template](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates). Values interpolated into the query string will be passed to the database as parameters to that query.
 

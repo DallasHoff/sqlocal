@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { createScalarFunction } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 This method takes a string to name a custom SQL function as its first argument and a callback function as its second argument which the SQL function will call. After running `createScalarFunction`, the function that you defined can be called from subsequent SQL queries. Arguments passed to the function in the SQL query will be passed to the JavaScript callback, and the return value of the callback will be passed back to SQLite to use to complete the query.
 
@@ -34,4 +34,4 @@ await createScalarFunction('isEven', (num) => num % 2 === 0);
 await sql`SELECT num FROM nums WHERE isEven(num)`;
 ```
 
-<!-- @include: ../_partials/functions-note.md -->
+<!-- @include: ../.partials/functions-note.md -->
