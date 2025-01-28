@@ -36,7 +36,6 @@ export class SQLiteKvvfsDriver
 			await this.destroy();
 		}
 
-		// @ts-expect-error TODO: sqlite-wasm's option types are wrong
 		this.db = new this.sqlite3.oo1.JsStorageDb({
 			filename: this.storageType,
 			flags,
