@@ -1,5 +1,9 @@
 import type { JsStorageDb } from '@sqlite.org/sqlite-wasm';
-import type { DriverConfig, SQLocalDriver } from '../types.js';
+import type {
+	DriverConfig,
+	Sqlite3InitModule,
+	SQLocalDriver,
+} from '../types.js';
 import { SQLiteMemoryDriver } from './sqlite-memory-driver.js';
 
 export class SQLiteKvvfsDriver
@@ -8,8 +12,11 @@ export class SQLiteKvvfsDriver
 {
 	declare protected db?: JsStorageDb;
 
-	constructor(override readonly storageType: 'local' | 'session') {
-		super();
+	constructor(
+		override readonly storageType: 'local' | 'session',
+		sqlite3InitModule?: Sqlite3InitModule
+	) {
+		super(sqlite3InitModule);
 	}
 
 	override async init(config: DriverConfig): Promise<void> {
