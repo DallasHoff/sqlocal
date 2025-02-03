@@ -123,7 +123,10 @@ export type DatabaseInfo = {
 
 // User functions
 
-export type UserFunction = CallbackUserFunction | ScalarUserFunction;
+export type UserFunction =
+	| CallbackUserFunction
+	| ScalarUserFunction
+	| AggregateUserFunction;
 export type CallbackUserFunction = {
 	type: 'callback';
 	name: string;
@@ -133,4 +136,12 @@ export type ScalarUserFunction = {
 	type: 'scalar';
 	name: string;
 	func: (...args: any[]) => any;
+};
+export type AggregateUserFunction = {
+	type: 'aggregate';
+	name: string;
+	func: {
+		step: (...args: any[]) => void;
+		final: (...args: any[]) => any;
+	};
 };
