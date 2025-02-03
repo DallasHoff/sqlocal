@@ -1,0 +1,13 @@
+diff --git a/node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-bundler-friendly.mjs b/node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-bundler-friendly.mjs
+index ede120a..f7dc7cc 100644
+--- a/node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-bundler-friendly.mjs
++++ b/node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-bundler-friendly.mjs
+@@ -312,7 +312,7 @@ var sqlite3InitModule = (() => {
+         return f;
+       }
+ 
+-      return new URL('sqlite3.wasm', import.meta.url).href;
++      return new URL('sqlite3.wasm?no-inline', import.meta.url).href;
+     }
+ 
+     var wasmBinaryFile;

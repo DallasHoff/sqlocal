@@ -1,5 +1,5 @@
 import {
-	CompiledQuery,
+	type CompiledQuery,
 	SqliteAdapter,
 	SqliteIntrospector,
 	SqliteQueryCompiler,

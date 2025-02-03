@@ -28,7 +28,7 @@
 		"src"
 	],
 	"scripts": {
-		"build": "tsc --project tsconfig.build.json",
+		"build": "vite build",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest",
 		"test:ui": "vitest --ui",
@@ -38,6 +38,7 @@
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs",
+		"postinstall": "patch-package",
 		"prepublishOnly": "npm run build && vitest run"
 	},
 	"dependencies": {
@@ -49,10 +50,13 @@
 		"@vitest/ui": "^3.0.3",
 		"drizzle-orm": "^0.38.4",
 		"kysely": "^0.27.5",
+		"patch-package": "^8.0.0",
 		"prettier": "^3.4.2",
 		"taze": "^0.18.0",
 		"typescript": "^5.7.3",
 		"vite": "^6.0.11",
+		"vite-plugin-dts": "^4.5.0",
+		"vite-plugin-externalize-deps": "^0.9.0",
 		"vitepress": "^1.6.3",
 		"vitest": "^3.0.3",
 		"webdriverio": "^9.6.0",
