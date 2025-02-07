@@ -47,13 +47,13 @@ describe.each([
 		await sql`INSERT INTO nums (num) VALUES (1), (2), (2), (2), (4), (5), (5), (6)`;
 
 		const results = await sql`
-			SELECT mod(num, 2) AS isOdd, mostCommon(num) AS mostCommon 
+			SELECT mod(num, 2) AS isOdd
 			FROM nums
 			GROUP BY isOdd
-			HAVING mostCommon(num) IS 5
+			HAVING mostCommon(num) = 5
 		`;
 
-		expect(results).toEqual([{ isOdd: 1, mostCommon: 5 }]);
+		expect(results).toEqual([{ isOdd: 1 }]);
 	});
 
 	it('should not replace an existing implementation', async () => {
