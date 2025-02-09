@@ -17,7 +17,7 @@ describe.each([
 		await sql`DROP TABLE nums`;
 	});
 
-	it('should create and use scalar function in columns clause', async () => {
+	it('should create and use scalar function in SELECT clause', async () => {
 		await createScalarFunction('double', (num: number) => num * 2);
 
 		const createBadFn = async () =>
@@ -26,7 +26,7 @@ describe.each([
 
 		await sql`INSERT INTO nums (num) VALUES (0), (2), (3.5), (-11.11)`;
 
-		const results = await sql`SELECT num, double(num) as doubled FROM nums`;
+		const results = await sql`SELECT num, double(num) AS doubled FROM nums`;
 
 		expect(results).toEqual([
 			{ num: 0, doubled: 0 },
@@ -36,7 +36,7 @@ describe.each([
 		]);
 	});
 
-	it('should create and use scalar function in where clause', async () => {
+	it('should create and use scalar function in WHERE clause', async () => {
 		await createScalarFunction('isEven', (num: number) => num % 2 === 0);
 
 		await sql`INSERT INTO nums (num) VALUES (2), (3), (4), (5), (6)`;
@@ -74,8 +74,8 @@ describe.each([
 		await db1.createScalarFunction('addTax', (num: number) => num * 1.06);
 		await db2.createScalarFunction('addTax', (num: number) => num * 1.07);
 
-		const [result1] = await db1.sql`SELECT addTax(2) as withTax`;
-		const [result2] = await db2.sql`SELECT addTax(2) as withTax`;
+		const [result1] = await db1.sql`SELECT addTax(2) AS withTax`;
+		const [result2] = await db2.sql`SELECT addTax(2) AS withTax`;
 
 		expect(result1.withTax).toBe(2.12);
 		expect(result2.withTax).toBe(2.14);

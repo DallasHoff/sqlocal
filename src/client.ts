@@ -11,6 +11,7 @@ import type {
 	StatementInput,
 	Transaction,
 	DatabasePath,
+	AggregateUserFunction,
 } from './types.js';
 import type {
 	BatchMessage,
@@ -391,9 +392,12 @@ export class SQLocal {
 		func: ScalarUserFunction['func']
 	): Promise<void> => {
 		const key = `_sqlocal_func_${funcName}`;
+		const attachFunction = () => {
+			this.proxy[key] = func;
+		};
 
 		if (this.proxy === globalThis) {
-			this.proxy[key] = func;
+			attachFunction();
 		}
 
 		await this.createQuery({
@@ -403,7 +407,32 @@ export class SQLocal {
 		});
 
 		if (this.proxy !== globalThis) {
-			this.proxy[key] = func;
+			attachFunction();
+		}
+	};
+
+	createAggregateFunction = async (
+		funcName: string,
+		func: AggregateUserFunction['func']
+	): Promise<void> => {
+		const key = `_sqlocal_func_${funcName}`;
+		const attachFunction = () => {
+			this.proxy[`${key}_step`] = func.step;
+			this.proxy[`${key}_final`] = func.final;
+		};
+
+		if (this.proxy === globalThis) {
+			attachFunction();
+		}
+
+		await this.createQuery({
+			type: 'function',
+			functionName: funcName,
+			functionType: 'aggregate',
+		});
+
+		if (this.proxy !== globalThis) {
+			attachFunction();
 		}
 	};
 

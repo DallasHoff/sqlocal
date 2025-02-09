@@ -70,6 +70,10 @@ export default defineConfig({
 						link: '/api/createscalarfunction',
 					},
 					{
+						text: 'createAggregateFunction',
+						link: '/api/createaggregatefunction',
+					},
+					{
 						text: 'destroy',
 						link: '/api/destroy',
 					},

@@ -266,38 +266,51 @@ export class SQLocalProcessor {
 	protected createUserFunction = async (
 		message: FunctionMessage
 	): Promise<void> => {
-		const { functionName, functionType, queryKey } = message;
-		let func;
+		const { functionName: name, functionType: type, queryKey } = message;
+		let fn: UserFunction;
 
-		if (this.userFunctions.has(functionName)) {
+		if (this.userFunctions.has(name)) {
 			this.emitMessage({
 				type: 'error',
 				error: new Error(
-					`A user-defined function with the name "${functionName}" has already been created for this SQLocal instance.`
+					`A user-defined function with the name "${name}" has already been created for this SQLocal instance.`
 				),
 				queryKey,
 			});
 			return;
 		}
 
-		if (functionType === 'callback') {
-			func = (...args: any[]) => {
-				this.emitMessage({
-					type: 'callback',
-					name: functionName,
-					args: args,
-				});
-			};
-		} else {
-			func = this.proxy[`_sqlocal_func_${functionName}`];
+		switch (type) {
+			case 'callback':
+				fn = {
+					type,
+					name,
+					func: (...args: any[]) => {
+						this.emitMessage({ type: 'callback', name, args });
+					},
+				};
+				break;
+			case 'scalar':
+				fn = {
+					type,
+					name,
+					func: this.proxy[`_sqlocal_func_${name}`],
+				};
+				break;
+			case 'aggregate':
+				fn = {
+					type,
+					name,
+					func: {
+						step: this.proxy[`_sqlocal_func_${name}_step`],
+						final: this.proxy[`_sqlocal_func_${name}_final`],
+					},
+				};
+				break;
 		}
 
 		try {
-			await this.initUserFunction({
-				type: functionType,
-				name: functionName,
-				func,
-			});
+			await this.initUserFunction(fn);
 			this.emitMessage({
 				type: 'success',
 				queryKey,
