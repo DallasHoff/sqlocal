@@ -1,12 +1,16 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 
-describe.each([
-	{ type: 'opfs', path: 'create-aggregate-function-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('createAggregateFunction ($type)', ({ path }) => {
+describe.each(
+	typeof window !== 'undefined'
+		? [
+				{ type: 'opfs', path: 'create-aggregate-function-test.sqlite3' },
+				{ type: 'memory', path: ':memory:' },
+				{ type: 'local', path: ':localStorage:' },
+				{ type: 'session', path: ':sessionStorage:' },
+			]
+		: [{ type: 'node', path: './.db/create-aggregate-function-test.sqlite3' }]
+)('createAggregateFunction ($type)', ({ path }) => {
 	const { sql, createAggregateFunction } = new SQLocal(path);
 
 	beforeAll(async () => {

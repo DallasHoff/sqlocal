@@ -142,5 +142,8 @@ export type ScalarUserFunction = {
 export type AggregateUserFunction = {
 	type: 'aggregate';
 	name: string;
-	func: { step: (...args: any[]) => void; final: (...args: any[]) => any };
+	func: {
+		step: (...args: any[]) => void;
+		final: (...args: any[]) => any;
+	};
 };
