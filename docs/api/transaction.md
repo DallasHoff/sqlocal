@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { transaction } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 The `transaction` method provides a way to execute a transaction on the database, ensuring atomicity and isolation of the SQL queries executed within it. `transaction` takes a callback that is passed a `tx` object containing a `sql` tagged template for executing SQL within the transaction.
 

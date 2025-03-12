@@ -1,5 +1,9 @@
 import type { JsStorageDb } from '@sqlite.org/sqlite-wasm';
-import type { DriverConfig, SQLocalDriver } from '../types.js';
+import type {
+	DriverConfig,
+	Sqlite3InitModule,
+	SQLocalDriver,
+} from '../types.js';
 import { SQLiteMemoryDriver } from './sqlite-memory-driver.js';
 
 export class SQLiteKvvfsDriver
@@ -8,8 +12,11 @@ export class SQLiteKvvfsDriver
 {
 	declare protected db?: JsStorageDb;
 
-	constructor(override readonly storageType: 'local' | 'session') {
-		super();
+	constructor(
+		override readonly storageType: 'local' | 'session',
+		sqlite3InitModule?: Sqlite3InitModule
+	) {
+		super(sqlite3InitModule);
 	}
 
 	override async init(config: DriverConfig): Promise<void> {
@@ -36,7 +43,6 @@ export class SQLiteKvvfsDriver
 			await this.destroy();
 		}
 
-		// @ts-expect-error TODO: sqlite-wasm's option types are wrong
 		this.db = new this.sqlite3.oo1.JsStorageDb({
 			filename: this.storageType,
 			flags,

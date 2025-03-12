@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { batch } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 The `batch` function takes a group of SQL queries, passes them to the database all together, and executes them inside a transaction. If any of the queries fail, `batch` will throw an error, and the transaction will be rolled back automatically. If all queries succeed, the transaction will be committed and the results from each query will be returned.
 

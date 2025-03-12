@@ -53,7 +53,7 @@ If your application needs to query multiple databases, you can initialize anothe
 
 With the client initialized, you are ready to [start making queries](/api/sql).
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 ## Options
 
@@ -74,6 +74,7 @@ export const db = new SQLocal({
 - **`verbose`** (`boolean`) - If `true`, any SQL executed on the database will be logged to the console.
 - **`onInit`** (`function`) - A callback that will be run once when the client has initialized but before it has connected to the database. This callback should return an array of SQL statements (using the passed `sql` tagged template function, similar to the [`batch` method](../api/batch.md)) that should be executed before any other statements on the database connection. The `onInit` callback will be called only once, but the statements will be executed every time the client creates a new database connection. This makes it the best way to set up any `PRAGMA` settings, temporary tables, views, or triggers for the connection.
 - **`onConnect`** (`function`) - A callback that will be run after the client has connected to the database. This will happen at initialization and any time [`overwriteDatabaseFile`](/api/overwritedatabasefile) or [`deleteDatabaseFile`](/api/deletedatabasefile) is called on any SQLocal client connected to the same database. The callback is passed a string (`'initial' | 'overwrite' | 'delete'`) that indicates why the callback was executed. This callback is useful for syncing your application's state with data from the newly-connected database.
+- **`processor`** (`SQLocalProcessor | Worker`) - Allows you to override how this instance communicates with the SQLite database. This is for advanced use-cases, such as for using custom compilations or forks of SQLite or for cases where you need to initialize the web worker yourself rather than have SQLocal do it.
 
 ## Vite Configuration
 

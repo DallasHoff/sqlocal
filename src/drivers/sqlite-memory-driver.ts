@@ -87,11 +87,24 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	async createFunction(fn: UserFunction): Promise<void> {
 		if (!this.db) throw new Error('Driver not initialized');
 
-		this.db.createFunction({
-			name: fn.name,
-			xFunc: (_: number, ...args: any[]) => fn.func(...args),
-			arity: -1,
-		});
+		switch (fn.type) {
+			case 'callback':
+			case 'scalar':
+				this.db.createFunction({
+					name: fn.name,
+					xFunc: (_: number, ...args: any[]) => fn.func(...args),
+					arity: -1,
+				});
+				break;
+			case 'aggregate':
+				this.db.createFunction({
+					name: fn.name,
+					xStep: (_: number, ...args: any[]) => fn.func.step(...args),
+					xFinal: (_: number, ...args: any[]) => fn.func.final(...args),
+					arity: -1,
+				});
+				break;
+		}
 	}
 
 	async import(

@@ -12,9 +12,9 @@ import { SQLocal } from 'sqlocal';
 const { destroy } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
-The `destroy` method takes no arguments. It will return a `Promise` to close the connection to the SQLite database file and then terminate the Web Worker that the `SQLocal` client uses internally to run queries.
+The `destroy` method takes no arguments. It will return a `Promise` to close the connection to the SQLite database file and then terminate the web worker that the `SQLocal` client uses internally to run queries.
 
 It will also execute [`PRAGMA optimize`](https://www.sqlite.org/pragma.html#pragma_optimize) on the database before closing the connection.
 

@@ -1,31 +1,34 @@
 import coincident from 'coincident';
 import type {
 	CallbackUserFunction,
-	ConfigMessage,
-	DestroyMessage,
-	FunctionMessage,
-	ImportMessage,
-	OmitQueryKey,
-	OutputMessage,
 	QueryKey,
-	QueryMessage,
 	RawResultData,
 	Sqlite3Method,
-	BatchMessage,
-	WorkerProxy,
 	ScalarUserFunction,
-	GetInfoMessage,
 	Statement,
 	DatabaseInfo,
 	ClientConfig,
-	TransactionMessage,
 	StatementInput,
 	Transaction,
-	DeleteMessage,
 	DatabasePath,
-	ExportMessage,
-	BroadcastMessage,
+	AggregateUserFunction,
 } from './types.js';
+import type {
+	BatchMessage,
+	BroadcastMessage,
+	ConfigMessage,
+	DeleteMessage,
+	DestroyMessage,
+	ExportMessage,
+	FunctionMessage,
+	GetInfoMessage,
+	ImportMessage,
+	OmitQueryKey,
+	OutputMessage,
+	QueryMessage,
+	TransactionMessage,
+	WorkerProxy,
+} from './messages.js';
 import { SQLocalProcessor } from './processor.js';
 import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
@@ -390,9 +393,12 @@ export class SQLocal {
 		func: ScalarUserFunction['func']
 	): Promise<void> => {
 		const key = `_sqlocal_func_${funcName}`;
+		const attachFunction = () => {
+			this.proxy[key] = func;
+		};
 
 		if (this.proxy === globalThis) {
-			this.proxy[key] = func;
+			attachFunction();
 		}
 
 		await this.createQuery({
@@ -402,7 +408,32 @@ export class SQLocal {
 		});
 
 		if (this.proxy !== globalThis) {
-			this.proxy[key] = func;
+			attachFunction();
+		}
+	};
+
+	createAggregateFunction = async (
+		funcName: string,
+		func: AggregateUserFunction['func']
+	): Promise<void> => {
+		const key = `_sqlocal_func_${funcName}`;
+		const attachFunction = () => {
+			this.proxy[`${key}_step`] = func.step;
+			this.proxy[`${key}_final`] = func.final;
+		};
+
+		if (this.proxy === globalThis) {
+			attachFunction();
+		}
+
+		await this.createQuery({
+			type: 'function',
+			functionName: funcName,
+			functionType: 'aggregate',
+		});
+
+		if (this.proxy !== globalThis) {
+			attachFunction();
 		}
 	};
 

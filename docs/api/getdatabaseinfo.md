@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { getDatabaseInfo } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 The `getDatabaseInfo` method takes no arguments. It will return a `Promise` for an object that contains information about the database file being used by the `SQLocal` instance.
 

@@ -12,7 +12,7 @@ import { SQLocal } from 'sqlocal';
 const { getDatabaseFile } = new SQLocal('database.sqlite3');
 ```
 
-<!-- @include: ../_partials/initialization-note.md -->
+<!-- @include: ../.partials/initialization-note.md -->
 
 The `getDatabaseFile` method takes no arguments. It will return a `Promise` for a [`File`](https://developer.mozilla.org/en-US/docs/Web/API/File) object. That object can then be used to upload or download the database file of the `SQLocal` instance.
 
