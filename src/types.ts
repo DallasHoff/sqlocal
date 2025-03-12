@@ -21,7 +21,10 @@ export type Sqlite3StorageType =
 
 // Queries
 
-export type Statement = { sql: string; params: unknown[] };
+export type Statement = {
+	sql: string;
+	params: unknown[];
+};
 
 export type ReturningStatement<Result = unknown> =
 	| Statement
