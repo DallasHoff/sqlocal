@@ -9,6 +9,7 @@ import type {
 	SQLocalDriver,
 	UserFunction,
 } from '../types.js';
+import { getStorageScheme } from '../lib/get-storage-scheme.js';
 
 export class NodeSQLiteDriver implements SQLocalDriver {
 	protected db?: DatabaseSync;
@@ -21,6 +22,12 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 
 		if (!databasePath) {
 			throw new Error('No databasePath specified');
+		}
+
+		if (getStorageScheme(databasePath) === 'web-storage') {
+			throw new Error(
+				'The Node SQLite driver does not support Web Storage persistence.'
+			);
 		}
 
 		if (this.db) {

@@ -18,6 +18,7 @@ export type Sqlite3StorageType =
 	| 'local'
 	| 'session'
 	| 'node';
+export type Sqlite3StorageScheme = 'file' | 'memory' | 'web-storage';
 
 // Queries
 
