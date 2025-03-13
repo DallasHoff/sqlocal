@@ -1,4 +1,5 @@
-import { DatabaseSync } from 'node:sqlite';
+// @ts-expect-error
+import { DatabaseSync, backup } from 'node:sqlite';
 import fs from 'node:fs/promises';
 import { parseDatabasePath } from '../lib/parse-database-path.js';
 import type {
@@ -34,11 +35,14 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 			await this.destroy();
 		}
 
-		this.db = new DatabaseSync(databasePath);
+		this.db = new DatabaseSync(databasePath, {
+			// @ts-expect-error
+			readOnly: !!config.readOnly,
+		});
 		this.config = config;
 	}
 
-	async exec(statement: DriverStatement): Promise<RawResultData> {
+	protected execSync(statement: DriverStatement): RawResultData {
 		if (!this.db) throw new Error('Driver not initialized');
 
 		const method =
@@ -70,28 +74,36 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 		return statementData;
 	}
 
-	async execBatch(statements: DriverStatement[]): Promise<RawResultData[]> {
+	async exec(statement: DriverStatement): Promise<RawResultData> {
+		return this.execSync(statement);
+	}
+
+	protected execBatchSync(statements: DriverStatement[]): RawResultData[] {
 		const results: RawResultData[] = [];
 		let startedTransaction = false;
 
 		try {
-			this.exec({ sql: 'BEGIN', method: 'run' });
+			this.execSync({ sql: 'BEGIN', method: 'run' });
 			startedTransaction = true;
 
 			for (let statement of statements) {
-				const result = await this.exec(statement);
+				const result = this.execSync(statement);
 				results.push(result);
 			}
 
-			this.exec({ sql: 'COMMIT', method: 'run' });
+			this.execSync({ sql: 'COMMIT', method: 'run' });
 		} catch {
 			if (startedTransaction) {
-				this.exec({ sql: 'ROLLBACK', method: 'run' });
+				this.execSync({ sql: 'ROLLBACK', method: 'run' });
 				return [];
 			}
 		}
 
 		return results;
+	}
+
+	async execBatch(statements: DriverStatement[]): Promise<RawResultData[]> {
+		return this.execBatchSync(statements);
 	}
 
 	async isDatabasePersisted(): Promise<boolean> {
@@ -100,7 +112,7 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 	}
 
 	async getDatabaseSizeBytes(): Promise<number> {
-		const sizeResult = await this.exec({
+		const sizeResult = this.execSync({
 			sql: `SELECT page_count * page_size AS size 
 				FROM pragma_page_count(), pragma_page_size()`,
 			method: 'get',
@@ -117,13 +129,35 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 	async createFunction(fn: UserFunction): Promise<void> {
 		if (!this.db) throw new Error('Driver not initialized');
 
-		// TODO
+		switch (fn.type) {
+			case 'callback':
+			case 'scalar':
+				// @ts-expect-error
+				this.db.function(
+					fn.name,
+					{ varargs: true },
+					(_: number, ...args: any[]) => fn.func(...args)
+				);
+				break;
+			case 'aggregate':
+				// TODO
+				break;
+		}
 	}
 
 	async import(
 		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
 	): Promise<void> {
-		// TODO
+		if (!this.db || !this.config?.databasePath) {
+			throw new Error('Driver not initialized');
+		}
+
+		if (database instanceof ReadableStream) {
+			// const file = await fs.open(this.config.databasePath);
+			// TODO
+		} else {
+			await fs.writeFile(this.config.databasePath, Buffer.from(database));
+		}
 	}
 
 	async export(): Promise<{
@@ -135,12 +169,15 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 		}
 
 		const path = parseDatabasePath(this.config.databasePath);
+		const name = path.fileName;
+		const tempFileName = `backup-${Date.now()}--${name}`;
+		const tempFilePath = `${path.directories.join('/')}/${tempFileName}`;
 
-		// TODO
-		return {
-			name: path.fileName,
-			data: new ArrayBuffer(),
-		};
+		await backup(this.db, tempFilePath);
+		const data = await fs.readFile(tempFilePath);
+		await fs.unlink(tempFilePath);
+
+		return { name, data };
 	}
 
 	async clear(): Promise<void> {
