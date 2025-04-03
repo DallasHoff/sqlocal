@@ -76,6 +76,7 @@ export type DriverConfig = {
 	databasePath?: DatabasePath;
 	readOnly?: boolean;
 	verbose?: boolean;
+	clientKey?: QueryKey;
 };
 
 export type DriverStatement = {

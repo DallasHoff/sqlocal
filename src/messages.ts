@@ -131,7 +131,7 @@ export type EventMessage = {
 
 // Broadcast messages
 
-export type BroadcastMessage = ReinitBroadcast | CloseBroadcast;
+export type BroadcastMessage = ReinitBroadcast | CloseBroadcast | LockBroadcast;
 export type ReinitBroadcast = {
 	type: 'reinit';
 	clientKey: QueryKey;
@@ -139,5 +139,9 @@ export type ReinitBroadcast = {
 };
 export type CloseBroadcast = {
 	type: 'close';
+	clientKey: QueryKey;
+};
+export type LockBroadcast = {
+	type: 'lock';
 	clientKey: QueryKey;
 };
