@@ -7,6 +7,18 @@ export default defineConfig({
 		'SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system.',
 	cleanUrls: true,
 	head: [
+		['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+		['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
+		[
+			'link',
+			{
+				rel: 'icon',
+				type: 'image/png',
+				sizes: '32x32',
+				href: '/favicon-32x32.png',
+			},
+		],
+		['link', { rel: 'icon', href: '/favicon.ico' }],
 		[
 			'script',
 			{
@@ -17,6 +29,10 @@ export default defineConfig({
 		],
 	],
 	themeConfig: {
+		logo: {
+			light: '/logo-light.png',
+			dark: '/logo-dark.png',
+		},
 		search: { provider: 'local' },
 		nav: [
 			{ text: 'Introduction', link: '/guide/introduction' },

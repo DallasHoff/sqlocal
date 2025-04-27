@@ -8,6 +8,11 @@ hero:
   name: 'SQLocal'
   text: 'Local-First Database'
   tagline: Run SQLite3 in the browser, backed by the origin private file system.
+  image:
+    light:
+      src: '/logo-light.png'
+    dark:
+      src: '/logo-dark.png'
   actions:
     - theme: brand
       text: Get Started
