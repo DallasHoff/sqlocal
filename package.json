@@ -42,14 +42,14 @@
 		"prepublishOnly": "npm run build && vitest run"
 	},
 	"dependencies": {
-		"@sqlite.org/sqlite-wasm": "^3.49.1-build2",
+		"@sqlite.org/sqlite-wasm": "^3.49.1-build4",
 		"coincident": "^1.2.3"
 	},
 	"devDependencies": {
 		"@vitest/browser": "^3.0.8",
 		"@vitest/ui": "^3.0.8",
-		"drizzle-orm": "^0.40.0",
-		"kysely": "^0.27.6",
+		"drizzle-orm": "^0.43.1",
+		"kysely": "^0.28.2",
 		"prettier": "^3.5.3",
 		"taze": "^19.0.2",
 		"typescript": "^5.8.2",
