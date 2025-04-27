@@ -19,14 +19,6 @@ export default defineConfig({
 			},
 		],
 		['link', { rel: 'icon', href: '/favicon.ico' }],
-		[
-			'script',
-			{
-				defer: '',
-				src: 'https://static.cloudflareinsights.com/beacon.min.js',
-				'data-cf-beacon': '{"token": "a704e6c1c1ce48d785c23648f446abc6"}',
-			},
-		],
 	],
 	themeConfig: {
 		logo: {
@@ -37,6 +29,7 @@ export default defineConfig({
 		nav: [
 			{ text: 'Introduction', link: '/guide/introduction' },
 			{ text: 'Setup', link: '/guide/setup' },
+			{ text: 'Shell', link: 'https://shell.sqlocal.dev/' },
 		],
 		sidebar: [
 			{
