@@ -59,7 +59,7 @@ export class SQLocalProcessor {
 				await this.driver.init(this.config);
 			} catch {
 				console.warn(
-					`Persistence failed, so ${this.config.databasePath} will not be saved. For origin private file system persistence, make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dallashoffman.com/guide/setup#cross-origin-isolation).`
+					`Persistence failed, so ${this.config.databasePath} will not be saved. For origin private file system persistence, make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dev/guide/setup#cross-origin-isolation).`
 				);
 				this.config.databasePath = ':memory:';
 				this.driver = new SQLiteMemoryDriver();
