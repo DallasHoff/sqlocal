@@ -474,7 +474,7 @@ export class SQLocal {
 					clientKey: this.clientKey,
 				});
 
-				const database = await normalizeDatabaseFile(databaseFile);
+				const database = await normalizeDatabaseFile(databaseFile, 'buffer');
 
 				await this.createQuery({
 					type: 'import',
