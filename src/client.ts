@@ -543,4 +543,12 @@ export class SQLocal {
 		this.reinitChannel.close();
 		this.isDestroyed = true;
 	};
+
+	[Symbol.dispose] = () => {
+		this.destroy();
+	};
+
+	[Symbol.asyncDispose] = async () => {
+		await this.destroy();
+	};
 }

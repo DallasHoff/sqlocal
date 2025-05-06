@@ -115,4 +115,35 @@ describe.each([
 			persisted: false,
 		});
 	});
+
+	it('should support explicit resource management syntax', async () => {
+		let asyncSpy, syncSpy, controlSpy;
+
+		// asynchronous syntax
+		{
+			await using db = new SQLocal(path);
+			asyncSpy = vi.spyOn(db, 'destroy');
+			expect(asyncSpy).toHaveBeenCalledTimes(0);
+		}
+
+		expect(asyncSpy).toHaveBeenCalledTimes(1);
+
+		// synchronous syntax
+		{
+			using db = new SQLocal(path);
+			syncSpy = vi.spyOn(db, 'destroy');
+			expect(syncSpy).toHaveBeenCalledTimes(0);
+		}
+
+		expect(syncSpy).toHaveBeenCalledTimes(1);
+
+		// traditional syntax
+		{
+			const db = new SQLocal(path);
+			controlSpy = vi.spyOn(db, 'destroy');
+			expect(controlSpy).toHaveBeenCalledTimes(0);
+		}
+
+		expect(controlSpy).toHaveBeenCalledTimes(0);
+	});
 });
