@@ -1,4 +1,5 @@
 import type {
+	DataChange,
 	DriverConfig,
 	DriverStatement,
 	RawResultData,
@@ -16,6 +17,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	protected db?: Sqlite3Db;
 	protected config?: DriverConfig;
 	protected pointers: number[] = [];
+	protected writeCallbacks = new Set<(change: DataChange) => void>();
 
 	readonly storageType: Sqlite3StorageType = 'memory';
 
@@ -42,6 +44,32 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 		this.db = new this.sqlite3.oo1.DB(databasePath, flags);
 		this.config = config;
+
+		if (config.reactive) {
+			const opMap: Record<number, DataChange['operation']> = {
+				[this.sqlite3.capi.SQLITE_INSERT]: 'insert',
+				[this.sqlite3.capi.SQLITE_UPDATE]: 'update',
+				[this.sqlite3.capi.SQLITE_DELETE]: 'delete',
+			};
+
+			this.sqlite3.capi.sqlite3_update_hook(
+				this.db,
+				(_ctx, opId, _db, table, rowid) => {
+					this.writeCallbacks.forEach((cb) => {
+						cb({ table, rowid, operation: opMap[opId] });
+					});
+				},
+				0
+			);
+		}
+	}
+
+	onWrite(callback: (change: DataChange) => void): () => void {
+		this.writeCallbacks.add(callback);
+
+		return () => {
+			this.writeCallbacks.delete(callback);
+		};
 	}
 
 	async exec(statement: DriverStatement): Promise<RawResultData> {
@@ -150,6 +178,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		this.closeDb();
 		this.pointers.forEach((pointer) => this.sqlite3?.wasm.dealloc(pointer));
 		this.pointers = [];
+		this.writeCallbacks.clear();
 	}
 
 	protected getFlags(config: DriverConfig): string {

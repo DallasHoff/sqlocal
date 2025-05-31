@@ -12,6 +12,7 @@ import type {
 	Transaction,
 	DatabasePath,
 	AggregateUserFunction,
+	ReactiveQuery,
 } from './types.js';
 import type {
 	BatchMessage,
@@ -19,6 +20,7 @@ import type {
 	ConfigMessage,
 	DeleteMessage,
 	DestroyMessage,
+	EffectsMessage,
 	ExportMessage,
 	FunctionMessage,
 	GetInfoMessage,
@@ -57,6 +59,7 @@ export class SQLocal {
 
 	protected proxy: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
+	protected effectsChannel?: BroadcastChannel;
 
 	constructor(databasePath: DatabasePath);
 	constructor(config: ClientConfig);
@@ -71,6 +74,12 @@ export class SQLocal {
 		this.reinitChannel = new BroadcastChannel(
 			`_sqlocal_reinit_(${databasePath})`
 		);
+
+		if (commonConfig.reactive) {
+			this.effectsChannel = new BroadcastChannel(
+				`_sqlocal_effects_(${databasePath})`
+			);
+		}
 
 		if (typeof processor !== 'undefined') {
 			this.processor = processor;
@@ -374,6 +383,96 @@ export class SQLocal {
 		});
 	};
 
+	reactiveQuery = <Result extends Record<string, any>>(
+		passStatement: StatementInput<Result>
+	): ReactiveQuery<Result> => {
+		let value: Result[] = [];
+		let isListening = false;
+		let updateCount = 0;
+
+		const statement = normalizeStatement(passStatement);
+		const watchedTables = new Set<string>();
+		const observers = new Set<(value: Result[]) => void>();
+
+		const runStatement = async (): Promise<void> => {
+			const updateOrder = ++updateCount;
+
+			if (watchedTables.size === 0) {
+				const usedTables = await this.sql(
+					"SELECT name, wr FROM tables_used(?) WHERE type = 'table'",
+					statement.sql
+				);
+				const readTables = new Set<string>();
+				const writtenTables = new Set<string>();
+
+				usedTables.forEach((table) => {
+					if (typeof table.name !== 'string') return;
+					table.wr ? writtenTables.add(table.name) : readTables.add(table.name);
+				});
+
+				if (readTables.size === 0) {
+					throw new Error('The passed SQL does not read any tables.');
+				}
+
+				if (Array.from(writtenTables).some((table) => readTables.has(table))) {
+					throw new Error(
+						'The passed SQL would mutate one or more of the tables that it reads. Doing this in a reactive query would create an infinite loop.'
+					);
+				}
+
+				readTables.forEach((name) => watchedTables.add(name));
+			}
+
+			const results = await this.sql<Result>(
+				statement.sql,
+				...statement.params
+			);
+
+			if (updateOrder === updateCount) {
+				value = results;
+				observers.forEach((observer) => observer(value));
+			}
+		};
+
+		const onEffect = (message: MessageEvent<EffectsMessage>): void => {
+			if (message.data.tables.some((table) => watchedTables.has(table))) {
+				runStatement();
+			}
+		};
+
+		return {
+			get value() {
+				return value;
+			},
+			subscribe: (observer: (value: Result[]) => void) => {
+				if (!this.effectsChannel) {
+					throw new Error(
+						'This SQLocal instance is not configured for reactive queries. Set the "reactive" option to enable them.'
+					);
+				}
+
+				observers.add(observer);
+
+				if (!isListening) {
+					this.effectsChannel.addEventListener('message', onEffect);
+					isListening = true;
+					runStatement();
+				} else {
+					observer(value);
+				}
+
+				return {
+					unsubscribe: () => {
+						observers.delete(observer);
+						if (observers.size !== 0) return;
+						this.effectsChannel?.removeEventListener('message', onEffect);
+						isListening = false;
+					},
+				};
+			},
+		};
+	};
+
 	createCallbackFunction = async (
 		funcName: string,
 		func: CallbackUserFunction['func']
@@ -541,6 +640,7 @@ export class SQLocal {
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
 		this.reinitChannel.close();
+		this.effectsChannel?.close();
 		this.isDestroyed = true;
 	};
 

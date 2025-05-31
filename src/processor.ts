@@ -13,6 +13,7 @@ import type {
 	DataMessage,
 	DeleteMessage,
 	DestroyMessage,
+	EffectsMessage,
 	ExportMessage,
 	FunctionMessage,
 	GetInfoMessage,
@@ -25,6 +26,7 @@ import type {
 } from './messages.js';
 import { createMutex } from './lib/create-mutex.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
+import { debounce, type DebouncedFunction } from './lib/debounce.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
@@ -36,6 +38,9 @@ export class SQLocalProcessor {
 	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
+	protected emitEffects?: DebouncedFunction<() => void>;
+	protected dirtyTables = new Set<string>();
+	protected effectsChannel?: BroadcastChannel;
 	protected reinitChannel?: BroadcastChannel;
 
 	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
@@ -93,6 +98,32 @@ export class SQLocalProcessor {
 					return this.initUserFunction(fn);
 				})
 			);
+
+			if (this.config.reactive) {
+				this.effectsChannel = new BroadcastChannel(
+					`_sqlocal_effects_(${this.config.databasePath})`
+				);
+				this.dirtyTables = new Set<string>();
+
+				// TODO: handle transactions
+
+				this.emitEffects = debounce(
+					() => {
+						this.effectsChannel?.postMessage({
+							type: 'effects',
+							tables: [...this.dirtyTables],
+						} satisfies EffectsMessage);
+						this.dirtyTables.clear();
+					},
+					32, // TODO: pick wait times
+					{ maxWait: 320 }
+				);
+
+				this.driver.onWrite((change) => {
+					this.dirtyTables.add(change.table);
+					this.emitEffects?.();
+				});
+			}
 
 			await this.execInitStatements();
 			this.emitMessage({ type: 'event', event: 'connect', reason });
@@ -412,6 +443,13 @@ export class SQLocalProcessor {
 	protected destroy = async (message?: DestroyMessage): Promise<void> => {
 		await this.driver.exec({ sql: 'PRAGMA optimize' });
 		await this.driver.destroy();
+
+		if (this.effectsChannel) {
+			this.emitEffects?.flush();
+			this.emitEffects = undefined;
+			this.effectsChannel.close();
+			this.effectsChannel = undefined;
+		}
 
 		if (this.reinitChannel) {
 			this.reinitChannel.close();
