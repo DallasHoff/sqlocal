@@ -26,7 +26,7 @@ import type {
 } from './messages.js';
 import { createMutex } from './lib/create-mutex.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
-import { debounce, type DebouncedFunction } from './lib/debounce.js';
+import { debounce } from './lib/debounce.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
@@ -38,7 +38,6 @@ export class SQLocalProcessor {
 	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
-	protected emitEffects?: DebouncedFunction<() => void>;
 	protected dirtyTables = new Set<string>();
 	protected effectsChannel?: BroadcastChannel;
 	protected reinitChannel?: BroadcastChannel;
@@ -103,25 +102,12 @@ export class SQLocalProcessor {
 				this.effectsChannel = new BroadcastChannel(
 					`_sqlocal_effects_(${this.config.databasePath})`
 				);
-				this.dirtyTables = new Set<string>();
 
-				// TODO: handle transactions
-
-				this.emitEffects = debounce(
-					() => {
-						this.effectsChannel?.postMessage({
-							type: 'effects',
-							tables: [...this.dirtyTables],
-						} satisfies EffectsMessage);
-						this.dirtyTables.clear();
-					},
-					32, // TODO: pick wait times
-					{ maxWait: 320 }
-				);
-
-				this.driver.onWrite((change) => {
+				this.driver.onWrite(async (change) => {
 					this.dirtyTables.add(change.table);
-					this.emitEffects?.();
+					await this.transactionMutex.lock();
+					this.emitEffectsDebounced();
+					await this.transactionMutex.unlock();
 				});
 			}
 
@@ -188,6 +174,18 @@ export class SQLocalProcessor {
 			this.onmessage(message, transfer);
 		}
 	};
+
+	protected emitEffects = (): void => {
+		this.effectsChannel?.postMessage({
+			type: 'effects',
+			tables: [...this.dirtyTables],
+		} satisfies EffectsMessage);
+		this.dirtyTables.clear();
+	};
+
+	protected emitEffectsDebounced = debounce(() => this.emitEffects(), 32, {
+		maxWait: 180,
+	});
 
 	protected editConfig = (message: ConfigMessage): void => {
 		this.config = message.config;
@@ -445,8 +443,7 @@ export class SQLocalProcessor {
 		await this.driver.destroy();
 
 		if (this.effectsChannel) {
-			this.emitEffects?.flush();
-			this.emitEffects = undefined;
+			this.emitEffectsDebounced.flush();
 			this.effectsChannel.close();
 			this.effectsChannel = undefined;
 		}
