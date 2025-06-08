@@ -1,3 +1,4 @@
+import type { SAHPoolUtil } from '@sqlite.org/sqlite-wasm';
 import type { BroadcastMessage, LockBroadcast } from '../messages.js';
 import type {
 	DriverConfig,
@@ -12,6 +13,7 @@ export class SQLiteOpfsSahDriver
 	extends SQLiteOpfsDriver
 	implements SQLocalDriver
 {
+	protected pool?: SAHPoolUtil;
 	protected dbLock?: () => void;
 	protected reinitChannel?: BroadcastChannel;
 
@@ -56,9 +58,9 @@ export class SQLiteOpfsSahDriver
 
 		await this.assertDatabaseLock();
 
-		const pool = await this.sqlite3.installOpfsSAHPoolVfs({});
+		this.pool = await this.sqlite3.installOpfsSAHPoolVfs({});
 		// @ts-expect-error TODO
-		this.db = new pool.OpfsSAHPoolDb(databasePath, flags);
+		this.db = new this.pool.OpfsSAHPoolDb(databasePath, flags);
 		this.config = config;
 	}
 
@@ -102,8 +104,9 @@ export class SQLiteOpfsSahDriver
 	}
 
 	protected releaseDatabaseLock(): void {
-		if (!this.dbLock) return;
-		// TODO: pause VFS (coming in sqlite 3.50)
+		if (!this.dbLock || !this.pool) return;
+		// @ts-expect-error TODO
+		this.pool.pauseVfs();
 		this.dbLock();
 		this.dbLock = undefined;
 	}
@@ -128,8 +131,9 @@ export class SQLiteOpfsSahDriver
 
 		return new Promise<() => void>((lockAcquired) => {
 			navigator.locks.request(lockKey, lockOptions, () => {
-				return new Promise<void>((release) => {
-					// TODO: unpause VFS (coming in sqlite 3.50)
+				return new Promise<void>(async (release) => {
+					// @ts-expect-error TODO
+					await this.pool.unpauseVfs();
 					lockAcquired(release);
 				});
 			});

@@ -1,7 +1,7 @@
-import { SQLiteOpfsDriver } from './drivers/sqlite-opfs-driver.js';
+import { SQLiteOpfsSahDriver } from './drivers/sqlite-opfs-sah-driver.js';
 import { SQLocalProcessor } from './processor.js';
 
-const driver = new SQLiteOpfsDriver();
+const driver = new SQLiteOpfsSahDriver(); // TODO: temporarily changed for testing
 const processor = new SQLocalProcessor(driver);
 
 self.onmessage = (message) => {
