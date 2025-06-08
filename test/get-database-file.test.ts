@@ -12,7 +12,7 @@ describe.each([
 
 	it(
 		'should return the requested database file',
-		{ timeout: ['local', 'session'].includes(type) ? 3000 : undefined },
+		{ timeout: ['local', 'session'].includes(type) ? 3000 : 1500 },
 		async () => {
 			for (let path of paths) {
 				const databasePath = [...path, fileName].join('/');
