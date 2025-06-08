@@ -24,7 +24,7 @@ import type {
 	WorkerProxy,
 } from './messages.js';
 import { createMutex } from './lib/create-mutex.js';
-import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
+// import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
@@ -55,16 +55,17 @@ export class SQLocalProcessor {
 		await this.initMutex.lock();
 
 		try {
-			try {
-				await this.driver.init(this.config);
-			} catch {
-				console.warn(
-					`Persistence failed, so ${this.config.databasePath} will not be saved. For origin private file system persistence, make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dev/guide/setup#cross-origin-isolation).`
-				);
-				this.config.databasePath = ':memory:';
-				this.driver = new SQLiteMemoryDriver();
-				await this.driver.init(this.config);
-			}
+			// TODO: temporarily changed for testing
+			// try {
+			await this.driver.init(this.config);
+			// } catch {
+			// 	console.warn(
+			// 		`Persistence failed, so ${this.config.databasePath} will not be saved. For origin private file system persistence, make sure your web server is configured to use the correct HTTP response headers (See https://sqlocal.dev/guide/setup#cross-origin-isolation).`
+			// 	);
+			// 	this.config.databasePath = ':memory:';
+			// 	this.driver = new SQLiteMemoryDriver();
+			// 	await this.driver.init(this.config);
+			// }
 
 			if (this.driver.storageType !== 'memory') {
 				this.reinitChannel = new BroadcastChannel(

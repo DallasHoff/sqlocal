@@ -56,12 +56,13 @@ export class SQLiteOpfsSahDriver
 			}
 		};
 
+		this.config = config;
+
 		await this.assertDatabaseLock();
 
 		this.pool = await this.sqlite3.installOpfsSAHPoolVfs({});
 		// @ts-expect-error TODO
 		this.db = new this.pool.OpfsSAHPoolDb(databasePath, flags);
-		this.config = config;
 	}
 
 	override async exec(statement: DriverStatement): Promise<RawResultData> {
@@ -133,7 +134,7 @@ export class SQLiteOpfsSahDriver
 			navigator.locks.request(lockKey, lockOptions, () => {
 				return new Promise<void>(async (release) => {
 					// @ts-expect-error TODO
-					await this.pool.unpauseVfs();
+					await this.pool?.unpauseVfs();
 					lockAcquired(release);
 				});
 			});
