@@ -474,7 +474,7 @@ export class SQLocal {
 					clientKey: this.clientKey,
 				});
 
-				const database = await normalizeDatabaseFile(databaseFile);
+				const database = await normalizeDatabaseFile(databaseFile, 'buffer');
 
 				await this.createQuery({
 					type: 'import',
@@ -542,5 +542,13 @@ export class SQLocal {
 		this.userCallbacks.clear();
 		this.reinitChannel.close();
 		this.isDestroyed = true;
+	};
+
+	[Symbol.dispose] = () => {
+		this.destroy();
+	};
+
+	[Symbol.asyncDispose] = async () => {
+		await this.destroy();
 	};
 }

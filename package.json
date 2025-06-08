@@ -1,6 +1,6 @@
 {
 	"name": "sqlocal",
-	"version": "0.14.0",
+	"version": "0.14.1",
 	"type": "module",
 	"types": "./dist/index.d.ts",
 	"browser": "./dist/index.js",
@@ -30,15 +30,16 @@
 	"scripts": {
 		"build": "tsc --project tsconfig.build.json",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest",
-		"test:ui": "vitest --ui",
-		"test:ci": "vitest run",
+		"test": "vitest --browser=chrome",
+		"test:ui": "vitest --ui --browser=chrome",
+		"test:ci": "vitest run --browser=chrome",
+		"test:safari": "vitest --browser=safari --browser.headless=false",
 		"format": "prettier . --write",
 		"format:check": "prettier . --check",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs",
-		"prepublishOnly": "npm run build && vitest run"
+		"prepublishOnly": "npm run build && npm run test:ci"
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.50.0-build1",
@@ -47,8 +48,8 @@
 	"devDependencies": {
 		"@vitest/browser": "^3.0.8",
 		"@vitest/ui": "^3.0.8",
-		"drizzle-orm": "^0.40.0",
-		"kysely": "^0.27.6",
+		"drizzle-orm": "^0.43.1",
+		"kysely": "^0.28.2",
 		"prettier": "^3.5.3",
 		"taze": "^19.0.2",
 		"typescript": "^5.8.2",
@@ -88,7 +89,7 @@
 		"type": "git",
 		"url": "git+https://github.com/DallasHoff/sqlocal.git"
 	},
-	"homepage": "https://sqlocal.dallashoffman.com",
+	"homepage": "https://sqlocal.dev",
 	"funding": {
 		"type": "paypal",
 		"url": "https://www.paypal.com/biz/fund?id=U3ZNM2Q26WJY8"

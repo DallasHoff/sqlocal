@@ -66,7 +66,7 @@ export async function normalizeDatabaseFile(
 					offset += chunk.length;
 				});
 
-				return buffer;
+				return buffer.buffer;
 		}
 	} else {
 		return bufferOrStream;

@@ -13,7 +13,10 @@ export default defineConfig({
 			headless: true,
 			screenshotFailures: false,
 			provider: 'webdriverio',
-			instances: [{ browser: 'chrome' }],
+			instances: [
+				{ browser: 'chrome', headless: true },
+				{ browser: 'safari', headless: false },
+			],
 		},
 	},
 	optimizeDeps: {
