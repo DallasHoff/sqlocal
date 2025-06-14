@@ -6,12 +6,14 @@ import type {
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 import { parseDatabasePath } from '../lib/parse-database-path.js';
 import { SQLiteMemoryDriver } from './sqlite-memory-driver.js';
+import type { SAHPoolUtil } from '@sqlite.org/sqlite-wasm';
 
 export class SQLiteOpfsDriver
 	extends SQLiteMemoryDriver
 	implements SQLocalDriver
 {
 	override readonly storageType: Sqlite3StorageType = 'opfs';
+	private poolUtil: SAHPoolUtil | undefined;
 
 	override async init(config: DriverConfig): Promise<void> {
 		const { databasePath } = config;
@@ -32,15 +34,18 @@ export class SQLiteOpfsDriver
 			this.sqlite3 = await this.sqlite3InitModule();
 		}
 
-		if (!('opfs' in this.sqlite3)) {
-			throw new Error('OPFS not available');
-		}
-
 		if (this.db) {
 			await this.destroy();
 		}
 
-		this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
+		if (!('opfs' in this.sqlite3)) {
+			console.log('OPFS not available');
+			this.poolUtil = await this.sqlite3.installOpfsSAHPoolVfs({});
+			this.db = new this.poolUtil.OpfsSAHPoolDb(databasePath);
+		} else {
+			this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
+		}
+
 		this.config = config;
 	}
 
@@ -57,8 +62,17 @@ export class SQLiteOpfsDriver
 
 		await this.destroy();
 
-		const data = await normalizeDatabaseFile(database, 'callback');
-		await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
+		if (this.poolUtil) {
+			const data =
+				database instanceof ReadableStream
+					? await new Response(database).arrayBuffer()
+					: database;
+
+			await this.poolUtil.importDb(this.config.databasePath, data);
+		} else {
+			const data = await normalizeDatabaseFile(database, 'callback');
+			await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
+		}
 	}
 
 	override async export(): Promise<{
@@ -74,16 +88,22 @@ export class SQLiteOpfsDriver
 		const path = parseDatabasePath(this.config.databasePath);
 		const { directories, getDirectoryHandle } = path;
 		name = path.fileName;
-		const tempFileName = `backup-${Date.now()}--${name}`;
-		const tempFilePath = `${directories.join('/')}/${tempFileName}`;
 
-		this.db.exec({ sql: 'VACUUM INTO ?', bind: [tempFilePath] });
+		if (this.poolUtil) {
+			data = (await this.poolUtil?.exportFile(this.config?.databasePath))
+				.buffer;
+		} else {
+			const tempFileName = `backup-${Date.now()}--${name}`;
+			const tempFilePath = `${directories.join('/')}/${tempFileName}`;
 
-		const dirHandle = await getDirectoryHandle();
-		const fileHandle = await dirHandle.getFileHandle(tempFileName);
-		const file = await fileHandle.getFile();
-		data = await file.arrayBuffer();
-		await dirHandle.removeEntry(tempFileName);
+			this.db.exec({ sql: 'VACUUM INTO ?', bind: [tempFilePath] });
+
+			const dirHandle = await getDirectoryHandle();
+			const fileHandle = await dirHandle.getFileHandle(tempFileName);
+			const file = await fileHandle.getFile();
+			data = await file.arrayBuffer();
+			await dirHandle.removeEntry(tempFileName);
+		}
 
 		return { name, data };
 	}
@@ -93,21 +113,27 @@ export class SQLiteOpfsDriver
 
 		await this.destroy();
 
-		const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
-			this.config.databasePath
-		);
-		const dirHandle = await getDirectoryHandle();
-		const fileNames = [fileName, ...tempFileNames];
+		if (this.poolUtil) {
+			await this.poolUtil.removeVfs();
+		} else {
+			const { getDirectoryHandle, fileName, tempFileNames } = parseDatabasePath(
+				this.config.databasePath
+			);
+			const dirHandle = await getDirectoryHandle();
+			const fileNames = [fileName, ...tempFileNames];
 
-		await Promise.all(
-			fileNames.map(async (name) => {
-				return dirHandle.removeEntry(name).catch((err) => {
-					if (!(err instanceof DOMException && err.name === 'NotFoundError')) {
-						throw err;
-					}
-				});
-			})
-		);
+			await Promise.all(
+				fileNames.map(async (name) => {
+					return dirHandle.removeEntry(name).catch((err) => {
+						if (
+							!(err instanceof DOMException && err.name === 'NotFoundError')
+						) {
+							throw err;
+						}
+					});
+				})
+			);
+		}
 	}
 
 	override async destroy(): Promise<void> {
