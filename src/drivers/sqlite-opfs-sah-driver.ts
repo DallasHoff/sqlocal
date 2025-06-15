@@ -1,4 +1,5 @@
 import type { SAHPoolUtil } from '@sqlite.org/sqlite-wasm';
+import { parseDatabasePath } from '../lib/parse-database-path.js';
 import type { BroadcastMessage, LockBroadcast } from '../messages.js';
 import type {
 	DriverConfig,
@@ -19,8 +20,6 @@ export class SQLiteOpfsSahDriver
 
 	override async init(config: DriverConfig): Promise<void> {
 		const { databasePath, clientKey } = config;
-		const flags = this.getFlags(config);
-
 		if (!databasePath || !clientKey) {
 			throw new Error('No databasePath specified');
 		}
@@ -34,10 +33,6 @@ export class SQLiteOpfsSahDriver
 
 		if (!this.sqlite3) {
 			this.sqlite3 = await this.sqlite3InitModule();
-		}
-
-		if (!('opfs' in this.sqlite3)) {
-			throw new Error('OPFS not available');
 		}
 
 		if (this.db) {
@@ -59,14 +54,32 @@ export class SQLiteOpfsSahDriver
 		this.config = config;
 
 		await this.assertDatabaseLock();
+		await this.initDb();
+	}
 
-		this.pool = await this.sqlite3.installOpfsSAHPoolVfs({});
-		// @ts-expect-error TODO
-		this.db = new this.pool.OpfsSAHPoolDb(databasePath, flags);
+	protected async initDb(): Promise<void> {
+		if (this.db) {
+			return;
+		}
+		if (!this.config?.databasePath || !this.sqlite3) {
+			throw new Error('Driver not initialized');
+		}
+
+		if (!this.pool) {
+			this.pool = await this.sqlite3.installOpfsSAHPoolVfs({});
+		}
+
+		this.db = new this.pool.OpfsSAHPoolDb(
+			this.config.databasePath,
+			// @ts-expect-error TODO
+			this.getFlags(this.config)
+		);
 	}
 
 	override async exec(statement: DriverStatement): Promise<RawResultData> {
 		await this.assertDatabaseLock();
+		await this.initDb();
+
 		return super.exec(statement);
 	}
 
@@ -106,6 +119,7 @@ export class SQLiteOpfsSahDriver
 
 	protected releaseDatabaseLock(): void {
 		if (!this.dbLock || !this.pool) return;
+		this.closeDb();
 		// @ts-expect-error TODO
 		this.pool.pauseVfs();
 		this.dbLock();
@@ -139,5 +153,50 @@ export class SQLiteOpfsSahDriver
 				});
 			});
 		});
+	}
+
+	override async import(
+		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+	): Promise<void> {
+		if (!this.config?.databasePath) {
+			throw new Error('Driver not initialized');
+		}
+
+		const data =
+			database instanceof ReadableStream
+				? await new Response(database).arrayBuffer()
+				: database;
+
+		await this.pool?.importDb(this.config.databasePath, data);
+	}
+
+	override async export(): Promise<{
+		name: string;
+		data: ArrayBuffer | Uint8Array;
+	}> {
+		if (!this.config?.databasePath) {
+			throw new Error('Driver not initialized');
+		}
+
+		let name, data;
+		const path = parseDatabasePath(this.config.databasePath);
+
+		name = path.fileName;
+		data =
+			(await this.pool?.exportFile(this.config?.databasePath))?.buffer ||
+			new ArrayBuffer(0);
+
+		return {
+			name,
+			data,
+		};
+	}
+
+	override async clear(): Promise<void> {
+		if (!this.config?.databasePath) {
+			throw new Error('Driver not initialized');
+		}
+		await this.destroy();
+		await this.pool?.removeVfs();
 	}
 }
