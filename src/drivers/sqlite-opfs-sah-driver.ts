@@ -79,7 +79,6 @@ export class SQLiteOpfsSahDriver
 	override async exec(statement: DriverStatement): Promise<RawResultData> {
 		await this.assertDatabaseLock();
 		await this.initDb();
-
 		return super.exec(statement);
 	}
 
@@ -87,16 +86,19 @@ export class SQLiteOpfsSahDriver
 		statements: DriverStatement[]
 	): Promise<RawResultData[]> {
 		await this.assertDatabaseLock();
+		await this.initDb();
 		return super.execBatch(statements);
 	}
 
 	override async getDatabaseSizeBytes(): Promise<number> {
 		await this.assertDatabaseLock();
+		await this.initDb();
 		return super.getDatabaseSizeBytes();
 	}
 
 	override async createFunction(fn: UserFunction): Promise<void> {
 		await this.assertDatabaseLock();
+		await this.initDb();
 		return super.createFunction(fn);
 	}
 
