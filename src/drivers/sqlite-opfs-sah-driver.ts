@@ -53,10 +53,10 @@ export class SQLiteOpfsSahDriver
 		};
 
 		this.config = config;
-		if (this.config.databasePath && !this.config.databasePath.startsWith('/')) {
-			this.normalizedDatabasePath = `/${this.config.databasePath}`;
-		}
 
+		this.normalizedDatabasePath = !this.config.databasePath?.startsWith('/')
+			? `/${this.config.databasePath}`
+			: this.config.databasePath;
 		await this.assertDatabaseLock();
 		await this.initDb();
 	}
