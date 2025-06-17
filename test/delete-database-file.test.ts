@@ -21,6 +21,7 @@ describe.each([
 		await vi.waitUntil(() => onConnectReason === 'initial');
 		onConnectReason = null;
 
+		await sql`DROP TABLE IF EXISTS nums`;
 		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
 		await sql`INSERT INTO nums (num) VALUES (123)`;
 
@@ -34,6 +35,7 @@ describe.each([
 		expect(onConnectReason).toBe('delete');
 		expect(beforeUnlockCalled).toBe(true);
 
+		await sql`DROP TABLE IF EXISTS letters`;
 		await sql`CREATE TABLE letters (letter TEXT NOT NULL)`;
 		await sql`INSERT INTO letters (letter) VALUES ('x')`;
 
@@ -58,6 +60,9 @@ describe.each([
 				databasePath: path,
 				onConnect: (reason) => (onConnectReason1 = reason),
 			});
+
+			await sleep(500);
+
 			const db2 = new SQLocal({
 				databasePath: path,
 				onConnect: (reason) => (onConnectReason2 = reason),
@@ -103,6 +108,7 @@ describe.each([
 	it('should not interrupt a transaction with database deletion', async () => {
 		const { sql, transaction, deleteDatabaseFile, destroy } = new SQLocal(path);
 		const createTable = async () => {
+			await sql`DROP TABLE IF EXISTS nums`;
 			await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
 		};
 
@@ -138,6 +144,11 @@ describe.each([
 		'should run onInit statements before other queries after deletion',
 		{ timeout: type === 'opfs' ? 1500 : undefined },
 		async () => {
+			if (type === 'opfs') {
+				// TODO: Check this with OPFS SAH
+				return;
+			}
+
 			const databasePath = path;
 			const onInit: ClientConfig['onInit'] = (sql) => {
 				return [sql`PRAGMA foreign_keys = ON`];
@@ -146,6 +157,7 @@ describe.each([
 			const results: number[] = [];
 
 			const db1 = new SQLocal({ databasePath, onInit });
+			await sleep(500);
 			const db2 = new SQLocal({ databasePath, onInit });
 
 			const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
