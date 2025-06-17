@@ -14,12 +14,13 @@ describe.each([
 		'should return the requested database file',
 		{ timeout: ['local', 'session'].includes(type) ? 3000 : 1500 },
 		async () => {
-			for (let path of paths) {
-				const databasePath = [...path, fileName].join('/');
+			for (let p of paths) {
+				const databasePath = [...p, fileName].join('/');
 				const { sql, getDatabaseFile, deleteDatabaseFile } = new SQLocal(
-					databasePath
+					type === 'opfs' ? databasePath : path
 				);
 
+				await sql`DROP TABLE IF EXISTS nums`;
 				await sql`CREATE TABLE nums (num REAL NOT NULL)`;
 				const file = await getDatabaseFile();
 				const now = new Date().getTime();
