@@ -200,5 +200,6 @@ export class SQLiteOpfsSahDriver
 		}
 		await this.destroy();
 		await this.pool?.removeVfs();
+		this.pool = undefined;
 	}
 }
