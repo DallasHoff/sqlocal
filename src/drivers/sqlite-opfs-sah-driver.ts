@@ -17,6 +17,7 @@ export class SQLiteOpfsSahDriver
 	protected pool?: SAHPoolUtil;
 	protected dbLock?: () => void;
 	protected reinitChannel?: BroadcastChannel;
+	protected normalizedDatabasePath?: string;
 
 	override async init(config: DriverConfig): Promise<void> {
 		const { databasePath, clientKey } = config;
@@ -53,7 +54,7 @@ export class SQLiteOpfsSahDriver
 
 		this.config = config;
 		if (this.config.databasePath && !this.config.databasePath.startsWith('/')) {
-			this.config.databasePath = `/${this.config.databasePath}`;
+			this.normalizedDatabasePath = `/${this.config.databasePath}`;
 		}
 
 		await this.assertDatabaseLock();
@@ -64,11 +65,11 @@ export class SQLiteOpfsSahDriver
 		if (this.db) {
 			return;
 		}
-		if (!this.config?.databasePath || !this.sqlite3) {
+		if (!this.normalizedDatabasePath || !this.sqlite3) {
 			throw new Error('Driver not initialized');
 		}
 
-		const filename = this.config.databasePath.replace(/^\//, '-');
+		const filename = this.normalizedDatabasePath.replace(/^\//, '-');
 		if (!this.pool) {
 			this.pool = await this.sqlite3.installOpfsSAHPoolVfs({
 				name: filename,
@@ -76,7 +77,7 @@ export class SQLiteOpfsSahDriver
 		}
 
 		this.db = new this.pool.OpfsSAHPoolDb(
-			this.config.databasePath,
+			this.normalizedDatabasePath,
 			// @ts-expect-error TODO
 			this.getFlags(this.config)
 		);
@@ -137,14 +138,14 @@ export class SQLiteOpfsSahDriver
 	protected async acquireDatabaseLock(): Promise<() => void> {
 		if (
 			!('locks' in navigator) ||
-			!this.config?.databasePath ||
-			!this.config.clientKey ||
+			!this.normalizedDatabasePath ||
+			!this.config?.clientKey ||
 			!this.reinitChannel
 		) {
 			throw new Error('Driver not initialized');
 		}
 
-		const lockKey = `_sqlocal_sah_(${this.config.databasePath})`;
+		const lockKey = `_sqlocal_sah_(${this.normalizedDatabasePath})`;
 		const lockOptions = { mode: 'exclusive' } satisfies LockOptions;
 
 		this.reinitChannel.postMessage({
@@ -166,7 +167,7 @@ export class SQLiteOpfsSahDriver
 	override async import(
 		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
 	): Promise<void> {
-		if (!this.config?.databasePath) {
+		if (!this.normalizedDatabasePath) {
 			throw new Error('Driver not initialized');
 		}
 
@@ -175,23 +176,23 @@ export class SQLiteOpfsSahDriver
 				? await new Response(database).arrayBuffer()
 				: database;
 
-		await this.pool?.importDb(this.config.databasePath, data);
+		await this.pool?.importDb(this.normalizedDatabasePath, data);
 	}
 
 	override async export(): Promise<{
 		name: string;
 		data: ArrayBuffer | Uint8Array;
 	}> {
-		if (!this.config?.databasePath) {
+		if (!this.normalizedDatabasePath) {
 			throw new Error('Driver not initialized');
 		}
 
 		let name, data;
-		const path = parseDatabasePath(this.config.databasePath);
+		const path = parseDatabasePath(this.normalizedDatabasePath);
 
 		name = path.fileName;
 		data =
-			(await this.pool?.exportFile(this.config?.databasePath))?.buffer ||
+			(await this.pool?.exportFile(this.normalizedDatabasePath))?.buffer ||
 			new ArrayBuffer(0);
 
 		return {
@@ -201,7 +202,7 @@ export class SQLiteOpfsSahDriver
 	}
 
 	override async clear(): Promise<void> {
-		if (!this.config?.databasePath) {
+		if (!this.normalizedDatabasePath) {
 			throw new Error('Driver not initialized');
 		}
 		await this.destroy();
