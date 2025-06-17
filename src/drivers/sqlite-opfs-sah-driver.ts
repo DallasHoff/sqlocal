@@ -52,6 +52,9 @@ export class SQLiteOpfsSahDriver
 		};
 
 		this.config = config;
+		if (this.config.databasePath && !this.config.databasePath.startsWith('/')) {
+			this.config.databasePath = `/${this.config.databasePath}`;
+		}
 
 		await this.assertDatabaseLock();
 		await this.initDb();
@@ -65,8 +68,11 @@ export class SQLiteOpfsSahDriver
 			throw new Error('Driver not initialized');
 		}
 
+		const filename = this.config.databasePath.replace(/^\//, '-');
 		if (!this.pool) {
-			this.pool = await this.sqlite3.installOpfsSAHPoolVfs({});
+			this.pool = await this.sqlite3.installOpfsSAHPoolVfs({
+				name: filename,
+			});
 		}
 
 		this.db = new this.pool.OpfsSAHPoolDb(
