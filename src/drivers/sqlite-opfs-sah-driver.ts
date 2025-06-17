@@ -172,6 +172,9 @@ export class SQLiteOpfsSahDriver
 			throw new Error('Driver not initialized');
 		}
 
+		await this.assertDatabaseLock();
+		await this.initDb();
+
 		const data =
 			database instanceof ReadableStream
 				? await new Response(database).arrayBuffer()
@@ -187,6 +190,9 @@ export class SQLiteOpfsSahDriver
 		if (!this.normalizedDatabasePath) {
 			throw new Error('Driver not initialized');
 		}
+
+		await this.assertDatabaseLock();
+		await this.initDb();
 
 		let name, data;
 		const path = parseDatabasePath(this.normalizedDatabasePath);
@@ -206,6 +212,9 @@ export class SQLiteOpfsSahDriver
 		if (!this.normalizedDatabasePath) {
 			throw new Error('Driver not initialized');
 		}
+		await this.assertDatabaseLock();
+		await this.initDb();
+
 		await this.destroy();
 		await this.pool?.removeVfs();
 		this.pool = undefined;
