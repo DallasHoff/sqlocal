@@ -25,6 +25,12 @@ export class SQLiteOpfsSahDriver
 			throw new Error('No databasePath specified');
 		}
 
+		this.config = config;
+
+		this.normalizedDatabasePath = !this.config.databasePath?.startsWith('/')
+			? `/${this.config.databasePath}`
+			: this.config.databasePath;
+
 		if (!this.sqlite3InitModule) {
 			const { default: sqlite3InitModule } = await import(
 				'@sqlite.org/sqlite-wasm'
@@ -41,7 +47,7 @@ export class SQLiteOpfsSahDriver
 		}
 
 		this.reinitChannel = new BroadcastChannel(
-			`_sqlocal_reinit_(${databasePath})`
+			`_sqlocal_reinit_(${this.normalizedDatabasePath})`
 		);
 
 		this.reinitChannel.onmessage = (event: MessageEvent<BroadcastMessage>) => {
@@ -52,11 +58,6 @@ export class SQLiteOpfsSahDriver
 			}
 		};
 
-		this.config = config;
-
-		this.normalizedDatabasePath = !this.config.databasePath?.startsWith('/')
-			? `/${this.config.databasePath}`
-			: this.config.databasePath;
 		await this.assertDatabaseLock();
 		await this.initDb();
 	}
