@@ -14,8 +14,8 @@ describe.each([
 
 	bench('batch large replace', async () => {
 		await batch((sql) => {
-			return new Array(50000).fill(null).map((_, i) => {
-				const id = (i % 5000) + 1;
+			return new Array(5000).fill(null).map((_, i) => {
+				const id = (i % 500) + 1;
 				return sql`INSERT OR REPLACE INTO groceries (id, name, num) VALUES (${id}, ${'item' + id}, ${(i % 15) + 1})`;
 			});
 		});
