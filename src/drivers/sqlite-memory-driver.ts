@@ -44,24 +44,6 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 		this.db = new this.sqlite3.oo1.DB(databasePath, flags);
 		this.config = config;
-
-		if (config.reactive) {
-			const opMap: Record<number, DataChange['operation']> = {
-				[this.sqlite3.capi.SQLITE_INSERT]: 'insert',
-				[this.sqlite3.capi.SQLITE_UPDATE]: 'update',
-				[this.sqlite3.capi.SQLITE_DELETE]: 'delete',
-			};
-
-			this.sqlite3.capi.sqlite3_update_hook(
-				this.db,
-				(_ctx, opId, _db, table, rowid) => {
-					this.writeCallbacks.forEach((cb) => {
-						cb({ table, rowid, operation: opMap[opId] });
-					});
-				},
-				0
-			);
-		}
 	}
 
 	onWrite(callback: (change: DataChange) => void): () => void {
@@ -214,6 +196,30 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		}
 
 		return statementData;
+	}
+
+	protected initWriteHook() {
+		if (!this.config?.reactive) return;
+
+		if (!this.sqlite3 || !this.db) {
+			throw new Error('Driver not initialized');
+		}
+
+		const opMap: Record<number, DataChange['operation']> = {
+			[this.sqlite3.capi.SQLITE_INSERT]: 'insert',
+			[this.sqlite3.capi.SQLITE_UPDATE]: 'update',
+			[this.sqlite3.capi.SQLITE_DELETE]: 'delete',
+		};
+
+		this.sqlite3.capi.sqlite3_update_hook(
+			this.db,
+			(_ctx, opId, _db, table, rowid) => {
+				this.writeCallbacks.forEach((cb) => {
+					cb({ table, rowid, operation: opMap[opId] });
+				});
+			},
+			0
+		);
 	}
 
 	protected closeDb(): void {
