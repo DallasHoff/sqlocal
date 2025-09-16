@@ -42,8 +42,12 @@ describe.each([
 			const reactive2 = db2.reactiveQuery(
 				(sql) => sql`SELECT * FROM groceries`
 			);
-			reactive1.subscribe((data) => (list1 = data.map(({ name }) => name)));
-			reactive2.subscribe((data) => (list2 = data.map(({ name }) => name)));
+			const { unsubscribe: unsubscribe1 } = reactive1.subscribe(
+				(data) => (list1 = data.map(({ name }) => name))
+			);
+			const { unsubscribe: unsubscribe2 } = reactive2.subscribe(
+				(data) => (list2 = data.map(({ name }) => name))
+			);
 
 			let expected: string[] = [];
 			expect(list1).toEqual(expected);
@@ -71,6 +75,15 @@ describe.each([
 			expected = ['eggs'];
 			expect(list1).toEqual(expected);
 			expect(list2).toEqual(expected);
+
+			unsubscribe1();
+			await db1.sql`INSERT INTO groceries (name) VALUES ('rice')`;
+			await vi.waitUntil(() => list2.length === 2);
+
+			expect(list1).toEqual(['eggs']);
+			expect(list2).toEqual(['eggs', 'rice']);
+
+			unsubscribe2();
 		}
 	);
 });
