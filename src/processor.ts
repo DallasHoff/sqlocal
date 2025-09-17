@@ -98,7 +98,7 @@ export class SQLocalProcessor {
 				})
 			);
 
-			if (this.config.reactive && this.driver.storageType !== 'memory') {
+			if (this.config.reactive) {
 				this.effectsChannel = new BroadcastChannel(
 					`_sqlocal_effects_(${this.config.databasePath})`
 				);

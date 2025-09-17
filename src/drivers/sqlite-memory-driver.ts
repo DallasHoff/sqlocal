@@ -44,6 +44,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 		this.db = new this.sqlite3.oo1.DB(databasePath, flags);
 		this.config = config;
+		this.initWriteHook();
 	}
 
 	onWrite(callback: (change: DataChange) => void): () => void {
