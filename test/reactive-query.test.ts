@@ -211,4 +211,13 @@ describe.each([
 			subscription2.unsubscribe();
 		}
 	);
+
+	it('should require the reactive setting to be true', async () => {
+		const db = new SQLocal({ databasePath: path });
+		const reactive = db.reactiveQuery((sql) => sql`SELECT * FROM foo`);
+
+		expect(() => reactive.subscribe(() => {})).toThrowError();
+
+		await db.destroy();
+	});
 });
