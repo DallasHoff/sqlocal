@@ -51,7 +51,10 @@ export type Transaction = {
 
 export type ReactiveQuery<Result = unknown> = {
 	readonly value: Result[];
-	subscribe: (observer: (value: Result[]) => void) => {
+	subscribe: (
+		onData: (results: Result[]) => void,
+		onError?: (err: Error) => void
+	) => {
 		unsubscribe: () => void;
 	};
 };

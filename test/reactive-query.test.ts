@@ -220,4 +220,29 @@ describe.each([
 
 		await db.destroy();
 	});
+
+	it('should require SQL that reads a table and does not write to that same table', async () => {
+		const errors: Error[] = [];
+		const testStatements = [
+			`SELECT 2 + 2`,
+			`DELETE FROM todos WHERE title = ''`,
+			`UPDATE todos SET title = 'To Do: ' || title`,
+			`INSERT INTO todos SELECT * FROM todos`,
+		];
+
+		for (let testStatement of testStatements) {
+			const { unsubscribe } = db1
+				.reactiveQuery(() => ({ sql: testStatement, params: [] }))
+				.subscribe(
+					() => {},
+					(err) => errors.push(err)
+				);
+			await sleep(100);
+
+			expect(errors.length).toBe(testStatements.indexOf(testStatement) + 1);
+			unsubscribe();
+		}
+
+		expect(errors.every((err) => err instanceof Error)).toBe(true);
+	});
 });
