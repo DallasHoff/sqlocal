@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SQLocalDrizzle } from '../../src/drizzle/index.js';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
@@ -11,7 +11,8 @@ describe.each([
 	{ type: 'local', path: ':localStorage:' },
 	{ type: 'session', path: ':sessionStorage:' },
 ])('drizzle driver ($type)', ({ path }) => {
-	const { sql, driver, batchDriver, transaction } = new SQLocalDrizzle(path);
+	const { sql, driver, batchDriver, transaction, reactiveQuery } =
+		new SQLocalDrizzle({ databasePath: path, reactive: true });
 
 	const groceries = sqliteTable('groceries', {
 		id: int('id').primaryKey({ autoIncrement: true }),
@@ -265,5 +266,29 @@ describe.each([
 
 		expect(data).toEqual([{ name: 'x' }, { name: 'b' }]);
 		expect(order).toEqual([1, 2, 3]);
+	});
+
+	it('should support reactive queries', async () => {
+		await db.insert(groceries).values({ name: 'bread' }).run();
+
+		let list: string[] = [];
+		let expectedList: string[] = ['bread'];
+
+		const reactive = reactiveQuery(db.select().from(groceries));
+		const { unsubscribe } = reactive.subscribe((data) => {
+			list = data.map((item) => item.name);
+		});
+		await vi.waitUntil(() => list.length === 1);
+
+		expect(list).toEqual(expectedList);
+		expect(reactive.value.map((item) => item.name)).toEqual(expectedList);
+
+		await db.insert(groceries).values({ name: 'rice' }).run();
+		expectedList.push('rice');
+		await vi.waitUntil(() => list.length === 2);
+
+		expect(list).toEqual(expectedList);
+		expect(reactive.value.map((item) => item.name)).toEqual(expectedList);
+		unsubscribe();
 	});
 });
