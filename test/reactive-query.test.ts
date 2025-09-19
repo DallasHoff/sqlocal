@@ -224,6 +224,9 @@ describe.each([
 			list2 = data.map(({ name }) => name);
 		});
 
+		// The value property should contain an empty array initially
+		expect(reactive.value).toEqual([]);
+
 		// Make 2 subscriptions
 		let { unsubscribe: unsubscribe1 } = reactive.subscribe(callback1);
 		let { unsubscribe: unsubscribe2 } = reactive.subscribe(callback2);
@@ -233,6 +236,7 @@ describe.each([
 		expect(callback2).toHaveBeenCalledTimes(1);
 		expect(list1).toEqual(expectedList);
 		expect(list2).toEqual(expectedList);
+		expect(reactive.value.map(({ name }) => name)).toEqual(expectedList);
 
 		// Inserting data should notify both subscribers
 		await db1.sql`INSERT INTO groceries (name) VALUES ('apples'), ('oranges')`;
@@ -243,6 +247,7 @@ describe.each([
 		expect(callback2).toHaveBeenCalledTimes(2);
 		expect(list1).toEqual(expectedList);
 		expect(list2).toEqual(expectedList);
+		expect(reactive.value.map(({ name }) => name)).toEqual(expectedList);
 
 		// Unsubscribe 1 and make sure only the other subscriber is notified again
 		unsubscribe1();
@@ -254,6 +259,7 @@ describe.each([
 		expect(callback2).toHaveBeenCalledTimes(3);
 		expect(list1).toEqual(['apples', 'oranges']);
 		expect(list2).toEqual(expectedList);
+		expect(reactive.value.map(({ name }) => name)).toEqual(expectedList);
 
 		// Resubscribe the second subscription
 		({ unsubscribe: unsubscribe1 } = reactive.subscribe(callback1));
@@ -263,6 +269,7 @@ describe.each([
 		expect(callback2).toHaveBeenCalledTimes(3);
 		expect(list1).toEqual(expectedList);
 		expect(list2).toEqual(expectedList);
+		expect(reactive.value.map(({ name }) => name)).toEqual(expectedList);
 
 		// Make another data change
 		await db1.sql`INSERT INTO groceries (name) VALUES ('grapes')`;
@@ -273,6 +280,7 @@ describe.each([
 		expect(callback2).toHaveBeenCalledTimes(4);
 		expect(list1).toEqual(expectedList);
 		expect(list2).toEqual(expectedList);
+		expect(reactive.value.map(({ name }) => name)).toEqual(expectedList);
 
 		// Unsubscribe
 		unsubscribe1();
