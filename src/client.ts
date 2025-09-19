@@ -387,6 +387,7 @@ export class SQLocal {
 		passStatement: StatementInput<Result>
 	): ReactiveQuery<Result> => {
 		let value: Result[] = [];
+		let gotFirstValue = false;
 		let isListening = false;
 		let updateCount = 0;
 
@@ -436,6 +437,7 @@ export class SQLocal {
 
 				if (updateOrder === updateCount) {
 					value = results;
+					gotFirstValue = true;
 					subObservers.forEach((observer) => observer(value));
 				}
 			} catch (err) {
@@ -478,7 +480,7 @@ export class SQLocal {
 					this.effectsChannel.addEventListener('message', onEffect);
 					isListening = true;
 					runStatement();
-				} else {
+				} else if (gotFirstValue) {
 					onData(value);
 				}
 

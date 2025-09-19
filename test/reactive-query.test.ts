@@ -212,6 +212,73 @@ describe.each([
 		}
 	);
 
+	it('should notify multiple subscribers to the same query', async () => {
+		const reactive = db1.reactiveQuery((sql) => sql`SELECT * FROM groceries`);
+		let list1: string[] | null = null;
+		let list2: string[] | null = null;
+		let expectedList: string[] = [];
+		const callback1 = vi.fn((data: Record<string, any>[]) => {
+			list1 = data.map(({ name }) => name);
+		});
+		const callback2 = vi.fn((data: Record<string, any>[]) => {
+			list2 = data.map(({ name }) => name);
+		});
+
+		// Make 2 subscriptions
+		let { unsubscribe: unsubscribe1 } = reactive.subscribe(callback1);
+		let { unsubscribe: unsubscribe2 } = reactive.subscribe(callback2);
+		await vi.waitUntil(() => list1 !== null && list2 !== null);
+
+		expect(callback1).toHaveBeenCalledTimes(1);
+		expect(callback2).toHaveBeenCalledTimes(1);
+		expect(list1).toEqual(expectedList);
+		expect(list2).toEqual(expectedList);
+
+		// Inserting data should notify both subscribers
+		await db1.sql`INSERT INTO groceries (name) VALUES ('apples'), ('oranges')`;
+		expectedList = ['apples', 'oranges'];
+		await vi.waitUntil(() => list1?.length === 2 && list2?.length === 2);
+
+		expect(callback1).toHaveBeenCalledTimes(2);
+		expect(callback2).toHaveBeenCalledTimes(2);
+		expect(list1).toEqual(expectedList);
+		expect(list2).toEqual(expectedList);
+
+		// Unsubscribe 1 and make sure only the other subscriber is notified again
+		unsubscribe1();
+		await db1.sql`INSERT INTO groceries (name) VALUES ('bananas')`;
+		expectedList = ['apples', 'oranges', 'bananas'];
+		await vi.waitUntil(() => list1?.length === 2 && list2?.length === 3);
+
+		expect(callback1).toHaveBeenCalledTimes(2);
+		expect(callback2).toHaveBeenCalledTimes(3);
+		expect(list1).toEqual(['apples', 'oranges']);
+		expect(list2).toEqual(expectedList);
+
+		// Resubscribe the second subscription
+		({ unsubscribe: unsubscribe1 } = reactive.subscribe(callback1));
+		await vi.waitUntil(() => list1?.length === 3 && list2?.length === 3);
+
+		expect(callback1).toHaveBeenCalledTimes(3);
+		expect(callback2).toHaveBeenCalledTimes(3);
+		expect(list1).toEqual(expectedList);
+		expect(list2).toEqual(expectedList);
+
+		// Make another data change
+		await db1.sql`INSERT INTO groceries (name) VALUES ('grapes')`;
+		expectedList = ['apples', 'oranges', 'bananas', 'grapes'];
+		await vi.waitUntil(() => list1?.length === 4 && list2?.length === 4);
+
+		expect(callback1).toHaveBeenCalledTimes(4);
+		expect(callback2).toHaveBeenCalledTimes(4);
+		expect(list1).toEqual(expectedList);
+		expect(list2).toEqual(expectedList);
+
+		// Unsubscribe
+		unsubscribe1();
+		unsubscribe2();
+	});
+
 	it('should require the reactive setting to be true', async () => {
 		const db = new SQLocal({ databasePath: path });
 		const reactive = db.reactiveQuery((sql) => sql`SELECT * FROM foo`);
@@ -222,6 +289,7 @@ describe.each([
 	});
 
 	it('should require SQL that reads a table and does not write to that same table', async () => {
+		const callback = vi.fn();
 		const errors: Error[] = [];
 		const testStatements = [
 			`SELECT 2 + 2`,
@@ -233,16 +301,14 @@ describe.each([
 		for (let testStatement of testStatements) {
 			const { unsubscribe } = db1
 				.reactiveQuery(() => ({ sql: testStatement, params: [] }))
-				.subscribe(
-					() => {},
-					(err) => errors.push(err)
-				);
+				.subscribe(callback, (err) => errors.push(err));
 			await sleep(100);
 
 			expect(errors.length).toBe(testStatements.indexOf(testStatement) + 1);
 			unsubscribe();
 		}
 
+		expect(callback).not.toHaveBeenCalled();
 		expect(errors.every((err) => err instanceof Error)).toBe(true);
 	});
 });
