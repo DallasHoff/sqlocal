@@ -76,9 +76,9 @@ export class SQLocal {
 		);
 
 		if (commonConfig.reactive) {
-			this.effectsChannel = new BroadcastChannel(
-				`_sqlocal_effects_(${databasePath})`
-			);
+			const dbKey =
+				databasePath === ':memory:' ? `memory:${this.clientKey}` : databasePath;
+			this.effectsChannel = new BroadcastChannel(`_sqlocal_effects_(${dbKey})`);
 		}
 
 		if (typeof processor !== 'undefined') {

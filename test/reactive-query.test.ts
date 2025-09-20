@@ -20,18 +20,23 @@ describe.each([
 	const db2 = new SQLocal({ databasePath: path, reactive: true });
 
 	beforeEach(async () => {
-		await db1.sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
-		await db1.sql`CREATE TABLE todos (title TEXT NOT NULL)`;
+		for (let db of [db1, db2]) {
+			await db.sql`CREATE TABLE IF NOT EXISTS groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
+			await db.sql`CREATE TABLE IF NOT EXISTS todos (title TEXT NOT NULL)`;
+		}
 	});
 
 	afterEach(async () => {
-		await db1.sql`DROP TABLE groceries`;
-		await db1.sql`DROP TABLE todos`;
+		for (let db of [db1, db2]) {
+			await db.sql`DROP TABLE IF EXISTS groceries`;
+			await db.sql`DROP TABLE IF EXISTS todos`;
+		}
 	});
 
 	afterAll(async () => {
-		await db1.destroy();
-		await db2.destroy();
+		for (let db of [db1, db2]) {
+			await db.destroy();
+		}
 	});
 
 	it(
@@ -121,6 +126,43 @@ describe.each([
 			unsubscribeExtra();
 		}
 	);
+
+	it('should not notify other in-memory databases', async () => {
+		if (type !== 'memory') return;
+
+		const reactive1 = db1.reactiveQuery((sql) => sql`SELECT * FROM groceries`);
+		const reactive2 = db2.reactiveQuery((sql) => sql`SELECT * FROM groceries`);
+		let list1: string[] | null = null;
+		let list2: string[] | null = null;
+		const callback1 = vi.fn((data: Record<string, any>[]) => {
+			list1 = data.map(({ name }) => name);
+		});
+		const callback2 = vi.fn((data: Record<string, any>[]) => {
+			list2 = data.map(({ name }) => name);
+		});
+		const sub1 = reactive1.subscribe(callback1);
+		const sub2 = reactive2.subscribe(callback2);
+		await vi.waitUntil(() => list1 !== null && list2 !== null);
+
+		await db1.sql`INSERT INTO groceries (name) VALUES ('celery')`;
+		await vi.waitUntil(() => list1?.length === 1);
+
+		expect(list1).toEqual(['celery']);
+		expect(list2).toEqual([]);
+		expect(callback1).toHaveBeenCalledTimes(2);
+		expect(callback2).toHaveBeenCalledTimes(1);
+
+		await db2.sql`INSERT INTO groceries (name) VALUES ('carrots')`;
+		await vi.waitUntil(() => list2?.length === 1);
+
+		expect(list1).toEqual(['celery']);
+		expect(list2).toEqual(['carrots']);
+		expect(callback1).toHaveBeenCalledTimes(2);
+		expect(callback2).toHaveBeenCalledTimes(2);
+
+		sub1.unsubscribe();
+		sub2.unsubscribe();
+	});
 
 	it(
 		'should notify reactive queries on the same instance',

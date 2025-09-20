@@ -99,8 +99,12 @@ export class SQLocalProcessor {
 			);
 
 			if (this.config.reactive) {
+				const dbKey =
+					this.config.databasePath === ':memory:'
+						? `memory:${this.config.clientKey}`
+						: this.config.databasePath;
 				this.effectsChannel = new BroadcastChannel(
-					`_sqlocal_effects_(${this.config.databasePath})`
+					`_sqlocal_effects_(${dbKey})`
 				);
 
 				this.driver.onWrite(async (change) => {
@@ -176,10 +180,13 @@ export class SQLocalProcessor {
 	};
 
 	protected emitEffects = (): void => {
-		this.effectsChannel?.postMessage({
+		if (!this.effectsChannel || this.dirtyTables.size === 0) return;
+
+		this.effectsChannel.postMessage({
 			type: 'effects',
 			tables: [...this.dirtyTables],
 		} satisfies EffectsMessage);
+
 		this.dirtyTables.clear();
 	};
 
