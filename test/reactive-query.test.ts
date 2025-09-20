@@ -287,6 +287,89 @@ describe.each([
 		unsubscribe2();
 	});
 
+	it('should not emit uncommitted data changes', async () => {
+		let currentStep = 0;
+		const stepsEmitted: number[] = [];
+		const dataEmitted: Record<string, any>[][] = [];
+
+		const { unsubscribe } = db1
+			.reactiveQuery((sql) => sql`SELECT name FROM groceries`)
+			.subscribe((data) => {
+				stepsEmitted.push(currentStep);
+				dataEmitted.push(data);
+			});
+
+		await vi.waitUntil(() => stepsEmitted.length > 0);
+
+		expect(stepsEmitted).toEqual([0]);
+		expect(dataEmitted).toEqual([[]]);
+
+		await db1.transaction(async (tx) => {
+			currentStep = 1;
+			await tx.sql`INSERT INTO groceries (name) VALUES ('apples')`;
+			await sleep(50);
+
+			currentStep = 2;
+			await tx.sql`INSERT INTO groceries (name) VALUES ('oranges')`;
+			await sleep(200);
+
+			currentStep = 3;
+			await tx.sql`INSERT INTO groceries (name) VALUES ('bananas')`;
+			await sleep(100);
+
+			currentStep = 4;
+		});
+
+		await vi.waitUntil(() => stepsEmitted.length > 1);
+
+		expect(stepsEmitted).toEqual([0, 4]);
+		expect(dataEmitted).toEqual([
+			[],
+			[{ name: 'apples' }, { name: 'oranges' }, { name: 'bananas' }],
+		]);
+
+		unsubscribe();
+	});
+
+	it('should not emit rolled back data changes', async () => {
+		let currentStep = 0;
+		const stepsEmitted: number[] = [];
+		const dataEmitted: Record<string, any>[][] = [];
+
+		const { unsubscribe } = db1
+			.reactiveQuery((sql) => sql`SELECT name FROM groceries`)
+			.subscribe((data) => {
+				stepsEmitted.push(currentStep);
+				dataEmitted.push(data);
+			});
+
+		await vi.waitUntil(() => stepsEmitted.length > 0);
+
+		expect(stepsEmitted).toEqual([0]);
+		expect(dataEmitted).toEqual([[]]);
+
+		await db1
+			.transaction(async (tx) => {
+				currentStep = 1;
+				await tx.sql`INSERT INTO groceries (name) VALUES ('apples')`;
+				await sleep(250);
+
+				currentStep = 2;
+				await tx.sql`INSERT INT groceries (name) VALUES ('oranges')`;
+				await sleep(100);
+
+				currentStep = 3;
+			})
+			.catch(() => {});
+
+		await vi.waitUntil(() => stepsEmitted.length > 1);
+
+		expect(stepsEmitted).toEqual([0, 2]);
+		expect(dataEmitted).toEqual([[], []]);
+
+		unsubscribe();
+	});
+
 	it('should require the reactive setting to be true', async () => {
 		const db = new SQLocal({ databasePath: path });
 		const reactive = db.reactiveQuery((sql) => sql`SELECT * FROM foo`);
