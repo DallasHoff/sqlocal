@@ -41,6 +41,7 @@ import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
+import { getDatabaseKey } from './lib/get-database-key.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -71,13 +72,11 @@ export class SQLocal {
 
 		this.config = clientConfig;
 		this.clientKey = getQueryKey();
-		this.reinitChannel = new BroadcastChannel(
-			`_sqlocal_reinit_(${databasePath})`
-		);
+		const dbKey = getDatabaseKey(databasePath, this.clientKey);
+
+		this.reinitChannel = new BroadcastChannel(`_sqlocal_reinit_(${dbKey})`);
 
 		if (commonConfig.reactive) {
-			const dbKey =
-				databasePath === ':memory:' ? `memory:${this.clientKey}` : databasePath;
 			this.effectsChannel = new BroadcastChannel(`_sqlocal_effects_(${dbKey})`);
 		}
 

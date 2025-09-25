@@ -27,6 +27,7 @@ import type {
 import { createMutex } from './lib/create-mutex.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { debounce } from './lib/debounce.js';
+import { getDatabaseKey } from './lib/get-database-key.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
@@ -54,7 +55,7 @@ export class SQLocalProcessor {
 	}
 
 	protected init = async (reason: ConnectReason): Promise<void> => {
-		if (!this.config.databasePath) return;
+		if (!this.config.databasePath || !this.config.clientKey) return;
 
 		await this.initMutex.lock();
 
@@ -70,39 +71,29 @@ export class SQLocalProcessor {
 				await this.driver.init(this.config);
 			}
 
-			if (this.driver.storageType !== 'memory') {
-				this.reinitChannel = new BroadcastChannel(
-					`_sqlocal_reinit_(${this.config.databasePath})`
-				);
-
-				this.reinitChannel.onmessage = (
-					event: MessageEvent<BroadcastMessage>
-				) => {
-					const message = event.data;
-					if (this.config.clientKey === message.clientKey) return;
-
-					switch (message.type) {
-						case 'reinit':
-							this.init(message.reason);
-							break;
-						case 'close':
-							this.driver.destroy();
-							break;
-					}
-				};
-			}
-
-			await Promise.all(
-				Array.from(this.userFunctions.values()).map((fn) => {
-					return this.initUserFunction(fn);
-				})
+			const dbKey = getDatabaseKey(
+				this.config.databasePath,
+				this.config.clientKey
 			);
 
+			this.reinitChannel = new BroadcastChannel(`_sqlocal_reinit_(${dbKey})`);
+			this.reinitChannel.onmessage = (
+				event: MessageEvent<BroadcastMessage>
+			) => {
+				const message = event.data;
+				if (this.config.clientKey === message.clientKey) return;
+
+				switch (message.type) {
+					case 'reinit':
+						this.init(message.reason);
+						break;
+					case 'close':
+						this.driver.destroy();
+						break;
+				}
+			};
+
 			if (this.config.reactive) {
-				const dbKey =
-					this.config.databasePath === ':memory:'
-						? `memory:${this.config.clientKey}`
-						: this.config.databasePath;
 				this.effectsChannel = new BroadcastChannel(
 					`_sqlocal_effects_(${dbKey})`
 				);
@@ -114,6 +105,12 @@ export class SQLocalProcessor {
 					await this.transactionMutex.unlock();
 				});
 			}
+
+			await Promise.all(
+				Array.from(this.userFunctions.values()).map((fn) => {
+					return this.initUserFunction(fn);
+				})
+			);
 
 			await this.execInitStatements();
 			this.emitMessage({ type: 'event', event: 'connect', reason });
