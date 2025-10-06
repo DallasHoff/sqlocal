@@ -11,6 +11,7 @@ import type {
 	UserFunction,
 } from '../types.js';
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
+import type { PreparedStatement } from '@sqlite.org/sqlite-wasm';
 
 export class SQLiteMemoryDriver implements SQLocalDriver {
 	protected sqlite3?: Sqlite3;
@@ -67,9 +68,37 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		const results: RawResultData[] = [];
 
 		this.db.transaction((tx) => {
-			for (let statement of statements) {
-				const statementData = this.execOnDb(tx, statement);
-				results.push(statementData);
+			const prepared = new Map<string, PreparedStatement>();
+
+			try {
+				for (let statement of statements) {
+					let stmt = prepared.get(statement.sql);
+
+					if (!stmt) {
+						const newStmt = tx.prepare(statement.sql);
+						prepared.set(statement.sql, newStmt);
+						stmt = newStmt;
+					}
+
+					if (statement.params?.length) {
+						stmt.bind(statement.params);
+					}
+
+					let columns: string[] = [];
+					let rows: unknown[][] = [];
+
+					while (stmt.step()) {
+						columns = stmt.getColumnNames([]);
+						rows.push(stmt.get([]));
+					}
+
+					results.push({ columns, rows });
+					stmt.reset();
+				}
+			} finally {
+				prepared.forEach((stmt) => {
+					stmt.finalize();
+				});
 			}
 		});
 

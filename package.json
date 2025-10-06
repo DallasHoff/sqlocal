@@ -34,6 +34,7 @@
 		"test:ui": "vitest --ui --browser=chrome",
 		"test:ci": "vitest run --browser=chrome",
 		"test:safari": "vitest --browser=safari --browser.headless=false",
+		"benchmark": "vitest bench --browser=chrome",
 		"format": "prettier . --write",
 		"format:check": "prettier . --check",
 		"docs:dev": "vitepress dev docs",
