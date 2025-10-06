@@ -585,8 +585,8 @@ export class SQLocal {
 			| File
 			| Blob
 			| ArrayBuffer
-			| Uint8Array
-			| ReadableStream<Uint8Array>,
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>,
 		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
 		await mutationLock('exclusive', false, this.config, async () => {

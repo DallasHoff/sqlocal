@@ -62,7 +62,10 @@ export class SQLiteKvvfsDriver
 	}
 
 	override async import(
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	): Promise<void> {
 		const memdb = new SQLiteMemoryDriver();
 		await memdb.init({});

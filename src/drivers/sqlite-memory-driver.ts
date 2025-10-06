@@ -148,7 +148,10 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	}
 
 	async import(
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	): Promise<void> {
 		if (!this.sqlite3 || !this.db || !this.config) {
 			throw new Error('Driver not initialized');
@@ -172,7 +175,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 	async export(): Promise<{
 		name: string;
-		data: ArrayBuffer | Uint8Array;
+		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
 	}> {
 		if (!this.sqlite3 || !this.db) {
 			throw new Error('Driver not initialized');

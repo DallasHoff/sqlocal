@@ -2,31 +2,42 @@ type DatabaseFileInput =
 	| File
 	| Blob
 	| ArrayBuffer
-	| Uint8Array
-	| ReadableStream<Uint8Array>;
+	| Uint8Array<ArrayBuffer>
+	| ReadableStream<Uint8Array<ArrayBuffer>>;
 
 export function normalizeDatabaseFile(
 	dbFile: DatabaseFileInput,
 	convertStreamTo: 'callback'
-): Promise<ArrayBuffer | Uint8Array | (() => Promise<Uint8Array | undefined>)>;
+): Promise<
+	| ArrayBuffer
+	| Uint8Array<ArrayBuffer>
+	| (() => Promise<Uint8Array<ArrayBuffer> | undefined>)
+>;
 export function normalizeDatabaseFile(
 	dbFile: DatabaseFileInput,
 	convertStreamTo: 'buffer'
-): Promise<ArrayBuffer | Uint8Array>;
+): Promise<ArrayBuffer | Uint8Array<ArrayBuffer>>;
 export function normalizeDatabaseFile(
 	dbFile: DatabaseFileInput,
 	convertStreamTo?: undefined
-): Promise<ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>>;
+): Promise<
+	| ArrayBuffer
+	| Uint8Array<ArrayBuffer>
+	| ReadableStream<Uint8Array<ArrayBuffer>>
+>;
 export async function normalizeDatabaseFile(
 	dbFile: DatabaseFileInput,
 	convertStreamTo?: 'callback' | 'buffer'
 ): Promise<
 	| ArrayBuffer
-	| Uint8Array
-	| ReadableStream<Uint8Array>
-	| (() => Promise<Uint8Array | undefined>)
+	| Uint8Array<ArrayBuffer>
+	| ReadableStream<Uint8Array<ArrayBuffer>>
+	| (() => Promise<Uint8Array<ArrayBuffer> | undefined>)
 > {
-	let bufferOrStream: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
+	let bufferOrStream:
+		| ArrayBuffer
+		| Uint8Array<ArrayBuffer>
+		| ReadableStream<Uint8Array<ArrayBuffer>>;
 
 	if (dbFile instanceof Blob) {
 		bufferOrStream = dbFile.stream();
@@ -46,7 +57,7 @@ export async function normalizeDatabaseFile(
 				};
 
 			case 'buffer':
-				const chunks: Uint8Array[] = [];
+				const chunks: Uint8Array<ArrayBuffer>[] = [];
 				let streamDone = false;
 
 				while (!streamDone) {

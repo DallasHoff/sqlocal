@@ -76,9 +76,15 @@ export interface SQLocalDriver {
 	getDatabaseSizeBytes: () => Promise<number>;
 	createFunction: (fn: UserFunction) => Promise<void>;
 	import: (
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	) => Promise<void>;
-	export: () => Promise<{ name: string; data: ArrayBuffer | Uint8Array }>;
+	export: () => Promise<{
+		name: string;
+		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
+	}>;
 	clear: () => Promise<void>;
 	destroy: () => Promise<void>;
 }
