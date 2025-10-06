@@ -48,6 +48,7 @@ export class SQLiteKvvfsDriver
 			flags,
 		});
 		this.config = config;
+		this.initWriteHook();
 	}
 
 	override async isDatabasePersisted(): Promise<boolean> {
@@ -81,5 +82,6 @@ export class SQLiteKvvfsDriver
 
 	override async destroy(): Promise<void> {
 		this.closeDb();
+		this.writeCallbacks.clear();
 	}
 }

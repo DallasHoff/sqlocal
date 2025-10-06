@@ -55,6 +55,10 @@ export default defineConfig({
 						link: '/api/transaction',
 					},
 					{
+						text: 'reactiveQuery',
+						link: '/api/reactivequery',
+					},
+					{
 						text: 'getDatabaseInfo',
 						link: '/api/getdatabaseinfo',
 					},

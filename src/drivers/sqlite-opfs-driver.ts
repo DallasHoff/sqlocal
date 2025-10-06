@@ -42,6 +42,7 @@ export class SQLiteOpfsDriver
 
 		this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
 		this.config = config;
+		this.initWriteHook();
 	}
 
 	override async isDatabasePersisted(): Promise<boolean> {
@@ -112,5 +113,6 @@ export class SQLiteOpfsDriver
 
 	override async destroy(): Promise<void> {
 		this.closeDb();
+		this.writeCallbacks.clear();
 	}
 }

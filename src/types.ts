@@ -49,6 +49,16 @@ export type Transaction = {
 	rollback: () => Promise<void>;
 };
 
+export type ReactiveQuery<Result = unknown> = {
+	readonly value: Result[];
+	subscribe: (
+		onData: (results: Result[]) => void,
+		onError?: (err: Error) => void
+	) => {
+		unsubscribe: () => void;
+	};
+};
+
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
@@ -61,6 +71,7 @@ export interface SQLocalDriver {
 	init: (config: DriverConfig) => Promise<void>;
 	exec: (statement: DriverStatement) => Promise<RawResultData>;
 	execBatch: (statements: DriverStatement[]) => Promise<RawResultData[]>;
+	onWrite: (callback: (change: DataChange) => void) => () => void;
 	isDatabasePersisted: () => Promise<boolean>;
 	getDatabaseSizeBytes: () => Promise<number>;
 	createFunction: (fn: UserFunction) => Promise<void>;
@@ -74,6 +85,7 @@ export interface SQLocalDriver {
 
 export type DriverConfig = {
 	databasePath?: DatabasePath;
+	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
 };
@@ -99,6 +111,7 @@ export type ConnectReason = 'initial' | 'overwrite' | 'delete';
 
 export type ClientConfig = {
 	databasePath: DatabasePath;
+	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
 	onInit?: (sql: typeof sqlTag) => void | Statement[];
@@ -108,6 +121,7 @@ export type ClientConfig = {
 
 export type ProcessorConfig = {
 	databasePath?: DatabasePath;
+	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
 	clientKey?: QueryKey;
@@ -119,6 +133,12 @@ export type DatabaseInfo = {
 	databaseSizeBytes?: number;
 	storageType?: Sqlite3StorageType;
 	persisted?: boolean;
+};
+
+export type DataChange = {
+	operation: 'insert' | 'update' | 'delete';
+	table: string;
+	rowid: BigInt;
 };
 
 // User functions

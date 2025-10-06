@@ -141,3 +141,8 @@ export type CloseBroadcast = {
 	type: 'close';
 	clientKey: QueryKey;
 };
+
+export type EffectsMessage = {
+	type: 'effects';
+	tables: string[];
+};

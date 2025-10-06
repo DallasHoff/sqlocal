@@ -12,6 +12,7 @@ import type {
 	Transaction,
 	DatabasePath,
 	AggregateUserFunction,
+	ReactiveQuery,
 } from './types.js';
 import type {
 	BatchMessage,
@@ -19,6 +20,7 @@ import type {
 	ConfigMessage,
 	DeleteMessage,
 	DestroyMessage,
+	EffectsMessage,
 	ExportMessage,
 	FunctionMessage,
 	GetInfoMessage,
@@ -39,6 +41,7 @@ import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
+import { getDatabaseKey } from './lib/get-database-key.js';
 
 export class SQLocal {
 	protected config: ClientConfig;
@@ -57,6 +60,7 @@ export class SQLocal {
 
 	protected proxy: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
+	protected effectsChannel?: BroadcastChannel;
 
 	constructor(databasePath: DatabasePath);
 	constructor(config: ClientConfig);
@@ -68,9 +72,13 @@ export class SQLocal {
 
 		this.config = clientConfig;
 		this.clientKey = getQueryKey();
-		this.reinitChannel = new BroadcastChannel(
-			`_sqlocal_reinit_(${databasePath})`
-		);
+		const dbKey = getDatabaseKey(databasePath, this.clientKey);
+
+		this.reinitChannel = new BroadcastChannel(`_sqlocal_reinit_(${dbKey})`);
+
+		if (commonConfig.reactive) {
+			this.effectsChannel = new BroadcastChannel(`_sqlocal_effects_(${dbKey})`);
+		}
 
 		if (typeof processor !== 'undefined') {
 			this.processor = processor;
@@ -374,6 +382,120 @@ export class SQLocal {
 		});
 	};
 
+	reactiveQuery = <Result extends Record<string, any>>(
+		passStatement: StatementInput<Result>
+	): ReactiveQuery<Result> => {
+		let value: Result[] = [];
+		let gotFirstValue = false;
+		let isListening = false;
+		let updateCount = 0;
+
+		const statement = normalizeStatement(passStatement);
+		const watchedTables = new Set<string>();
+		const subObservers = new Set<(results: Result[]) => void>();
+		const errObservers = new Set<(err: Error) => void>();
+
+		const runStatement = async (): Promise<void> => {
+			try {
+				const updateOrder = ++updateCount;
+
+				if (watchedTables.size === 0) {
+					const usedTables = await this.sql(
+						"SELECT name, wr FROM tables_used(?) WHERE type = 'table'",
+						statement.sql
+					);
+					const readTables = new Set<string>();
+					const writtenTables = new Set<string>();
+
+					usedTables.forEach((table) => {
+						if (typeof table.name !== 'string') return;
+						table.wr
+							? writtenTables.add(table.name)
+							: readTables.add(table.name);
+					});
+
+					if (readTables.size === 0) {
+						throw new Error('The passed SQL does not read any tables.');
+					}
+
+					if (
+						Array.from(writtenTables).some((table) => readTables.has(table))
+					) {
+						throw new Error(
+							'The passed SQL would mutate one or more of the tables that it reads. Doing this in a reactive query would create an infinite loop.'
+						);
+					}
+
+					readTables.forEach((name) => watchedTables.add(name));
+				}
+
+				const results = await this.sql<Result>(
+					statement.sql,
+					...statement.params
+				);
+
+				if (updateOrder === updateCount) {
+					value = results;
+					gotFirstValue = true;
+					subObservers.forEach((observer) => observer(value));
+				}
+			} catch (err) {
+				errObservers.forEach((observer) => {
+					observer(err instanceof Error ? err : new Error(String(err)));
+				});
+			}
+		};
+
+		const onEffect = (message: MessageEvent<EffectsMessage>): void => {
+			if (message.data.tables.some((table) => watchedTables.has(table))) {
+				runStatement();
+			}
+		};
+
+		return {
+			get value() {
+				return value;
+			},
+			subscribe: (
+				onData: (results: Result[]) => void,
+				onError?: (err: Error) => void
+			) => {
+				if (!this.effectsChannel) {
+					throw new Error(
+						'This SQLocal instance is not configured for reactive queries. Set the "reactive" option to enable them.'
+					);
+				}
+
+				if (!onError) {
+					onError = (err) => {
+						throw err;
+					};
+				}
+
+				subObservers.add(onData);
+				errObservers.add(onError);
+
+				if (!isListening) {
+					this.effectsChannel.addEventListener('message', onEffect);
+					isListening = true;
+					runStatement();
+				} else if (gotFirstValue) {
+					onData(value);
+				}
+
+				return {
+					unsubscribe: () => {
+						subObservers.delete(onData);
+						errObservers.delete(onError);
+						if (subObservers.size !== 0) return;
+						this.effectsChannel?.removeEventListener('message', onEffect);
+						isListening = false;
+					},
+				};
+			},
+		};
+	};
+
 	createCallbackFunction = async (
 		funcName: string,
 		func: CallbackUserFunction['func']
@@ -541,6 +663,7 @@ export class SQLocal {
 		this.queriesInProgress.clear();
 		this.userCallbacks.clear();
 		this.reinitChannel.close();
+		this.effectsChannel?.close();
 		this.isDestroyed = true;
 	};
 

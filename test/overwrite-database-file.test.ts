@@ -162,6 +162,7 @@ describe.each([
 
 		const dbFile = await db.getDatabaseFile();
 		await db.overwriteDatabaseFile(dbFile);
+		await sleep(100);
 
 		const num2 = await db.sql`SELECT double(2) AS num`;
 		expect(num2).toEqual([{ num: 4 }]);

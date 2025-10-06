@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Kysely, ParseJSONResultsPlugin } from 'kysely';
 import type { Generated } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/sqlite';
@@ -11,7 +11,10 @@ describe.each([
 	{ type: 'local', path: ':localStorage:' },
 	{ type: 'session', path: ':sessionStorage:' },
 ])('kysely dialect ($type)', ({ path }) => {
-	const { dialect, transaction } = new SQLocalKysely(path);
+	const { dialect, transaction, reactiveQuery } = new SQLocalKysely({
+		databasePath: path,
+		reactive: true,
+	});
 	const db = new Kysely<DB>({
 		dialect,
 		plugins: [new ParseJSONResultsPlugin()],
@@ -279,5 +282,37 @@ describe.each([
 				isNullable: false,
 			},
 		]);
+	});
+
+	it('should support reactive queries', async () => {
+		await db
+			.insertInto('groceries')
+			.values([{ name: 'bread' }])
+			.execute();
+
+		let list: string[] = [];
+		let expectedList: string[] = ['bread'];
+
+		const reactive = reactiveQuery(
+			db.selectFrom('groceries').selectAll().compile()
+		);
+		const { unsubscribe } = reactive.subscribe((data) => {
+			list = data.map((item) => item.name);
+		});
+		await vi.waitUntil(() => list.length === 1);
+
+		expect(list).toEqual(expectedList);
+		expect(reactive.value.map((item) => item.name)).toEqual(expectedList);
+
+		await db
+			.insertInto('groceries')
+			.values([{ name: 'rice' }])
+			.execute();
+		expectedList.push('rice');
+		await vi.waitUntil(() => list.length === 2);
+
+		expect(list).toEqual(expectedList);
+		expect(reactive.value.map((item) => item.name)).toEqual(expectedList);
+		unsubscribe();
 	});
 });
