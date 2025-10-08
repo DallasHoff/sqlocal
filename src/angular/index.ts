@@ -5,8 +5,8 @@ import type { StatementInput } from '../types.js';
 export function useReactiveQuery<Result extends Record<string, any>>(
 	db: SQLocal | Signal<SQLocal>,
 	query: StatementInput<Result> | Signal<StatementInput<Result>>
-): { value: Signal<Result[]>; error: Signal<Error | undefined> } {
-	const value = signal<Result[]>([]);
+): { data: Signal<Result[]>; error: Signal<Error | undefined> } {
+	const data = signal<Result[]>([]);
 	const error = signal<Error | undefined>(undefined);
 
 	const dbValue = computed(() => (isSignal(db) ? db() : db));
@@ -17,8 +17,8 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 		const query = queryValue();
 
 		const subscription = db.reactiveQuery(query).subscribe(
-			(data) => {
-				value.set(data);
+			(results) => {
+				data.set(results);
 				error.set(undefined);
 			},
 			(err) => {
@@ -32,7 +32,7 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 	});
 
 	return {
-		value: value.asReadonly(),
+		data: data.asReadonly(),
 		error: error.asReadonly(),
 	};
 }
