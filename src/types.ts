@@ -5,6 +5,8 @@ import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
 import type { sqlTag } from './lib/sql-tag.js';
 import type { SQLocalProcessor } from './processor.js';
 
+type IsAny<T> = boolean extends (T extends never ? true : false) ? true : false;
+
 // SQLite
 
 export type Sqlite3 = Sqlite3Static;
@@ -27,11 +29,13 @@ export type Statement = {
 
 export type ReturningStatement<Result = unknown> =
 	| Statement
-	| KyselyQuery<Result>
-	| DrizzleQuery<
-			Result extends SqliteRemoteResult<unknown> ? any : Result[],
-			'sqlite'
-	  >;
+	| (IsAny<KyselyQuery<unknown>> extends true ? never : KyselyQuery<Result>)
+	| (IsAny<DrizzleQuery<unknown, never>> extends true
+			? never
+			: DrizzleQuery<
+					Result extends SqliteRemoteResult<unknown> ? any : Result[],
+					'sqlite'
+				>);
 
 export type StatementInput<Result = unknown> =
 	| ReturningStatement<Result>
