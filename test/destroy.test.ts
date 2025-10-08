@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
+import { testVariation } from './test-utils/test-variation.js';
 
-describe.each([
-	{ type: 'opfs', path: 'destroy-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('destroy ($type)', ({ path }) => {
+describe.each(testVariation('destroy'))('destroy ($type)', ({ path }) => {
 	const { sql, destroy } = new SQLocal(path);
 
 	beforeEach(async () => {

@@ -9,13 +9,9 @@ import {
 } from 'vitest';
 import { SQLocal, SQLocalProcessor } from '../src/index.js';
 import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
+import { testVariation } from './test-utils/test-variation.js';
 
-describe.each([
-	{ type: 'opfs', path: 'init-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('init ($type)', ({ path, type }) => {
+describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 	const { sql, deleteDatabaseFile } = new SQLocal(path);
 
 	beforeEach(async () => {

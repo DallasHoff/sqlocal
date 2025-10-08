@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
+import { testVariation } from './test-utils/test-variation.js';
 
-describe.each([
-	{ type: 'opfs', path: 'sql-test.sqlite3' },
-	{ type: 'memory', path: ':memory:' },
-	{ type: 'local', path: ':localStorage:' },
-	{ type: 'session', path: ':sessionStorage:' },
-])('sql ($type)', ({ path }) => {
+describe.each(testVariation('sql'))('sql ($type)', ({ path }) => {
 	const { sql } = new SQLocal(path);
 
 	beforeEach(async () => {
