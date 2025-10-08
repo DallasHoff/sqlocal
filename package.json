@@ -20,6 +20,11 @@
 			"types": "./dist/kysely/index.d.ts",
 			"browser": "./dist/kysely/index.js",
 			"import": "./dist/kysely/index.js"
+		},
+		"./angular": {
+			"types": "./dist/angular/index.d.ts",
+			"browser": "./dist/angular/index.js",
+			"import": "./dist/angular/index.js"
 		}
 	},
 	"sideEffects": false,
@@ -47,6 +52,7 @@
 		"coincident": "^1.2.3"
 	},
 	"devDependencies": {
+		"@angular/core": "^20.3.3",
 		"@vitest/browser": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
 		"drizzle-orm": "^0.44.6",
@@ -62,13 +68,17 @@
 	},
 	"peerDependencies": {
 		"drizzle-orm": "*",
-		"kysely": "*"
+		"kysely": "*",
+		"@angular/core": ">=17.0.0"
 	},
 	"peerDependenciesMeta": {
 		"kysely": {
 			"optional": true
 		},
 		"drizzle-orm": {
+			"optional": true
+		},
+		"@angular/core": {
 			"optional": true
 		}
 	},
