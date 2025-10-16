@@ -15,6 +15,7 @@ describe.each(testVariation('drizzle-driver'))(
 		const groceries = sqliteTable('groceries', {
 			id: int('id').primaryKey({ autoIncrement: true }),
 			name: text('name').notNull(),
+			inStock: int('in_stock', { mode: 'boolean' }),
 		});
 
 		const groceriesRelations = relations(groceries, ({ many }) => ({
@@ -39,7 +40,7 @@ describe.each(testVariation('drizzle-driver'))(
 		});
 
 		beforeEach(async () => {
-			await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;
+			await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, in_stock INTEGER)`;
 			await sql`CREATE TABLE prices (id INTEGER PRIMARY KEY AUTOINCREMENT, groceryId INTEGER NOT NULL, price REAL NOT NULL)`;
 		});
 
@@ -63,9 +64,9 @@ describe.each(testVariation('drizzle-driver'))(
 
 			const select1 = await db.select().from(groceries).all();
 			expect(select1).toEqual([
-				{ id: 1, name: 'bread' },
-				{ id: 2, name: 'milk' },
-				{ id: 3, name: 'rice' },
+				{ id: 1, name: 'bread', inStock: null },
+				{ id: 2, name: 'milk', inStock: null },
+				{ id: 3, name: 'rice', inStock: null },
 			]);
 
 			const delete1 = await db
@@ -73,15 +74,15 @@ describe.each(testVariation('drizzle-driver'))(
 				.where(eq(groceries.id, 2))
 				.returning()
 				.get();
-			expect(delete1).toEqual({ id: 2, name: 'milk' });
+			expect(delete1).toEqual({ id: 2, name: 'milk', inStock: null });
 
 			const update1 = await db
 				.update(groceries)
-				.set({ name: 'white rice' })
+				.set({ name: 'white rice', inStock: true })
 				.where(eq(groceries.id, 3))
-				.returning({ name: groceries.name })
+				.returning({ name: groceries.name, inStock: groceries.inStock })
 				.all();
-			expect(update1).toEqual([{ name: 'white rice' }]);
+			expect(update1).toEqual([{ name: 'white rice', inStock: true }]);
 
 			const select2 = await db
 				.select({ name: groceries.name })
@@ -98,18 +99,21 @@ describe.each(testVariation('drizzle-driver'))(
 					.insert(groceries)
 					.values({ name: 'rice' })
 					.returning({ name: groceries.name }),
-				db.insert(groceries).values({ name: 'milk' }).returning(),
+				db
+					.insert(groceries)
+					.values({ name: 'milk', inStock: false })
+					.returning(),
 				db.select().from(groceries),
 			]);
 
 			expect(data).toEqual([
 				{ rows: [], columns: [] },
 				[{ name: 'rice' }],
-				[{ id: 3, name: 'milk' }],
+				[{ id: 3, name: 'milk', inStock: false }],
 				[
-					{ id: 1, name: 'bread' },
-					{ id: 2, name: 'rice' },
-					{ id: 3, name: 'milk' },
+					{ id: 1, name: 'bread', inStock: null },
+					{ id: 2, name: 'rice', inStock: null },
+					{ id: 3, name: 'milk', inStock: false },
 				],
 			]);
 		});
@@ -155,7 +159,7 @@ describe.each(testVariation('drizzle-driver'))(
 			const productName = 'rice';
 			const productPrice = 2.99;
 
-			const newProductId = await transaction(async (tx) => {
+			const newProduct = await transaction(async (tx) => {
 				const [product] = await tx.query(
 					db.insert(groceries).values({ name: productName }).returning()
 				);
@@ -164,10 +168,10 @@ describe.each(testVariation('drizzle-driver'))(
 						.insert(prices)
 						.values({ groceryId: product.id, price: productPrice })
 				);
-				return product.id;
+				return product;
 			});
 
-			expect(newProductId).toBe(1);
+			expect(newProduct).toEqual({ id: 1, name: productName, inStock: null });
 
 			const selectData1 = await db.select().from(groceries).all();
 			expect(selectData1.length).toBe(1);
@@ -217,13 +221,28 @@ describe.each(testVariation('drizzle-driver'))(
 		});
 
 		it('should perform successful transaction using drizzle way', async () => {
-			await db.transaction(async (tx) => {
-				await tx.insert(groceries).values({ name: 'apples' }).run();
-				await tx.insert(groceries).values({ name: 'bananas' }).run();
+			const productName = 'rice';
+			const productPrice = 2.99;
+
+			const newProduct = await db.transaction(async (tx) => {
+				const product = await tx
+					.insert(groceries)
+					.values({ name: productName })
+					.returning()
+					.get();
+				await tx
+					.insert(prices)
+					.values({ groceryId: product.id, price: productPrice })
+					.run();
+				return product;
 			});
 
-			const data = await db.select().from(groceries).all();
-			expect(data.length).toBe(2);
+			expect(newProduct).toEqual({ id: 1, name: productName, inStock: null });
+
+			const selectData1 = await db.select().from(groceries).all();
+			expect(selectData1.length).toBe(1);
+			const selectData2 = await db.select().from(prices).all();
+			expect(selectData2.length).toBe(1);
 		});
 
 		it('should rollback failed transaction using drizzle way', async () => {
@@ -269,26 +288,32 @@ describe.each(testVariation('drizzle-driver'))(
 		});
 
 		it('should support reactive queries', async () => {
-			await db.insert(groceries).values({ name: 'bread' }).run();
+			await db.insert(groceries).values({ name: 'bread', inStock: true }).run();
 
-			let list: string[] = [];
-			let expectedList: string[] = ['bread'];
+			let list: { name: string; inStock: boolean | null }[] = [];
+			let expectedList: { name: string; inStock: boolean | null }[] = [
+				{ name: 'bread', inStock: true },
+			];
 
 			const reactive = reactiveQuery(db.select().from(groceries));
 			const { unsubscribe } = reactive.subscribe((data) => {
-				list = data.map((item) => item.name);
+				list = data.map(({ name, inStock }) => ({ name, inStock }));
 			});
 			await vi.waitUntil(() => list.length === 1);
 
 			expect(list).toEqual(expectedList);
-			expect(reactive.value.map((item) => item.name)).toEqual(expectedList);
+			expect(reactive.value).toEqual(
+				expectedList.map((item, i) => ({ ...item, id: i + 1 }))
+			);
 
-			await db.insert(groceries).values({ name: 'rice' }).run();
-			expectedList.push('rice');
+			await db.insert(groceries).values({ name: 'rice', inStock: false }).run();
+			expectedList.push({ name: 'rice', inStock: false });
 			await vi.waitUntil(() => list.length === 2);
 
 			expect(list).toEqual(expectedList);
-			expect(reactive.value.map((item) => item.name)).toEqual(expectedList);
+			expect(reactive.value).toEqual(
+				expectedList.map((item, i) => ({ ...item, id: i + 1 }))
+			);
 			unsubscribe();
 		});
 	}

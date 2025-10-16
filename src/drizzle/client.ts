@@ -17,7 +17,8 @@ export class SQLocalDrizzle extends SQLocal {
 			);
 			sessionStorage._sqlocal_sent_drizzle_transaction_warning = '1';
 		}
-		return this.exec(sql, params, method);
+		const transactionKey = this.transactionQueryKeyQueue.shift();
+		return this.exec(sql, params, method, transactionKey);
 	};
 
 	batchDriver = async (

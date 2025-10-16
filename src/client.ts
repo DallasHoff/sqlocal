@@ -49,6 +49,7 @@ export class SQLocal {
 	protected processor: SQLocalProcessor | Worker;
 	protected isDestroyed: boolean = false;
 	protected bypassMutationLock: boolean = false;
+	protected transactionQueryKeyQueue: QueryKey[] = [];
 	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
 	protected queriesInProgress = new Map<
 		QueryKey,
@@ -312,6 +313,10 @@ export class SQLocal {
 			passStatement: StatementInput<Result>
 		): Promise<Result[]> => {
 			const statement = normalizeStatement(passStatement);
+			if (statement.exec) {
+				this.transactionQueryKeyQueue.push(transactionKey);
+				return statement.exec();
+			}
 			const { rows, columns } = await this.exec(
 				statement.sql,
 				statement.params,
@@ -429,10 +434,9 @@ export class SQLocal {
 					readTables.forEach((name) => watchedTables.add(name));
 				}
 
-				const results = await this.sql<Result>(
-					statement.sql,
-					...statement.params
-				);
+				const results = statement.exec
+					? await statement.exec<Result>()
+					: await this.sql<Result>(statement.sql, ...statement.params);
 
 				if (updateOrder === updateCount) {
 					value = results;
