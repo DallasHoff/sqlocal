@@ -5,6 +5,8 @@ import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
 import type { sqlTag } from './lib/sql-tag.js';
 import type { SQLocalProcessor } from './processor.js';
 
+type IsAny<T> = boolean extends (T extends never ? true : false) ? true : false;
+
 // SQLite
 
 export type Sqlite3 = Sqlite3Static;
@@ -29,11 +31,13 @@ export type Statement = {
 
 export type ReturningStatement<Result = unknown> =
 	| Statement
-	| KyselyQuery<Result>
-	| DrizzleQuery<
-			Result extends SqliteRemoteResult<unknown> ? any : Result[],
-			'sqlite'
-	  >;
+	| (IsAny<KyselyQuery<unknown>> extends true ? never : KyselyQuery<Result>)
+	| (IsAny<DrizzleQuery<unknown, never>> extends true
+			? never
+			: DrizzleQuery<
+					Result extends SqliteRemoteResult<unknown> ? any : Result[],
+					'sqlite'
+				>);
 
 export type StatementInput<Result = unknown> =
 	| ReturningStatement<Result>
@@ -51,6 +55,16 @@ export type Transaction = {
 	rollback: () => Promise<void>;
 };
 
+export type ReactiveQuery<Result = unknown> = {
+	readonly value: Result[];
+	subscribe: (
+		onData: (results: Result[]) => void,
+		onError?: (err: Error) => void
+	) => {
+		unsubscribe: () => void;
+	};
+};
+
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
@@ -63,19 +77,27 @@ export interface SQLocalDriver {
 	init: (config: DriverConfig) => Promise<void>;
 	exec: (statement: DriverStatement) => Promise<RawResultData>;
 	execBatch: (statements: DriverStatement[]) => Promise<RawResultData[]>;
+	onWrite: (callback: (change: DataChange) => void) => () => void;
 	isDatabasePersisted: () => Promise<boolean>;
 	getDatabaseSizeBytes: () => Promise<number>;
 	createFunction: (fn: UserFunction) => Promise<void>;
 	import: (
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	) => Promise<void>;
-	export: () => Promise<{ name: string; data: ArrayBuffer | Uint8Array }>;
+	export: () => Promise<{
+		name: string;
+		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
+	}>;
 	clear: () => Promise<void>;
 	destroy: () => Promise<void>;
 }
 
 export type DriverConfig = {
 	databasePath?: DatabasePath;
+	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
 };
@@ -101,6 +123,7 @@ export type ConnectReason = 'initial' | 'overwrite' | 'delete';
 
 export type ClientConfig = {
 	databasePath: DatabasePath;
+	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
 	onInit?: (sql: typeof sqlTag) => void | Statement[];
@@ -110,6 +133,7 @@ export type ClientConfig = {
 
 export type ProcessorConfig = {
 	databasePath?: DatabasePath;
+	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
 	clientKey?: QueryKey;
@@ -121,6 +145,12 @@ export type DatabaseInfo = {
 	databaseSizeBytes?: number;
 	storageType?: Sqlite3StorageType;
 	persisted?: boolean;
+};
+
+export type DataChange = {
+	operation: 'insert' | 'update' | 'delete';
+	table: string;
+	rowid: BigInt;
 };
 
 // User functions

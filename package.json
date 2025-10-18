@@ -1,6 +1,6 @@
 {
 	"name": "sqlocal",
-	"version": "0.14.0",
+	"version": "0.15.2",
 	"type": "module",
 	"types": "./dist/index.d.ts",
 	"browser": "./dist/index.js",
@@ -30,33 +30,35 @@
 	"scripts": {
 		"build": "tsc --project tsconfig.build.json",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest",
-		"test:ui": "vitest --ui",
-		"test:ci": "vitest run",
+		"test": "vitest --browser=chrome",
+		"test:ui": "vitest --ui --browser=chrome",
+		"test:ci": "vitest run --browser=chrome",
+		"test:safari": "vitest --browser=safari --browser.headless=false",
+		"benchmark": "vitest bench --browser=chrome",
 		"format": "prettier . --write",
 		"format:check": "prettier . --check",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs",
-		"prepublishOnly": "npm run build && vitest run"
+		"prepublishOnly": "npm run build && npm run test:ci"
 	},
 	"dependencies": {
-		"@sqlite.org/sqlite-wasm": "^3.49.1-build2",
+		"@sqlite.org/sqlite-wasm": "^3.50.4-build1",
 		"coincident": "^1.2.3"
 	},
 	"devDependencies": {
-		"@vitest/browser": "^3.0.8",
-		"@vitest/ui": "^3.0.8",
-		"drizzle-orm": "^0.40.0",
-		"kysely": "^0.27.6",
-		"prettier": "^3.5.3",
-		"taze": "^19.0.2",
-		"typescript": "^5.8.2",
-		"vite": "^6.2.1",
-		"vitepress": "^1.6.3",
-		"vitest": "^3.0.8",
-		"webdriverio": "^9.12.0",
-		"wrangler": "^3.114.1"
+		"@vitest/browser": "^3.2.4",
+		"@vitest/ui": "^3.2.4",
+		"drizzle-orm": "^0.44.6",
+		"kysely": "^0.28.7",
+		"prettier": "^3.6.2",
+		"taze": "^19.7.0",
+		"typescript": "^5.9.3",
+		"vite": "^7.1.9",
+		"vitepress": "^1.6.4",
+		"vitest": "^3.2.4",
+		"webdriverio": "^9.20.0",
+		"wrangler": "^4.42.0"
 	},
 	"peerDependencies": {
 		"drizzle-orm": "*",
@@ -88,7 +90,7 @@
 		"type": "git",
 		"url": "git+https://github.com/DallasHoff/sqlocal.git"
 	},
-	"homepage": "https://sqlocal.dallashoffman.com",
+	"homepage": "https://sqlocal.dev",
 	"funding": {
 		"type": "paypal",
 		"url": "https://www.paypal.com/biz/fund?id=U3ZNM2Q26WJY8"

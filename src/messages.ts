@@ -65,7 +65,10 @@ export type GetInfoMessage = {
 export type ImportMessage = {
 	type: 'import';
 	queryKey: QueryKey;
-	database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>;
+	database:
+		| ArrayBuffer
+		| Uint8Array<ArrayBuffer>
+		| ReadableStream<Uint8Array<ArrayBuffer>>;
 };
 export type ExportMessage = {
 	type: 'export';
@@ -111,7 +114,7 @@ export type BufferMessage = {
 	type: 'buffer';
 	queryKey: QueryKey;
 	bufferName: string;
-	buffer: ArrayBuffer | Uint8Array;
+	buffer: ArrayBuffer | Uint8Array<ArrayBuffer>;
 };
 export type CallbackMessage = {
 	type: 'callback';
@@ -140,4 +143,9 @@ export type ReinitBroadcast = {
 export type CloseBroadcast = {
 	type: 'close';
 	clientKey: QueryKey;
+};
+
+export type EffectsMessage = {
+	type: 'effects';
+	tables: string[];
 };

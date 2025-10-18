@@ -48,6 +48,7 @@ export class SQLiteKvvfsDriver
 			flags,
 		});
 		this.config = config;
+		this.initWriteHook();
 	}
 
 	override async isDatabasePersisted(): Promise<boolean> {
@@ -61,7 +62,10 @@ export class SQLiteKvvfsDriver
 	}
 
 	override async import(
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	): Promise<void> {
 		const memdb = new SQLiteMemoryDriver();
 		await memdb.init({});
@@ -81,5 +85,6 @@ export class SQLiteKvvfsDriver
 
 	override async destroy(): Promise<void> {
 		this.closeDb();
+		this.writeCallbacks.clear();
 	}
 }

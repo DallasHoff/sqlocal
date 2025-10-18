@@ -1,4 +1,3 @@
-// @ts-expect-error
 import { DatabaseSync, backup } from 'node:sqlite';
 import fs from 'node:fs/promises';
 import { parseDatabasePath } from '../lib/parse-database-path.js';
@@ -36,7 +35,6 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 		}
 
 		this.db = new DatabaseSync(databasePath, {
-			// @ts-expect-error
 			readOnly: !!config.readOnly,
 		});
 		this.config = config;
@@ -132,7 +130,6 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 		switch (fn.type) {
 			case 'callback':
 			case 'scalar':
-				// @ts-expect-error
 				this.db.function(
 					fn.name,
 					{ varargs: true },
@@ -162,7 +159,7 @@ export class NodeSQLiteDriver implements SQLocalDriver {
 
 	async export(): Promise<{
 		name: string;
-		data: ArrayBuffer | Uint8Array;
+		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
 	}> {
 		if (!this.db || !this.config?.databasePath) {
 			throw new Error('Driver not initialized');

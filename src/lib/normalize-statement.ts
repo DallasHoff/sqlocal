@@ -3,6 +3,10 @@ import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
 import type { StatementInput, Statement } from '../types.js';
 import { sqlTag } from './sql-tag.js';
 
+type NormalStatement = Statement & {
+	exec?: <T extends Record<string, any>>() => Promise<T[]>;
+};
+
 function isDrizzleStatement<Result = unknown>(
 	statement: StatementInput<Result>
 ): statement is DrizzleQuery<
@@ -27,7 +31,7 @@ function isStatement(statement: unknown): statement is Statement {
 	);
 }
 
-export function normalizeStatement(statement: StatementInput): Statement {
+export function normalizeStatement(statement: StatementInput): NormalStatement {
 	if (typeof statement === 'function') {
 		statement = statement(sqlTag);
 	}
@@ -41,7 +45,14 @@ export function normalizeStatement(statement: StatementInput): Statement {
 			if (!isStatement(drizzleStatement)) {
 				throw 2;
 			}
-			return drizzleStatement;
+			const exec =
+				'all' in statement && typeof statement.all === 'function'
+					? statement.all
+					: undefined;
+			return {
+				...drizzleStatement,
+				exec: exec ? () => exec() : undefined,
+			};
 		} catch {
 			throw new Error('The passed statement could not be parsed.');
 		}

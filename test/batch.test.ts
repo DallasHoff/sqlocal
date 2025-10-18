@@ -1,16 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
+import { testVariation } from './test-utils/test-variation.js';
 
-describe.each(
-	typeof window !== 'undefined'
-		? [
-				{ type: 'opfs', path: 'batch-test.sqlite3' },
-				{ type: 'memory', path: ':memory:' },
-				{ type: 'local', path: ':localStorage:' },
-				{ type: 'session', path: ':sessionStorage:' },
-			]
-		: [{ type: 'node', path: './.db/batch-test.sqlite3' }]
-)('batch ($type)', ({ path }) => {
+describe.each(testVariation('batch'))('batch ($type)', ({ path }) => {
 	const { sql, batch } = new SQLocal(path);
 
 	beforeEach(async () => {

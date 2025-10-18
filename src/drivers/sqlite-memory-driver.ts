@@ -1,4 +1,5 @@
 import type {
+	DataChange,
 	DriverConfig,
 	DriverStatement,
 	RawResultData,
@@ -10,12 +11,14 @@ import type {
 	UserFunction,
 } from '../types.js';
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
+import type { PreparedStatement } from '@sqlite.org/sqlite-wasm';
 
 export class SQLiteMemoryDriver implements SQLocalDriver {
 	protected sqlite3?: Sqlite3;
 	protected db?: Sqlite3Db;
 	protected config?: DriverConfig;
 	protected pointers: number[] = [];
+	protected writeCallbacks = new Set<(change: DataChange) => void>();
 
 	readonly storageType: Sqlite3StorageType = 'memory';
 
@@ -42,6 +45,15 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 		this.db = new this.sqlite3.oo1.DB(databasePath, flags);
 		this.config = config;
+		this.initWriteHook();
+	}
+
+	onWrite(callback: (change: DataChange) => void): () => void {
+		this.writeCallbacks.add(callback);
+
+		return () => {
+			this.writeCallbacks.delete(callback);
+		};
 	}
 
 	async exec(statement: DriverStatement): Promise<RawResultData> {
@@ -56,9 +68,37 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		const results: RawResultData[] = [];
 
 		this.db.transaction((tx) => {
-			for (let statement of statements) {
-				const statementData = this.execOnDb(tx, statement);
-				results.push(statementData);
+			const prepared = new Map<string, PreparedStatement>();
+
+			try {
+				for (let statement of statements) {
+					let stmt = prepared.get(statement.sql);
+
+					if (!stmt) {
+						const newStmt = tx.prepare(statement.sql);
+						prepared.set(statement.sql, newStmt);
+						stmt = newStmt;
+					}
+
+					if (statement.params?.length) {
+						stmt.bind(statement.params);
+					}
+
+					let columns: string[] = [];
+					let rows: unknown[][] = [];
+
+					while (stmt.step()) {
+						columns = stmt.getColumnNames([]);
+						rows.push(stmt.get([]));
+					}
+
+					results.push({ columns, rows });
+					stmt.reset();
+				}
+			} finally {
+				prepared.forEach((stmt) => {
+					stmt.finalize();
+				});
 			}
 		});
 
@@ -108,7 +148,10 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	}
 
 	async import(
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	): Promise<void> {
 		if (!this.sqlite3 || !this.db || !this.config) {
 			throw new Error('Driver not initialized');
@@ -132,7 +175,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 	async export(): Promise<{
 		name: string;
-		data: ArrayBuffer | Uint8Array;
+		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
 	}> {
 		if (!this.sqlite3 || !this.db) {
 			throw new Error('Driver not initialized');
@@ -150,6 +193,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		this.closeDb();
 		this.pointers.forEach((pointer) => this.sqlite3?.wasm.dealloc(pointer));
 		this.pointers = [];
+		this.writeCallbacks.clear();
 	}
 
 	protected getFlags(config: DriverConfig): string {
@@ -185,6 +229,30 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		}
 
 		return statementData;
+	}
+
+	protected initWriteHook() {
+		if (!this.config?.reactive) return;
+
+		if (!this.sqlite3 || !this.db) {
+			throw new Error('Driver not initialized');
+		}
+
+		const opMap: Record<number, DataChange['operation']> = {
+			[this.sqlite3.capi.SQLITE_INSERT]: 'insert',
+			[this.sqlite3.capi.SQLITE_UPDATE]: 'update',
+			[this.sqlite3.capi.SQLITE_DELETE]: 'delete',
+		};
+
+		this.sqlite3.capi.sqlite3_update_hook(
+			this.db,
+			(_ctx, opId, _db, table, rowid) => {
+				this.writeCallbacks.forEach((cb) => {
+					cb({ table, rowid, operation: opMap[opId] });
+				});
+			},
+			0
+		);
 	}
 
 	protected closeDb(): void {

@@ -9,17 +9,9 @@ import {
 } from 'vitest';
 import { SQLocal, SQLocalProcessor } from '../src/index.js';
 import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
+import { testVariation } from './test-utils/test-variation.js';
 
-describe.each(
-	typeof window !== 'undefined'
-		? [
-				{ type: 'opfs', path: 'init-test.sqlite3' },
-				{ type: 'memory', path: ':memory:' },
-				{ type: 'local', path: ':localStorage:' },
-				{ type: 'session', path: ':sessionStorage:' },
-			]
-		: [{ type: 'node', path: './.db/init-test.sqlite3' }]
-)('init ($type)', ({ path, type }) => {
+describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 	const { sql, deleteDatabaseFile } = new SQLocal(path);
 
 	beforeEach(async () => {
@@ -114,5 +106,36 @@ describe.each(
 			storageType: 'memory',
 			persisted: false,
 		});
+	});
+
+	it('should support explicit resource management syntax', async () => {
+		let asyncSpy, syncSpy, controlSpy;
+
+		// asynchronous syntax
+		{
+			await using db = new SQLocal(path);
+			asyncSpy = vi.spyOn(db, 'destroy');
+			expect(asyncSpy).toHaveBeenCalledTimes(0);
+		}
+
+		expect(asyncSpy).toHaveBeenCalledTimes(1);
+
+		// synchronous syntax
+		{
+			using db = new SQLocal(path);
+			syncSpy = vi.spyOn(db, 'destroy');
+			expect(syncSpy).toHaveBeenCalledTimes(0);
+		}
+
+		expect(syncSpy).toHaveBeenCalledTimes(1);
+
+		// traditional syntax
+		{
+			const db = new SQLocal(path);
+			controlSpy = vi.spyOn(db, 'destroy');
+			expect(controlSpy).toHaveBeenCalledTimes(0);
+		}
+
+		expect(controlSpy).toHaveBeenCalledTimes(0);
 	});
 });

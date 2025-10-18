@@ -42,6 +42,7 @@ export class SQLiteOpfsDriver
 
 		this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
 		this.config = config;
+		this.initWriteHook();
 	}
 
 	override async isDatabasePersisted(): Promise<boolean> {
@@ -49,7 +50,10 @@ export class SQLiteOpfsDriver
 	}
 
 	override async import(
-		database: ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>
+		database:
+			| ArrayBuffer
+			| Uint8Array<ArrayBuffer>
+			| ReadableStream<Uint8Array<ArrayBuffer>>
 	): Promise<void> {
 		if (!this.sqlite3 || !this.config?.databasePath) {
 			throw new Error('Driver not initialized');
@@ -63,7 +67,7 @@ export class SQLiteOpfsDriver
 
 	override async export(): Promise<{
 		name: string;
-		data: ArrayBuffer | Uint8Array;
+		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
 	}> {
 		if (!this.db || !this.config?.databasePath) {
 			throw new Error('Driver not initialized');
@@ -112,5 +116,6 @@ export class SQLiteOpfsDriver
 
 	override async destroy(): Promise<void> {
 		this.closeDb();
+		this.writeCallbacks.clear();
 	}
 }
