@@ -1,5 +1,6 @@
 import type {
 	DriverConfig,
+	Sqlite3InitModule,
 	Sqlite3StorageType,
 	SQLocalDriver,
 } from '../types.js';
@@ -12,6 +13,10 @@ export class SQLiteOpfsDriver
 	implements SQLocalDriver
 {
 	override readonly storageType: Sqlite3StorageType = 'opfs';
+
+	constructor(sqlite3InitModule?: Sqlite3InitModule) {
+		super(sqlite3InitModule);
+	}
 
 	override async init(config: DriverConfig): Promise<void> {
 		const { databasePath } = config;
