@@ -6,6 +6,7 @@ export default function sqlocalPlugin(): Plugin<UserConfig> {
 		config(config): UserConfig {
 			return {
 				optimizeDeps: {
+					...config.optimizeDeps,
 					exclude: [...(config.optimizeDeps?.exclude ?? []), 'sqlocal'],
 				},
 				worker: {
