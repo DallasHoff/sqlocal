@@ -3,11 +3,16 @@ import type { Plugin, UserConfig } from 'vite';
 export default function sqlocalPlugin(): Plugin<UserConfig> {
 	return {
 		name: 'vite-plugin-sqlocal',
+		enforce: 'pre',
 		config(config): UserConfig {
 			return {
 				optimizeDeps: {
 					...config.optimizeDeps,
-					exclude: [...(config.optimizeDeps?.exclude ?? []), 'sqlocal'],
+					exclude: [
+						...(config.optimizeDeps?.exclude ?? []),
+						'sqlocal',
+						'@sqlite.org/sqlite-wasm',
+					],
 				},
 				worker: {
 					...config.worker,
