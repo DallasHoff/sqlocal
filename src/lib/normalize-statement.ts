@@ -59,7 +59,7 @@ export function normalizeStatement(statement: StatementInput): NormalStatement {
 	}
 
 	const sql = statement.sql;
-	let params: unknown[] = [];
+	let params: unknown[] | Record<string, unknown> = [];
 
 	if ('params' in statement) {
 		params = statement.params;
