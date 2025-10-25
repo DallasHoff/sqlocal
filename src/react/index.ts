@@ -1,16 +1,30 @@
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+	useCallback,
+	useMemo,
+	useState,
+	useSyncExternalStore,
+	type Dispatch,
+	type SetStateAction,
+} from 'react';
 import type { SQLocal } from '../client.js';
 import type { StatementInput } from '../types.js';
 
 export function useReactiveQuery<Result extends Record<string, any>>(
 	db: SQLocal,
 	query: StatementInput<Result>
-): { data: Result[]; error: Error | undefined } {
+): {
+	data: Result[];
+	error: Error | undefined;
+	setDb: Dispatch<SetStateAction<SQLocal>>;
+	setQuery: Dispatch<SetStateAction<StatementInput<Result>>>;
+} {
+	const [dbValue, setDb] = useState(() => db);
+	const [queryValue, setQuery] = useState(() => query);
 	const [error, setError] = useState<Error | undefined>(undefined);
 
 	const reactiveQuery = useMemo(() => {
-		return db.reactiveQuery(query);
-	}, [db, query]);
+		return dbValue.reactiveQuery(queryValue);
+	}, [dbValue, queryValue]);
 
 	const get = useCallback(() => reactiveQuery.value, [reactiveQuery]);
 	const subscribe = useCallback(
@@ -24,7 +38,9 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 					setError(err);
 				}
 			);
-			return () => subscription.unsubscribe();
+			return () => {
+				subscription.unsubscribe();
+			};
 		},
 		[reactiveQuery]
 	);
@@ -33,5 +49,7 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 	return {
 		data,
 		error,
+		setDb,
+		setQuery,
 	};
 }

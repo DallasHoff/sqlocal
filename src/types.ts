@@ -37,9 +37,10 @@ export type ReturningStatement<Result = unknown> =
 					'sqlite'
 				>);
 
+export type SqlTag = typeof sqlTag;
 export type StatementInput<Result = unknown> =
 	| ReturningStatement<Result>
-	| ((sql: typeof sqlTag) => ReturningStatement<Result>);
+	| ((sql: SqlTag) => ReturningStatement<Result>);
 
 export type Transaction = {
 	query: <Result extends Record<string, any>>(
@@ -124,7 +125,7 @@ export type ClientConfig = {
 	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
-	onInit?: (sql: typeof sqlTag) => void | Statement[];
+	onInit?: (sql: SqlTag) => void | Statement[];
 	onConnect?: (reason: ConnectReason) => void;
 	processor?: SQLocalProcessor | Worker;
 };
