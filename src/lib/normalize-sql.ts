@@ -21,10 +21,14 @@ function normalizeNamedParams(
 		paramMap.set(paramName, prefix);
 	}
 
-	// Add prefix to each parameter key
+	// Only add prefix to parameters that exist in the SQL
 	for (const [key, value] of Object.entries(params)) {
-		const prefix = paramMap.get(key) || ':'; // Default to `:` if not found
-		normalizedParams[`${prefix}${key}`] = value;
+		const prefix = paramMap.get(key);
+		if (prefix) {
+			// Parameter exists in SQL, add with prefix
+			normalizedParams[`${prefix}${key}`] = value;
+		}
+		// Silently ignore parameters not in SQL
 	}
 
 	return normalizedParams;
