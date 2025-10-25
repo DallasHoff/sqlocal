@@ -30,7 +30,7 @@ export type QueryMessage = {
 	queryKey: QueryKey;
 	transactionKey?: QueryKey;
 	sql: string;
-	params: unknown[];
+	params: unknown[] | Record<string, unknown>;
 	method: Sqlite3Method;
 };
 export type BatchMessage = {
@@ -38,7 +38,7 @@ export type BatchMessage = {
 	queryKey: QueryKey;
 	statements: {
 		sql: string;
-		params: unknown[];
+		params: unknown[] | Record<string, unknown>;
 		method?: Sqlite3Method;
 	}[];
 };

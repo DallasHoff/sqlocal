@@ -24,7 +24,7 @@ export type Sqlite3StorageType =
 
 export type Statement = {
 	sql: string;
-	params: unknown[];
+	params: unknown[] | Record<string, unknown>;
 };
 
 export type ReturningStatement<Result = unknown> =
@@ -102,7 +102,7 @@ export type DriverConfig = {
 
 export type DriverStatement = {
 	sql: string;
-	params?: any[];
+	params?: any[] | Record<string, any>;
 	method?: Sqlite3Method;
 };
 
