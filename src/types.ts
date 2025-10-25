@@ -63,6 +63,7 @@ export type ReactiveQuery<Result = unknown> = {
 		unsubscribe: () => void;
 	};
 };
+export type ReactiveQueryStatus = 'pending' | 'ok' | 'error';
 
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
