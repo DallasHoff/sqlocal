@@ -5,6 +5,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function normalizeNamedParams(
+	sql: string,
+	params: Record<string, unknown>
+): Record<string, unknown> {
+	const normalizedParams: Record<string, unknown> = {};
+
+	// Find all named parameters in the SQL and their prefixes
+	const paramMatches = sql.matchAll(/([:@$])(\w+)/g);
+	const paramMap = new Map<string, string>();
+
+	for (const match of paramMatches) {
+		const prefix = match[1];
+		const paramName = match[2];
+		paramMap.set(paramName, prefix);
+	}
+
+	// Add prefix to each parameter key
+	for (const [key, value] of Object.entries(params)) {
+		const prefix = paramMap.get(key) || ':'; // Default to `:` if not found
+		normalizedParams[`${prefix}${key}`] = value;
+	}
+
+	return normalizedParams;
+}
+
 export function normalizeSql(
 	maybeQueryTemplate: TemplateStringsArray | string,
 	params: unknown[]
@@ -14,7 +39,10 @@ export function normalizeSql(
 	if (typeof maybeQueryTemplate === 'string') {
 		// Handle named parameters
 		if (params.length === 1 && isRecord(params[0])) {
-			statement = { sql: maybeQueryTemplate, params: params[0] };
+			statement = {
+				sql: maybeQueryTemplate,
+				params: normalizeNamedParams(maybeQueryTemplate, params[0]),
+			};
 		} else {
 			// Handle positional parameters
 			statement = { sql: maybeQueryTemplate, params };
