@@ -1,3 +1,4 @@
+import type { BindableValue } from '@sqlite.org/sqlite-wasm';
 import type { Statement } from '../types.js';
 
 export function sqlTag(
@@ -37,6 +38,6 @@ export function sqlTag(
 
 	return {
 		sql: queryTemplate.join('?'),
-		params,
+		params: params as BindableValue[],
 	};
 }

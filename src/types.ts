@@ -1,4 +1,8 @@
-import type { Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
+import type {
+	BindingSpec,
+	Database,
+	Sqlite3Static,
+} from '@sqlite.org/sqlite-wasm';
 import type { CompiledQuery as KyselyQuery } from 'kysely';
 import type { RunnableQuery as DrizzleQuery } from 'drizzle-orm/runnable-query';
 import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
@@ -24,7 +28,7 @@ export type Sqlite3StorageType =
 
 export type Statement = {
 	sql: string;
-	params: unknown[] | Record<string, unknown>;
+	params: BindingSpec;
 };
 
 export type ReturningStatement<Result = unknown> =
@@ -102,7 +106,7 @@ export type DriverConfig = {
 
 export type DriverStatement = {
 	sql: string;
-	params?: any[] | Record<string, any>;
+	params?: BindingSpec;
 	method?: Sqlite3Method;
 };
 
