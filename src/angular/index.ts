@@ -22,6 +22,8 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 			const db = dbValue();
 			const query = queryValue();
 
+			pending.set(true);
+
 			const subscription = db.reactiveQuery(query).subscribe(
 				(results) => {
 					data.set(results);

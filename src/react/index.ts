@@ -19,12 +19,14 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 	setDb: Dispatch<SetStateAction<SQLocal>>;
 	setQuery: Dispatch<SetStateAction<StatementInput<Result>>>;
 } {
-	const [dbValue, setDb] = useState(() => db);
-	const [queryValue, setQuery] = useState(() => query);
 	const [error, setError] = useState<Error | undefined>(undefined);
 	const [pending, setPending] = useState<boolean>(true);
 
+	const [dbValue, setDb] = useState(() => db);
+	const [queryValue, setQuery] = useState(() => query);
+
 	const reactiveQuery = useMemo(() => {
+		setPending(true);
 		return dbValue.reactiveQuery(queryValue);
 	}, [dbValue, queryValue]);
 
