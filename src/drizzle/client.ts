@@ -1,10 +1,11 @@
+import type { BindingSpec } from '@sqlite.org/sqlite-wasm';
 import { SQLocal } from '../index.js';
 import type { RawResultData, Sqlite3Method } from '../types.js';
 
 export class SQLocalDrizzle extends SQLocal {
 	driver = async (
 		sql: string,
-		params: unknown[],
+		params: BindingSpec,
 		method: Sqlite3Method
 	): Promise<RawResultData> => {
 		if (
@@ -22,7 +23,7 @@ export class SQLocalDrizzle extends SQLocal {
 	};
 
 	batchDriver = async (
-		queries: { sql: string; params: unknown[]; method: Sqlite3Method }[]
+		queries: { sql: string; params: BindingSpec; method: Sqlite3Method }[]
 	): Promise<RawResultData[]> => {
 		return this.execBatch(queries);
 	};
