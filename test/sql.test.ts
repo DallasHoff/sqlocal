@@ -131,7 +131,7 @@ describe.each(testVariation('sql'))('sql ($type)', ({ path }) => {
 		);
 	});
 
-	it('should still support positional parameters', async () => {
+	it('should support positional parameters', async () => {
 		// Ensure backward compatibility with positional parameters
 		const insert1 = await sql(
 			'INSERT INTO groceries (name) VALUES (?) RETURNING name',
@@ -178,5 +178,117 @@ describe.each(testVariation('sql'))('sql ($type)', ({ path }) => {
 			{ val: 'milk' }
 		);
 		expect(select3.length).toBeGreaterThan(0);
+	});
+
+	it('should not allow named parameters in template literals', async () => {
+		// Test : prefix
+		const colonQuery = async () =>
+			await sql`INSERT INTO groceries (name) VALUES (:name)`;
+		await expect(colonQuery).rejects.toThrow(
+			'Named parameters not supported with template literals. Use sql(string, object) instead.'
+		);
+
+		// Test @ prefix
+		const atQuery = async () =>
+			await sql`INSERT INTO groceries (name) VALUES (@name)`;
+		await expect(atQuery).rejects.toThrow(
+			'Named parameters not supported with template literals. Use sql(string, object) instead.'
+		);
+
+		// Test $ prefix
+		const dollarQuery = async () =>
+			await sql`INSERT INTO groceries (name) VALUES ($name)`;
+		await expect(dollarQuery).rejects.toThrow(
+			'Named parameters not supported with template literals. Use sql(string, object) instead.'
+		);
+
+		// Test complex $ syntax with ::
+		const dollarComplexQuery = async () =>
+			await sql`SELECT * FROM groceries WHERE id = $ns::param`;
+		await expect(dollarComplexQuery).rejects.toThrow(
+			'Named parameters not supported with template literals. Use sql(string, object) instead.'
+		);
+
+		// Test complex $ syntax with ()
+		const dollarParenQuery = async () =>
+			await sql`SELECT * FROM groceries WHERE id = $param()`;
+		await expect(dollarParenQuery).rejects.toThrow(
+			'Named parameters not supported with template literals. Use sql(string, object) instead.'
+		);
+	});
+
+	it('should not allow numbered positional parameters in template literals', async () => {
+		// Test ?1 syntax
+		const numbered1Query = async () =>
+			await sql`INSERT INTO groceries (name) VALUES (?1)`;
+		await expect(numbered1Query).rejects.toThrow(
+			'Numbered positional parameters (?1, ?2, etc.) not supported with template literals. Use sql(string, ...params) instead.'
+		);
+
+		// Test multiple numbered parameters
+		const multiNumberedQuery = async () =>
+			await sql`INSERT INTO groceries (name) VALUES (?1, ?2)`;
+		await expect(multiNumberedQuery).rejects.toThrow(
+			'Numbered positional parameters (?1, ?2, etc.) not supported with template literals. Use sql(string, ...params) instead.'
+		);
+
+		// Test ?123 (multi-digit)
+		const multiDigitQuery = async () =>
+			await sql`SELECT * FROM groceries WHERE id = ?123`;
+		await expect(multiDigitQuery).rejects.toThrow(
+			'Numbered positional parameters (?1, ?2, etc.) not supported with template literals. Use sql(string, ...params) instead.'
+		);
+	});
+
+	it('should ignore parameters in string literals and comments', async () => {
+		// Named parameter in single-quoted string should be ignored
+		const stringLiteral =
+			await sql`INSERT INTO groceries (name) VALUES (':notaparam')`;
+		expect(stringLiteral).toEqual([]);
+
+		// Named parameter in line comment should be ignored
+		const lineComment = await sql`  
+    INSERT INTO groceries (name) VALUES ('test') -- :notaparam  
+  `;
+		expect(lineComment).toEqual([]);
+
+		// Named parameter in block comment should be ignored
+		const blockComment = await sql`  
+    INSERT INTO groceries (name) VALUES ('test') /* :notaparam @notaparam $notaparam */  
+  `;
+		expect(blockComment).toEqual([]);
+
+		// Numbered parameter in string should be ignored
+		const numberedInString =
+			await sql`INSERT INTO groceries (name) VALUES ('?1')`;
+		expect(numberedInString).toEqual([]);
+
+		// Numbered parameter in comment should be ignored
+		const numberedInComment = await sql`  
+    INSERT INTO groceries (name) VALUES ('test') -- ?1 ?2  
+  `;
+		expect(numberedInComment).toEqual([]);
+
+		// Escaped quotes in strings should be handled correctly
+		const escapedQuotes =
+			await sql`INSERT INTO groceries (name) VALUES ('it''s :notaparam')`;
+		expect(escapedQuotes).toEqual([]);
+	});
+
+	it('should allow regular ? placeholders in template literals', async () => {
+		// This should work - regular ? placeholders are fine
+		const item = 'bread';
+		const insert1 =
+			await sql`INSERT INTO groceries (name) VALUES (${item}) RETURNING name`;
+		expect(insert1).toEqual([{ name: 'bread' }]);
+
+		// Multiple regular ? placeholders
+		const item2 = 'milk';
+		const quantity = 2;
+		await sql`CREATE TABLE IF NOT EXISTS items (name TEXT, qty INTEGER)`;
+		const insert2 =
+			await sql`INSERT INTO items (name, qty) VALUES (${item2}, ${quantity}) RETURNING *`;
+		expect(insert2).toEqual([{ name: 'milk', qty: 2 }]);
+		await sql`DROP TABLE items`;
 	});
 });

@@ -5,6 +5,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function extractNamedParams(sql: string): string[] {
+	const params = new Set<string>();
+
+	// Remove string literals and comments first
+	let cleaned = sql
+		.replace(/'(?:[^']|'')*'/g, '')
+		.replace(/"(?:[^"]|"")*"/g, '')
+		.replace(/--[^\n]*/g, '')
+		.replace(/\/\*[\s\S]*?\*\//g, '');
+
+	// Match : and @ parameters
+	const simpleParams = cleaned.match(/[:@][\w$\u0080-\uFFFF]+/g) || [];
+	simpleParams.forEach((p) => params.add(p));
+
+	// Match $ parameters
+	const dollarParams =
+		cleaned.match(
+			/\$[\w$\u0080-\uFFFF]+(?:::[:\w$\u0080-\uFFFF]*)*(?:\([^)]*\))?/g
+		) || [];
+	dollarParams.forEach((p) => params.add(p));
+
+	return Array.from(params);
+}
+
 function normalizeNamedParams(
 	sql: string,
 	params: Record<string, unknown>
@@ -12,21 +36,21 @@ function normalizeNamedParams(
 	const normalizedParams: Record<string, unknown> = {};
 
 	// Find all named parameters in the SQL and their prefixes
-	const paramMatches = sql.matchAll(/([:@$])(\w+)/g);
+	const sqlParams = extractNamedParams(sql);
+
+	// Create a map of param names without prefix to their full names with prefix
 	const paramMap = new Map<string, string>();
 
-	for (const match of paramMatches) {
-		const prefix = match[1];
-		const paramName = match[2];
-		paramMap.set(paramName, prefix);
+	for (const sqlParam of sqlParams) {
+		const paramName = sqlParam.substring(1); // Remove first char (prefix)
+		paramMap.set(paramName, sqlParam);
 	}
 
-	// Only add prefix to parameters that exist in the SQL
+	// Only include parameters that exist in the SQL
 	for (const [key, value] of Object.entries(params)) {
-		const prefix = paramMap.get(key);
-		if (prefix) {
-			// Parameter exists in SQL, add with prefix
-			normalizedParams[`${prefix}${key}`] = value;
+		const sqlParam = paramMap.get(key);
+		if (sqlParam) {
+			normalizedParams[sqlParam] = value;
 		}
 		// Silently ignore parameters not in SQL
 	}

@@ -4,15 +4,34 @@ export function sqlTag(
 	queryTemplate: TemplateStringsArray,
 	...params: unknown[]
 ): Statement {
-	// Check if the SQL contains named parameters
 	const sqlText = queryTemplate.join('?');
-	const hasNamedParams = /[:@$]\w+/.test(sqlText);
 
-	if (hasNamedParams) {
-		// For named params, return SQL as-is with params as object
-		// This would require a different API - template literals don't work well with named params
+	// Remove string literals and comments first
+	let cleaned = sqlText
+		.replace(/'(?:[^']|'')*'/g, '')
+		.replace(/"(?:[^"]|"")*"/g, '')
+		.replace(/--[^\n]*/g, '')
+		.replace(/\/\*[\s\S]*?\*\//g, '');
+
+	// Check for named parameters
+	const hasSimpleParams = /[:@][\w$\u0080-\uFFFF]+/.test(cleaned);
+	const hasDollarParams =
+		/\$[\w$\u0080-\uFFFF]+(?:::[:\w$\u0080-\uFFFF]*)*(?:\([^)]*\))?/.test(
+			cleaned
+		);
+
+	// Check for numbered positional parameters
+	const hasNumberedParams = /\?\d+/.test(cleaned);
+
+	if (hasSimpleParams || hasDollarParams) {
 		throw new Error(
 			'Named parameters not supported with template literals. Use sql(string, object) instead.'
+		);
+	}
+
+	if (hasNumberedParams) {
+		throw new Error(
+			'Numbered positional parameters (?1, ?2, etc.) not supported with template literals. Use sql(string, ...params) instead.'
 		);
 	}
 
