@@ -17,25 +17,28 @@ export function useReactiveQuery<Result extends Record<string, any>>(
 	const dbValue = computed(() => (isSignal(db) ? db() : db));
 	const queryValue = computed(() => (isSignal(query) ? query() : query));
 
-	effect((onCleanup) => {
-		const db = dbValue();
-		const query = queryValue();
+	effect(
+		(onCleanup) => {
+			const db = dbValue();
+			const query = queryValue();
 
-		const subscription = db.reactiveQuery(query).subscribe(
-			(results) => {
-				data.set(results);
-				error.set(undefined);
-				pending.set(false);
-			},
-			(err) => {
-				error.set(err);
-			}
-		);
+			const subscription = db.reactiveQuery(query).subscribe(
+				(results) => {
+					data.set(results);
+					error.set(undefined);
+					pending.set(false);
+				},
+				(err) => {
+					error.set(err);
+				}
+			);
 
-		onCleanup(() => {
-			subscription.unsubscribe();
-		});
-	});
+			onCleanup(() => {
+				subscription.unsubscribe();
+			});
+		},
+		{ allowSignalWrites: true }
+	);
 
 	const status = computed<ReactiveQueryStatus>(() => {
 		const hasError = !!error();
