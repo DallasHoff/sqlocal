@@ -29,7 +29,7 @@ const subscription = reactiveQuery(
 });
 ```
 
-The query can be any SQL statement that reads one or more tables. It can be passed using a `sql` tag function available in the `reactiveQuery` callback that works similarly to the [`sql` tag function used for single queries](sql.md). It can also be a query built with Drizzle or Kysely; see the "Query Builders" section below.
+The query can be any SQL statement that reads one or more tables. It can be passed using a `sql` tag function available in the `reactiveQuery` callback that works similarly to the [`sql` tag function used for single queries](sql.md). It can also be a query built with Drizzle or Kysely; see the "Query Builders" section [below](#query-builders).
 
 You can then call `subscribe` on the object returned from `reactiveQuery` to register a callback that gets called an initial time and then again whenever the one or more of the queried tables are changed. The latest result data from the query will be passed as the first argument to your callback.
 
@@ -84,4 +84,77 @@ const subscription = reactiveQuery(
 	// data is typed as { name: string; }[]
 	console.log('Grocery List Updated:', data);
 });
+```
+
+## UI Frameworks
+
+We also provide `useReactiveQuery` hook implementations to make it easier to integrate reactive queries with the reactivity systems of UI frameworks. The hook handles subscribing, returns reactive data, and automatically unsubscribes from the query when the component it's used in is destroyed.
+
+`useReactiveQuery` takes your `SQLocal` instance and a SQL query as arguments. The query can be passed using the `sql` tag function or using a query builder as described [above](#query-builders). It returns an object containing the following reactive values:
+
+- **`data`** (`Result[]`) - The result data from your SQL query.
+- **`error`** (`Error | undefined`) - An `Error` object if the SQL query fails.
+- **`status`** (`'pending' | 'error' | 'ok'`) - The string `'pending'` if the SQL query has not completed for the first time yet, `'error'` if the SQL query failed, or `'ok'` if the SQL query returned successfully.
+
+### React
+
+Import the React version of `useReactiveQuery` from `sqlocal/react`. It requires React 18 or higher.
+
+In addition to `data`, `error`, and `status`, the object returned from this version of `useReactiveQuery` also contains `setDb` and `setQuery` functions which allow you to dynamically change the arguments from their initial values and automatically resubscribe.
+
+```js
+import { SQLocal } from 'sqlocal';
+import { useReactiveQuery } from 'sqlocal/react';
+
+const db = new SQLocal({
+	databasePath: 'database.sqlite3',
+	reactive: true,
+});
+
+export function MyComponent() {
+	const groceries = useReactiveQuery(db, (sql) => sql`SELECT * FROM groceries`);
+}
+```
+
+### Vue
+
+Import the Vue version of `useReactiveQuery` from `sqlocal/vue`. It requires Vue 3 or higher.
+
+This version of `useReactiveQuery` returns `data`, `error`, and `status` as read-only Vue refs. It can also accept its arguments as refs, which allows you to dynamically change them from their initial values and automatically resubscribe.
+
+```vue
+<script setup>
+import { SQLocal } from 'sqlocal';
+import { useReactiveQuery } from 'sqlocal/vue';
+
+const db = new SQLocal({
+	databasePath: 'database.sqlite3',
+	reactive: true,
+});
+const groceries = useReactiveQuery(db, (sql) => sql`SELECT * FROM groceries`);
+</script>
+```
+
+### Angular
+
+Import the Angular version of `useReactiveQuery` from `sqlocal/angular`. It requires Angular 17 or higher.
+
+This version of `useReactiveQuery` returns `data`, `error`, and `status` as read-only Angular signals. It can also accept its arguments as signals, which allows you to dynamically change them from their initial values and automatically resubscribe.
+
+```ts
+import { Component } from '@angular/core';
+import { SQLocal } from 'sqlocal';
+import { useReactiveQuery } from 'sqlocal/angular';
+
+const db = new SQLocal({
+	databasePath: 'database.sqlite3',
+	reactive: true,
+});
+
+@Component({
+	selector: 'my-component',
+})
+export class MyComponent {
+	groceries = useReactiveQuery(db, (sql) => sql`SELECT * FROM groceries`);
+}
 ```

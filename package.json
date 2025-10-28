@@ -20,6 +20,21 @@
 			"types": "./dist/kysely/index.d.ts",
 			"browser": "./dist/kysely/index.js",
 			"import": "./dist/kysely/index.js"
+		},
+		"./angular": {
+			"types": "./dist/angular/index.d.ts",
+			"browser": "./dist/angular/index.js",
+			"import": "./dist/angular/index.js"
+		},
+		"./react": {
+			"types": "./dist/react/index.d.ts",
+			"browser": "./dist/react/index.js",
+			"import": "./dist/react/index.js"
+		},
+		"./vue": {
+			"types": "./dist/vue/index.d.ts",
+			"browser": "./dist/vue/index.js",
+			"import": "./dist/vue/index.js"
 		}
 	},
 	"sideEffects": false,
@@ -47,28 +62,44 @@
 		"coincident": "^1.2.3"
 	},
 	"devDependencies": {
+		"@angular/core": "^20.3.3",
+		"@types/react": "^18.3.26",
 		"@vitest/browser": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
 		"drizzle-orm": "^0.44.6",
 		"kysely": "^0.28.7",
 		"prettier": "^3.6.2",
+		"react": "^18.3.1",
 		"taze": "^19.7.0",
 		"typescript": "^5.9.3",
 		"vite": "^7.1.9",
 		"vitepress": "^1.6.4",
 		"vitest": "^3.2.4",
+		"vue": "^3.5.22",
 		"webdriverio": "^9.20.0",
 		"wrangler": "^4.42.0"
 	},
 	"peerDependencies": {
+		"@angular/core": ">=17.0.0",
 		"drizzle-orm": "*",
-		"kysely": "*"
+		"kysely": "*",
+		"react": ">=18.0.0",
+		"vue": ">=3.0.0"
 	},
 	"peerDependenciesMeta": {
+		"@angular/core": {
+			"optional": true
+		},
 		"kysely": {
 			"optional": true
 		},
 		"drizzle-orm": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		},
+		"vue": {
 			"optional": true
 		}
 	},
