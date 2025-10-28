@@ -67,7 +67,7 @@
 	"peerDependencies": {
 		"drizzle-orm": "*",
 		"kysely": "*",
-		"vite": "*"
+		"vite": ">=4.0.0"
 	},
 	"peerDependenciesMeta": {
 		"kysely": {
