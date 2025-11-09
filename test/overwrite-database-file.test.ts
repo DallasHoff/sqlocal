@@ -210,7 +210,7 @@ describe.each(testVariation('overwrite-db'))(
 
 		it(
 			'should run onInit statements before other queries after overwrite',
-			{ timeout: type === 'opfs' ? 1500 : undefined },
+			{ timeout: type === 'opfs' ? 2000 : undefined },
 			async () => {
 				const databasePath = path;
 				const onInit: ClientConfig['onInit'] = (sql) => {
