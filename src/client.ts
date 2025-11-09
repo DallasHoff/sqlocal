@@ -13,6 +13,7 @@ import type {
 	DatabasePath,
 	AggregateUserFunction,
 	ReactiveQuery,
+	SqlTag,
 } from './types.js';
 import type {
 	BatchMessage,
@@ -289,7 +290,7 @@ export class SQLocal {
 	};
 
 	batch = async <Result extends Record<string, any>>(
-		passStatements: (sql: typeof sqlTag) => Statement[]
+		passStatements: (sql: SqlTag) => Statement[]
 	): Promise<Result[][]> => {
 		const statements = passStatements(sqlTag);
 		const data = await this.execBatch(statements);

@@ -31,13 +31,19 @@ features:
   - title: Persisted
     icon: 📂
     details: Persists data to the origin private file system, which is optimized for fast file I/O
-  - title: Per-User
-    icon: 🔒
-    details: Each user can have their own private database instance
   - title: Simple API
     icon: 🚀
     details: Just name your database and start running SQL queries
+  - title: Reactive
+    icon: ⚡️
+    details: Subscribe to query results and receive changes, even across tabs
+  - title: Per-User
+    icon: 🔒
+    details: Each user can have their own private database instance
   - title: TypeScript
     icon: 🛠️
     details: Works with Kysely and Drizzle ORM for making type-safe queries
+  - title: Integrations
+    icon: 🤝
+    details: Get set up quickly with hooks for UI frameworks and a Vite plugin
 ---

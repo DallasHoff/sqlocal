@@ -9,9 +9,11 @@ SQLocal makes it easy to run SQLite3 in the browser, backed by the origin privat
 - 🔎 Locally executes any query that SQLite3 supports
 - 🧵 Runs the SQLite engine in a web worker so queries do not block the main thread
 - 📂 Persists data to the origin private file system, which is optimized for fast file I/O
-- 🔒 Each user can have their own private database instance
 - 🚀 Simple API; just name your database and start running SQL queries
+- ⚡️ Subscribe to query results and receive changes, even across tabs
+- 🔒 Each user can have their own private database instance
 - 🛠️ Works with Kysely and Drizzle ORM for making type-safe queries
+- 🤝 Get set up quickly with hooks for UI frameworks and a Vite plugin
 
 ## Examples
 
