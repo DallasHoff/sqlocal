@@ -35,6 +35,10 @@
 			"types": "./dist/vue/index.d.ts",
 			"browser": "./dist/vue/index.js",
 			"import": "./dist/vue/index.js"
+		},
+		"./vite": {
+			"types": "./dist/vite/index.d.ts",
+			"import": "./dist/vite/index.js"
 		}
 	},
 	"sideEffects": false,
@@ -84,7 +88,8 @@
 		"drizzle-orm": "*",
 		"kysely": "*",
 		"react": ">=18.0.0",
-		"vue": ">=3.0.0"
+		"vue": ">=3.0.0",
+		"vite": ">=4.0.0"
 	},
 	"peerDependenciesMeta": {
 		"@angular/core": {
@@ -100,6 +105,9 @@
 			"optional": true
 		},
 		"vue": {
+			"optional": true
+		},
+		"vite": {
 			"optional": true
 		}
 	},

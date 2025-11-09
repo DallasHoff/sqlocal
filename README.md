@@ -125,36 +125,29 @@ pnpm install sqlocal
 
 ### Cross-Origin Isolation
 
-In order to persist data to the origin private file system, this package relies on APIs that require cross-origin isolation, so the page you use this package on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
+In order to persist data to the origin private file system, this package relies on APIs that require [cross-origin isolation](https://developer.mozilla.org/en-US/docs/Web/API/Window/crossOriginIsolated), so the page you use this package on must be served with the following HTTP headers. Otherwise, the browser will block access to the origin private file system.
 
 ```http
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Opener-Policy: same-origin
 ```
 
-If your development server uses Vite, you can do this by adding the following to your Vite configuration.
-
-```javascript
-plugins: [
-  {
-    name: 'configure-response-headers',
-    configureServer: (server) => {
-      server.middlewares.use((_req, res, next) => {
-        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-        next();
-      });
-    },
-  },
-],
-```
+How this is configured will depend on what web server or hosting service your application uses. If your development server uses Vite, [see the configuration below](#vite-configuration).
 
 ### Vite Configuration
 
-Vite currently has an issue that prevents it from loading web worker files correctly with the default configuration. If you use Vite, please add the below to your Vite configuration to fix this.
+Vite needs some additional configuration to handle web worker files correctly. If you or your framework uses Vite as your build tool, you can use SQLocal's Vite plugin to set this up.
+
+The plugin will also enable [cross-origin isolation](#cross-origin-isolation) (required for origin private file system persistence) for the Vite development server by default. Just don't forget to also configure your _production_ web server to use the same HTTP headers.
+
+Import the plugin from `sqlocal/vite` and add it to your [Vite configuration](https://vitejs.dev/config/).
 
 ```javascript
-optimizeDeps: {
-  exclude: ['sqlocal'],
-},
+import { defineConfig } from 'vite';
+import sqlocal from 'sqlocal/vite';
+
+export default defineConfig({
+  plugins: [sqlocal()],
+});
 ```
+
