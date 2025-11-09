@@ -94,3 +94,70 @@ export default defineConfig({
 	plugins: [sqlocal()],
 });
 ```
+
+::: details Angular
+
+Since Angular does not expose its Vite configuration, you will need to configure it differently than other Vite-based frameworks. You can reference the [SQLocal Shell codebase](https://github.com/DallasHoff/sqlocal-shell) as an example.
+
+First, it's important to disable prebundling in the development server so that Vite compiles the web workers correctly. You can do this in your serve architect in `angular.json`. This is also where you can set the headers for cross-origin isolation in development.
+
+```json{8-12}
+"architect": {
+  "build": { ... },
+  "serve": {
+    "builder": "@angular/build:dev-server",
+    "configurations": {
+      "development": {
+        "buildTarget": "my-app:build:development",
+        "headers": {
+          "Cross-Origin-Embedder-Policy": "require-corp",
+          "Cross-Origin-Opener-Policy": "same-origin"
+        },
+        "prebundle": false
+      }
+    },
+    "defaultConfiguration": "development"
+  }
+}
+```
+
+You will also need to serve `sqlite3.wasm` from the root of your site. You can configure this in your build architect in `angular.json`.
+
+```json{10-13}
+"architect": {
+  "build": {
+    "builder": "@angular/build:application",
+    "options": {
+      "outputPath": "dist/my-app",
+      "index": "src/index.html",
+      "browser": "src/main.ts",
+      "tsConfig": "tsconfig.app.json",
+      "assets": [
+        {
+          "glob": "**/*",
+          "input": "node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm"
+        },
+        {
+          "glob": "**/*",
+          "input": "public"
+        }
+      ],
+      "styles": ["src/styles.scss"],
+      "scripts": [],
+      "webWorkerTsConfig": "tsconfig.worker.json"
+    }
+  },
+  "serve": { ... }
+}
+```
+
+Finally, you will need to create your own web worker file and pass it to the `SQLocal` constructor, rather than use the built-in worker. Run `ng create web-worker sqlocal` to make a web worker file, add [this code](https://github.com/DallasHoff/sqlocal-shell/blob/main/src/sqlocal.worker.ts), and pass the worker to SQLocal's `processor` option.
+
+```typescript
+const db = new SQLocal({
+	databasePath: 'database.sqlite3',
+	processor: new Worker(new URL('../sqlocal.worker', import.meta.url)),
+});
+```
+
+:::
