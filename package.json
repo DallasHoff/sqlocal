@@ -62,7 +62,7 @@
 		"prepublishOnly": "npm run build && npm run test:ci"
 	},
 	"dependencies": {
-		"@sqlite.org/sqlite-wasm": "^3.51.0-build1",
+		"@sqlite.org/sqlite-wasm": "^3.50.4-build1",
 		"coincident": "^1.2.3"
 	},
 	"devDependencies": {
