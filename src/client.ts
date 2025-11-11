@@ -36,7 +36,6 @@ import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
-import { normalizeSql } from './lib/normalize-sql.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
@@ -278,7 +277,7 @@ export class SQLocal {
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
 	): Promise<Result[]> => {
-		const statement = normalizeSql(queryTemplate, params);
+		const statement = sqlTag(queryTemplate, ...params);
 		const { rows, columns } = await this.exec(
 			statement.sql,
 			statement.params,
@@ -331,7 +330,7 @@ export class SQLocal {
 			queryTemplate: TemplateStringsArray | string,
 			...params: unknown[]
 		): Promise<Result[]> => {
-			const statement = normalizeSql(queryTemplate, params);
+			const statement = sqlTag(queryTemplate, ...params);
 			const resultRecords = await query<Result>(statement);
 			return resultRecords;
 		};
