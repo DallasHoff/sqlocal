@@ -1,4 +1,3 @@
-import type { BindableValue, BindingSpec } from '@sqlite.org/sqlite-wasm';
 import type { RunnableQuery as DrizzleQuery } from 'drizzle-orm/runnable-query';
 import type { SqliteRemoteResult } from 'drizzle-orm/sqlite-proxy';
 import type { StatementInput, Statement } from '../types.js';
@@ -60,12 +59,12 @@ export function normalizeStatement(statement: StatementInput): NormalStatement {
 	}
 
 	const sql = statement.sql;
-	let params: BindingSpec = [];
+	let params: unknown[] | Record<string, unknown> = [];
 
 	if ('params' in statement) {
 		params = statement.params;
 	} else if ('parameters' in statement) {
-		params = statement.parameters as BindableValue[];
+		params = statement.parameters as unknown[];
 	}
 
 	return { sql, params };

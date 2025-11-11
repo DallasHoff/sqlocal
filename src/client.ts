@@ -1,5 +1,4 @@
 import coincident from 'coincident';
-import type { BindingSpec } from '@sqlite.org/sqlite-wasm';
 import type {
 	CallbackUserFunction,
 	QueryKey,
@@ -229,7 +228,7 @@ export class SQLocal {
 
 	protected exec = async (
 		sql: string,
-		params: BindingSpec,
+		params: unknown[] | Record<string, unknown>,
 		method: Sqlite3Method = 'all',
 		transactionKey?: QueryKey
 	): Promise<RawResultData> => {
@@ -437,7 +436,9 @@ export class SQLocal {
 
 				const results = statement.exec
 					? await statement.exec<Result>()
-					: await this.sql<Result>(statement.sql, statement.params);
+					: Array.isArray(statement.params)
+						? await this.sql<Result>(statement.sql, ...statement.params)
+						: await this.sql<Result>(statement.sql, statement.params);
 
 				if (updateOrder === updateCount) {
 					value = results;

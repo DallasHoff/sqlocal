@@ -1,4 +1,3 @@
-import type { BindingSpec } from '@sqlite.org/sqlite-wasm';
 import type {
 	ConnectReason,
 	DatabaseInfo,
@@ -31,7 +30,7 @@ export type QueryMessage = {
 	queryKey: QueryKey;
 	transactionKey?: QueryKey;
 	sql: string;
-	params: BindingSpec;
+	params: unknown[] | Record<string, unknown>;
 	method: Sqlite3Method;
 };
 export type BatchMessage = {
@@ -39,7 +38,7 @@ export type BatchMessage = {
 	queryKey: QueryKey;
 	statements: {
 		sql: string;
-		params: BindingSpec;
+		params: unknown[] | Record<string, unknown>;
 		method?: Sqlite3Method;
 	}[];
 };

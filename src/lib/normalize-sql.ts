@@ -1,10 +1,7 @@
-import type { BindableValue } from '@sqlite.org/sqlite-wasm';
 import type { Statement } from '../types.js';
 import { sqlTag } from './sql-tag.js';
 
-function isObject(
-	value: unknown
-): value is { [paramName: string]: BindableValue } {
+function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -34,9 +31,9 @@ function extractNamedParams(sql: string): string[] {
 
 function normalizeNamedParams(
 	sql: string,
-	params: { [paramName: string]: BindableValue }
-): { [paramName: string]: BindableValue } {
-	const normalizedParams: { [paramName: string]: BindableValue } = {};
+	params: Record<string, unknown>
+): Record<string, unknown> {
+	const normalizedParams: Record<string, unknown> = {};
 
 	// Find all named parameters in the SQL and their prefixes
 	const sqlParams = extractNamedParams(sql);
@@ -69,21 +66,18 @@ export function normalizeSql(
 
 	if (typeof maybeQueryTemplate === 'string') {
 		// Handle named parameters
-		if (params.length === 1 && isObject(params[0])) {
+		if (params.length === 1 && isRecord(params[0])) {
 			statement = {
 				sql: maybeQueryTemplate,
 				params: normalizeNamedParams(maybeQueryTemplate, params[0]),
 			};
 		} else {
 			// Handle positional parameters
-			statement = {
-				sql: maybeQueryTemplate,
-				params: params as BindableValue[],
-			};
+			statement = { sql: maybeQueryTemplate, params };
 		}
 	} else {
 		// Handle template literal syntax
-		statement = sqlTag(maybeQueryTemplate, ...(params as BindableValue[]));
+		statement = sqlTag(maybeQueryTemplate, ...params);
 	}
 
 	return statement;
