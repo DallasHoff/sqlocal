@@ -37,7 +37,6 @@ import { sqlTag } from './lib/sql-tag.js';
 import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
-import { normalizeSql } from './lib/normalize-sql.js';
 import { mutationLock } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
@@ -229,7 +228,7 @@ export class SQLocal {
 
 	protected exec = async (
 		sql: string,
-		params: unknown[],
+		params: unknown[] | Record<string, unknown>,
 		method: Sqlite3Method = 'all',
 		transactionKey?: QueryKey
 	): Promise<RawResultData> => {
@@ -279,7 +278,7 @@ export class SQLocal {
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
 	): Promise<Result[]> => {
-		const statement = normalizeSql(queryTemplate, params);
+		const statement = sqlTag(queryTemplate, ...params);
 		const { rows, columns } = await this.exec(
 			statement.sql,
 			statement.params,
@@ -332,7 +331,7 @@ export class SQLocal {
 			queryTemplate: TemplateStringsArray | string,
 			...params: unknown[]
 		): Promise<Result[]> => {
-			const statement = normalizeSql(queryTemplate, params);
+			const statement = sqlTag(queryTemplate, ...params);
 			const resultRecords = await query<Result>(statement);
 			return resultRecords;
 		};
@@ -437,7 +436,9 @@ export class SQLocal {
 
 				const results = statement.exec
 					? await statement.exec<Result>()
-					: await this.sql<Result>(statement.sql, ...statement.params);
+					: Array.isArray(statement.params)
+						? await this.sql<Result>(statement.sql, ...statement.params)
+						: await this.sql<Result>(statement.sql, statement.params);
 
 				if (updateOrder === updateCount) {
 					value = results;
