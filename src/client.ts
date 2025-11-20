@@ -52,14 +52,15 @@ export class SQLocal {
 	protected isDestroyed: boolean = false;
 	protected bypassMutationLock: boolean = false;
 	protected transactionQueryKeyQueue: QueryKey[] = [];
-	protected userCallbacks = new Map<string, CallbackUserFunction['func']>();
-	protected queriesInProgress = new Map<
+	protected userCallbacks: Map<string, CallbackUserFunction['func']> =
+		new Map();
+	protected queriesInProgress: Map<
 		QueryKey,
 		[
 			resolve: (message: OutputMessage) => void,
 			reject: (error: unknown) => void,
 		]
-	>();
+	> = new Map();
 
 	protected proxy: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
@@ -711,11 +712,11 @@ export class SQLocal {
 		this.isDestroyed = true;
 	};
 
-	[Symbol.dispose] = () => {
+	[Symbol.dispose] = (): void => {
 		this.destroy();
 	};
 
-	[Symbol.asyncDispose] = async () => {
+	[Symbol.asyncDispose] = async (): Promise<void> => {
 		await this.destroy();
 	};
 }

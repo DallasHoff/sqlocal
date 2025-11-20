@@ -24,22 +24,22 @@ import type {
 	TransactionMessage,
 	WorkerProxy,
 } from './messages.js';
-import { createMutex } from './lib/create-mutex.js';
+import { createMutex, type Mutex } from './lib/create-mutex.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
-import { debounce } from './lib/debounce.js';
+import { debounce, type DebouncedFunction } from './lib/debounce.js';
 import { getDatabaseKey } from './lib/get-database-key.js';
 
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
 	protected config: ProcessorConfig = {};
-	protected userFunctions = new Map<string, UserFunction>();
+	protected userFunctions: Map<string, UserFunction> = new Map();
 
-	protected initMutex = createMutex();
-	protected transactionMutex = createMutex();
+	protected initMutex: Mutex = createMutex();
+	protected transactionMutex: Mutex = createMutex();
 	protected transactionKey: QueryKey | null = null;
 
 	protected proxy: WorkerProxy;
-	protected dirtyTables = new Set<string>();
+	protected dirtyTables: Set<string> = new Set();
 	protected effectsChannel?: BroadcastChannel;
 	protected reinitChannel?: BroadcastChannel;
 
@@ -187,9 +187,11 @@ export class SQLocalProcessor {
 		this.dirtyTables.clear();
 	};
 
-	protected emitEffectsDebounced = debounce(() => this.emitEffects(), 32, {
-		maxWait: 180,
-	});
+	protected emitEffectsDebounced: DebouncedFunction<() => void> = debounce(
+		(): void => this.emitEffects(),
+		32,
+		{ maxWait: 180 }
+	);
 
 	protected editConfig = (message: ConfigMessage): void => {
 		this.config = message.config;

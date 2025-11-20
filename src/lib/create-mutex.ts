@@ -1,4 +1,4 @@
-type Mutex = {
+export type Mutex = {
 	lock: () => Promise<void>;
 	unlock: () => Promise<void>;
 };
