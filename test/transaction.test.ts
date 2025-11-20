@@ -66,6 +66,71 @@ describe.each(testVariation('transaction'))(
 			expect(selectData.length).toBe(0);
 		});
 
+		it('should perform batch queries inside a transaction', async () => {
+			const txData = await db1.transaction(async (tx) => {
+				const letters = await tx.batch((sql) => {
+					return ['a', 'b', 'c'].map((letter) => {
+						return sql`INSERT INTO groceries (name) VALUES (${letter}) RETURNING name`;
+					});
+				});
+
+				await tx.sql`INSERT INTO groceries (name) VALUES ('x')`;
+
+				const doubles = await tx.batch((sql) => {
+					return letters.map((letter) => {
+						const single = letter[0].name;
+						const double = single + single;
+						return sql`INSERT INTO groceries (name) VALUES (${double}) RETURNING name`;
+					});
+				});
+
+				return [...letters, ...doubles];
+			});
+
+			expect(txData).toEqual([
+				[{ name: 'a' }],
+				[{ name: 'b' }],
+				[{ name: 'c' }],
+				[{ name: 'aa' }],
+				[{ name: 'bb' }],
+				[{ name: 'cc' }],
+			]);
+
+			const selectData = await db1.sql`SELECT * FROM groceries`;
+			expect(selectData.length).toBe(7);
+		});
+
+		it('should rollback failed transaction with batches', async () => {
+			const order: number[] = [];
+
+			const txData = await db1
+				.transaction(async (tx) => {
+					order.push(1);
+					await tx.batch((sql) => {
+						return ['a', 'b'].map((letter) => {
+							return sql`INSERT INTO groceries (name) VALUES (${letter})`;
+						});
+					});
+					order.push(2);
+					await tx.sql`INSERT INTO groceries (name) VALUES ('x')`;
+					order.push(3);
+					await tx.batch((sql) => {
+						return ['y', 'z'].map((letter) => {
+							return sql`INSERT INT groceries (name) VALUES (${letter})`;
+						});
+					});
+					order.push(4);
+					return true;
+				})
+				.catch(() => false);
+
+			expect(txData).toEqual(false);
+			expect(order).toEqual([1, 2, 3]);
+
+			const selectData = await db1.sql`SELECT * FROM groceries`;
+			expect(selectData.length).toBe(0);
+		});
+
 		it('should isolate transaction mutations from outside queries', async () => {
 			const order: number[] = [];
 

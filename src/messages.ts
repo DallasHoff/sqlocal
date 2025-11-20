@@ -36,6 +36,7 @@ export type QueryMessage = {
 export type BatchMessage = {
 	type: 'batch';
 	queryKey: QueryKey;
+	transactionKey?: QueryKey;
 	statements: {
 		sql: string;
 		params: unknown[];

@@ -62,12 +62,15 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		return this.execOnDb(this.db, statement);
 	}
 
-	async execBatch(statements: DriverStatement[]): Promise<RawResultData[]> {
+	async execBatch(
+		statements: DriverStatement[],
+		method: 'transaction' | 'savepoint' = 'transaction'
+	): Promise<RawResultData[]> {
 		if (!this.db) throw new Error('Driver not initialized');
 
 		const results: RawResultData[] = [];
 
-		this.db.transaction((tx) => {
+		this.db[method]((tx) => {
 			const prepared = new Map<string, PreparedStatement>();
 
 			try {

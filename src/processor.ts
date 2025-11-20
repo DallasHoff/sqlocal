@@ -205,13 +205,12 @@ export class SQLocalProcessor {
 				queryKey: message.queryKey,
 				data: [],
 			};
+			const partOfTransaction =
+				this.transactionKey !== null &&
+				this.transactionKey === message.transactionKey;
 
 			switch (message.type) {
 				case 'query':
-					const partOfTransaction =
-						this.transactionKey !== null &&
-						this.transactionKey === message.transactionKey;
-
 					try {
 						if (!partOfTransaction) {
 							await this.transactionMutex.lock();
@@ -227,11 +226,18 @@ export class SQLocalProcessor {
 
 				case 'batch':
 					try {
-						await this.transactionMutex.lock();
-						const results = await this.driver.execBatch(message.statements);
+						if (!partOfTransaction) {
+							await this.transactionMutex.lock();
+						}
+						const results = await this.driver.execBatch(
+							message.statements,
+							partOfTransaction ? 'savepoint' : 'transaction'
+						);
 						response.data.push(...results);
 					} finally {
-						await this.transactionMutex.unlock();
+						if (!partOfTransaction) {
+							await this.transactionMutex.unlock();
+						}
 					}
 					break;
 

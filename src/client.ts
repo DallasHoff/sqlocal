@@ -14,6 +14,7 @@ import type {
 	AggregateUserFunction,
 	ReactiveQuery,
 	SqlTag,
+	TransactionHandle,
 } from './types.js';
 import type {
 	BatchMessage,
@@ -258,10 +259,12 @@ export class SQLocal {
 	};
 
 	protected execBatch = async (
-		statements: Statement[]
+		statements: Statement[],
+		transactionKey?: QueryKey
 	): Promise<RawResultData[]> => {
 		const message = await this.createQuery({
 			type: 'batch',
+			transactionKey,
 			statements,
 		});
 		const data = new Array(statements.length).fill({
@@ -288,8 +291,7 @@ export class SQLocal {
 			statement.params,
 			'all'
 		);
-		const resultRecords = convertRowsToObjects(rows, columns);
-		return resultRecords as Result[];
+		return convertRowsToObjects(rows, columns) as Result[];
 	};
 
 	batch = async <Result extends Record<string, any>>(
@@ -299,8 +301,7 @@ export class SQLocal {
 		const data = await this.execBatch(statements);
 
 		return data.map(({ rows, columns }) => {
-			const resultRecords = convertRowsToObjects(rows, columns);
-			return resultRecords as Result[];
+			return convertRowsToObjects(rows, columns) as Result[];
 		});
 	};
 
@@ -327,8 +328,7 @@ export class SQLocal {
 				'all',
 				transactionKey
 			);
-			const resultRecords = convertRowsToObjects(rows, columns) as Result[];
-			return resultRecords;
+			return convertRowsToObjects(rows, columns) as Result[];
 		};
 
 		const sql = async <Result extends Record<string, any>>(
@@ -336,8 +336,18 @@ export class SQLocal {
 			...params: unknown[]
 		): Promise<Result[]> => {
 			const statement = normalizeSql(queryTemplate, params);
-			const resultRecords = await query<Result>(statement);
-			return resultRecords;
+			return query<Result>(statement);
+		};
+
+		const batch = async <Result extends Record<string, any>>(
+			passStatements: (sql: SqlTag) => Statement[]
+		): Promise<Result[][]> => {
+			const statements = passStatements(sqlTag);
+			const data = await this.execBatch(statements, transactionKey);
+
+			return data.map(({ rows, columns }) => {
+				return convertRowsToObjects(rows, columns) as Result[];
+			});
 		};
 
 		const commit = async (): Promise<void> => {
@@ -359,16 +369,14 @@ export class SQLocal {
 		return {
 			query,
 			sql,
+			batch,
 			commit,
 			rollback,
 		};
 	};
 
 	transaction = async <Result>(
-		transaction: (tx: {
-			sql: Transaction['sql'];
-			query: Transaction['query'];
-		}) => Promise<Result>
+		transaction: (tx: TransactionHandle) => Promise<Result>
 	): Promise<Result> => {
 		const dbLockOptions: MutationLockOptions = {
 			mode: this.processor instanceof Worker ? 'shared' : 'exclusive',
@@ -389,8 +397,9 @@ export class SQLocal {
 				try {
 					tx = await this.beginTransaction();
 					const result = await transaction({
-						sql: tx.sql,
 						query: tx.query,
+						sql: tx.sql,
+						batch: tx.batch,
 					});
 					await tx.commit();
 					return result;
