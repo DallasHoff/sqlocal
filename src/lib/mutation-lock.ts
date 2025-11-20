@@ -1,15 +1,17 @@
-import type { ClientConfig } from '../types.js';
+export type MutationLockOptions = {
+	mode: LockMode;
+	key: string;
+	bypass: boolean;
+};
 
 export async function mutationLock<T>(
-	mode: LockMode,
-	bypass: boolean,
-	config: ClientConfig,
+	options: MutationLockOptions,
 	mutation: () => Promise<T>
 ): Promise<T> {
-	if (!bypass && 'locks' in navigator) {
+	if (!options.bypass && 'locks' in navigator) {
 		return navigator.locks.request(
-			`_sqlocal_mutation_(${config.databasePath})`,
-			{ mode },
+			`_sqlocal_mutation_(${options.key})`,
+			{ mode: options.mode },
 			mutation
 		);
 	} else {

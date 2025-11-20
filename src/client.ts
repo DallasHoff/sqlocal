@@ -38,7 +38,7 @@ import { convertRowsToObjects } from './lib/convert-rows-to-objects.js';
 import { normalizeStatement } from './lib/normalize-statement.js';
 import { getQueryKey } from './lib/get-query-key.js';
 import { normalizeSql } from './lib/normalize-sql.js';
-import { mutationLock } from './lib/mutation-lock.js';
+import { mutationLock, type MutationLockOptions } from './lib/mutation-lock.js';
 import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
@@ -176,11 +176,14 @@ export class SQLocal {
 		>
 	): Promise<OutputMessage> => {
 		return mutationLock(
-			'shared',
-			this.bypassMutationLock ||
-				message.type === 'import' ||
-				message.type === 'delete',
-			this.config,
+			{
+				mode: 'shared',
+				key: getDatabaseKey(this.config.databasePath, this.clientKey),
+				bypass:
+					this.bypassMutationLock ||
+					message.type === 'import' ||
+					message.type === 'delete',
+			},
 			async () => {
 				if (this.isDestroyed === true) {
 					throw new Error(
@@ -367,24 +370,37 @@ export class SQLocal {
 			query: Transaction['query'];
 		}) => Promise<Result>
 	): Promise<Result> => {
-		return mutationLock('exclusive', false, this.config, async () => {
-			let tx: Transaction | undefined;
-			this.bypassMutationLock = true;
+		const dbLockOptions: MutationLockOptions = {
+			mode: this.processor instanceof Worker ? 'shared' : 'exclusive',
+			bypass: false,
+			key: getDatabaseKey(this.config.databasePath, this.clientKey),
+		};
+		const connectionLockOptions: MutationLockOptions = {
+			mode: 'exclusive',
+			bypass: false,
+			key: this.clientKey,
+		};
 
-			try {
-				tx = await this.beginTransaction();
-				const result = await transaction({
-					sql: tx.sql,
-					query: tx.query,
-				});
-				await tx.commit();
-				return result;
-			} catch (err) {
-				await tx?.rollback();
-				throw err;
-			} finally {
-				this.bypassMutationLock = false;
-			}
+		return mutationLock(dbLockOptions, async () => {
+			return mutationLock(connectionLockOptions, async () => {
+				let tx: Transaction | undefined;
+				this.bypassMutationLock = true;
+
+				try {
+					tx = await this.beginTransaction();
+					const result = await transaction({
+						sql: tx.sql,
+						query: tx.query,
+					});
+					await tx.commit();
+					return result;
+				} catch (err) {
+					await tx?.rollback();
+					throw err;
+				} finally {
+					this.bypassMutationLock = false;
+				}
+			});
 		});
 	};
 
@@ -594,64 +610,78 @@ export class SQLocal {
 			| ReadableStream<Uint8Array<ArrayBuffer>>,
 		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
-		await mutationLock('exclusive', false, this.config, async () => {
-			try {
-				this.broadcast({
-					type: 'close',
-					clientKey: this.clientKey,
-				});
+		await mutationLock(
+			{
+				mode: 'exclusive',
+				bypass: false,
+				key: getDatabaseKey(this.config.databasePath, this.clientKey),
+			},
+			async () => {
+				try {
+					this.broadcast({
+						type: 'close',
+						clientKey: this.clientKey,
+					});
 
-				const database = await normalizeDatabaseFile(databaseFile, 'buffer');
+					const database = await normalizeDatabaseFile(databaseFile, 'buffer');
 
-				await this.createQuery({
-					type: 'import',
-					database,
-				});
+					await this.createQuery({
+						type: 'import',
+						database,
+					});
 
-				if (typeof beforeUnlock === 'function') {
-					this.bypassMutationLock = true;
-					await beforeUnlock();
+					if (typeof beforeUnlock === 'function') {
+						this.bypassMutationLock = true;
+						await beforeUnlock();
+					}
+
+					this.broadcast({
+						type: 'reinit',
+						clientKey: this.clientKey,
+						reason: 'overwrite',
+					});
+				} finally {
+					this.bypassMutationLock = false;
 				}
-
-				this.broadcast({
-					type: 'reinit',
-					clientKey: this.clientKey,
-					reason: 'overwrite',
-				});
-			} finally {
-				this.bypassMutationLock = false;
 			}
-		});
+		);
 	};
 
 	deleteDatabaseFile = async (
 		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
-		await mutationLock('exclusive', false, this.config, async () => {
-			try {
-				this.broadcast({
-					type: 'close',
-					clientKey: this.clientKey,
-				});
+		await mutationLock(
+			{
+				mode: 'exclusive',
+				bypass: false,
+				key: getDatabaseKey(this.config.databasePath, this.clientKey),
+			},
+			async () => {
+				try {
+					this.broadcast({
+						type: 'close',
+						clientKey: this.clientKey,
+					});
 
-				await this.createQuery({
-					type: 'delete',
-				});
+					await this.createQuery({
+						type: 'delete',
+					});
 
-				if (typeof beforeUnlock === 'function') {
-					this.bypassMutationLock = true;
-					await beforeUnlock();
+					if (typeof beforeUnlock === 'function') {
+						this.bypassMutationLock = true;
+						await beforeUnlock();
+					}
+
+					this.broadcast({
+						type: 'reinit',
+						clientKey: this.clientKey,
+						reason: 'delete',
+					});
+				} finally {
+					this.bypassMutationLock = false;
 				}
-
-				this.broadcast({
-					type: 'reinit',
-					clientKey: this.clientKey,
-					reason: 'delete',
-				});
-			} finally {
-				this.bypassMutationLock = false;
 			}
-		});
+		);
 	};
 
 	destroy = async (): Promise<void> => {
