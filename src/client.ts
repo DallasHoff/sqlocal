@@ -249,9 +249,28 @@ export class SQLocal {
 		if (message.type === 'data') {
 			data.rows = message.data[0]?.rows ?? [];
 			data.columns = message.data[0]?.columns ?? [];
+			data.affectedRows = message.data[0]?.affectedRows;
 		}
 
 		return data;
+	};
+
+	execSql = async (
+		queryTemplate: TemplateStringsArray | string,
+		...params: unknown[]
+	): Promise<RawResultData> => {
+		const statement = normalizeSql(queryTemplate, params);
+		const { rows, columns, affectedRows } = await this.exec(
+			statement.sql,
+			statement.params,
+			'all'
+		);
+
+		return {
+			rows: convertRowsToObjects(rows, columns),
+			columns,
+			affectedRows,
+		};
 	};
 
 	protected execBatch = async (
@@ -310,55 +329,51 @@ export class SQLocal {
 			action: 'begin',
 		});
 
-		const query = async <Result extends Record<string, any>>(
-			passStatement: StatementInput<Result>
-		): Promise<Result[]> => {
-			const statement = normalizeStatement(passStatement);
-			if (statement.exec) {
-				this.transactionQueryKeyQueue.push(transactionKey);
-				return statement.exec();
-			}
-			const { rows, columns } = await this.exec(
-				statement.sql,
-				statement.params,
-				'all',
-				transactionKey
-			);
-			const resultRecords = convertRowsToObjects(rows, columns) as Result[];
-			return resultRecords;
+		const transaction: Transaction = {
+			lastAffectedRows: undefined,
+			query: async <Result extends Record<string, any>>(
+				passStatement: StatementInput<Result>
+			): Promise<Result[]> => {
+				const statement = normalizeStatement(passStatement);
+				if (statement.exec) {
+					this.transactionQueryKeyQueue.push(transactionKey);
+					return statement.exec();
+				}
+				const { rows, columns, affectedRows } = await this.exec(
+					statement.sql,
+					statement.params,
+					'all',
+					transactionKey
+				);
+				transaction.lastAffectedRows = affectedRows;
+				const resultRecords = convertRowsToObjects(rows, columns) as Result[];
+				return resultRecords;
+			},
+			sql: async <Result extends Record<string, any>>(
+				queryTemplate: TemplateStringsArray | string,
+				...params: unknown[]
+			): Promise<Result[]> => {
+				const statement = normalizeSql(queryTemplate, params);
+				const resultRecords = await transaction.query<Result>(statement);
+				return resultRecords;
+			},
+			commit: async (): Promise<void> => {
+				await this.createQuery({
+					type: 'transaction',
+					transactionKey,
+					action: 'commit',
+				});
+			},
+			rollback: async (): Promise<void> => {
+				await this.createQuery({
+					type: 'transaction',
+					transactionKey,
+					action: 'rollback',
+				});
+			},
 		};
 
-		const sql = async <Result extends Record<string, any>>(
-			queryTemplate: TemplateStringsArray | string,
-			...params: unknown[]
-		): Promise<Result[]> => {
-			const statement = normalizeSql(queryTemplate, params);
-			const resultRecords = await query<Result>(statement);
-			return resultRecords;
-		};
-
-		const commit = async (): Promise<void> => {
-			await this.createQuery({
-				type: 'transaction',
-				transactionKey,
-				action: 'commit',
-			});
-		};
-
-		const rollback = async (): Promise<void> => {
-			await this.createQuery({
-				type: 'transaction',
-				transactionKey,
-				action: 'rollback',
-			});
-		};
-
-		return {
-			query,
-			sql,
-			commit,
-			rollback,
-		};
+		return transaction;
 	};
 
 	transaction = async <Result>(

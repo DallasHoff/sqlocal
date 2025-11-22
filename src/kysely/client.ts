@@ -58,15 +58,21 @@ class SQLocalKyselyConnection implements DatabaseConnection {
 		query: CompiledQuery
 	): Promise<QueryResult<Result>> {
 		let rows;
+		let affectedRows: number | undefined;
 
 		if (this.transaction === null) {
-			rows = await this.client.sql(query.sql, ...query.parameters);
+			const result = await this.client.execSql(query.sql, ...query.parameters);
+			rows = result.rows;
+			affectedRows = result.affectedRows;
 		} else {
 			rows = await this.transaction.query(query);
+			affectedRows = this.transaction.lastAffectedRows;
 		}
 
 		return {
 			rows: rows as Result[],
+			numAffectedRows:
+				affectedRows !== undefined ? BigInt(affectedRows) : undefined,
 		};
 	}
 
