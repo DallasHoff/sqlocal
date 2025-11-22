@@ -228,6 +228,8 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 				break;
 		}
 
+		statementData.affectedRows = db.changes();
+
 		return statementData;
 	}
 

@@ -52,6 +52,7 @@ export type Transaction = {
 	) => Promise<Result[]>;
 	commit: () => Promise<void>;
 	rollback: () => Promise<void>;
+	lastAffectedRows?: number;
 };
 
 export type ReactiveQuery<Result = unknown> = {
@@ -68,6 +69,7 @@ export type ReactiveQueryStatus = 'pending' | 'ok' | 'error';
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
+	affectedRows?: number;
 };
 
 // Driver
