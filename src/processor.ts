@@ -37,6 +37,7 @@ export class SQLocalProcessor {
 	protected initMutex = createMutex();
 	protected transactionMutex = createMutex();
 	protected transactionKey: QueryKey | null = null;
+	protected pendingEffects = false;
 
 	protected proxy: WorkerProxy;
 	protected dirtyTables = new Set<string>();
@@ -98,11 +99,13 @@ export class SQLocalProcessor {
 					`_sqlocal_effects_(${dbKey})`
 				);
 
-				this.driver.onWrite(async (change) => {
+				this.driver.onWrite((change) => {
 					this.dirtyTables.add(change.table);
-					await this.transactionMutex.lock();
+					if (this.transactionKey !== null) {
+						this.pendingEffects = true;
+						return;
+					}
 					this.emitEffectsDebounced();
-					await this.transactionMutex.unlock();
 				});
 			}
 
@@ -251,6 +254,10 @@ export class SQLocalProcessor {
 						await this.driver.exec({ sql });
 						this.transactionKey = null;
 						await this.transactionMutex.unlock();
+						if (this.pendingEffects) {
+							this.pendingEffects = false;
+							this.emitEffectsDebounced();
+						}
 					}
 					break;
 			}
