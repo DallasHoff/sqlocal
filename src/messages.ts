@@ -108,6 +108,7 @@ export type DataMessage = {
 	data: {
 		columns: string[];
 		rows: unknown[] | unknown[][];
+		numAffectedRows?: bigint;
 	}[];
 };
 export type BufferMessage = {

@@ -203,6 +203,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	}
 
 	protected execOnDb(db: Sqlite3Db, statement: DriverStatement): RawResultData {
+		const changesBefore = db.changes(true, true);
 		const statementData: RawResultData = {
 			rows: [],
 			columns: [],
@@ -228,6 +229,8 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 				break;
 		}
 
+		// @ts-expect-error https://github.com/sqlite/sqlite-wasm/pull/122
+		statementData.numAffectedRows = db.changes(true, true) - changesBefore;
 		return statementData;
 	}
 
