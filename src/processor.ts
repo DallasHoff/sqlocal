@@ -98,11 +98,9 @@ export class SQLocalProcessor {
 					`_sqlocal_effects_(${dbKey})`
 				);
 
-				this.driver.onWrite(async (change) => {
+				this.driver.onWrite((change) => {
 					this.dirtyTables.add(change.table);
-					await this.transactionMutex.lock();
 					this.emitEffectsDebounced();
-					await this.transactionMutex.unlock();
 				});
 			}
 
@@ -188,7 +186,11 @@ export class SQLocalProcessor {
 	};
 
 	protected emitEffectsDebounced: DebouncedFunction<() => void> = debounce(
-		(): void => this.emitEffects(),
+		async () => {
+			await this.transactionMutex.lock();
+			this.emitEffects();
+			await this.transactionMutex.unlock();
+		},
 		32,
 		{ maxWait: 180 }
 	);
