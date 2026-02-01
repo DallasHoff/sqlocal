@@ -232,7 +232,7 @@ export class SQLocal {
 		this.reinitChannel.postMessage(message);
 	};
 
-	protected exec = async (
+	exec = async (
 		sql: string,
 		params: unknown[],
 		method: Sqlite3Method = 'all',
@@ -252,8 +252,10 @@ export class SQLocal {
 		};
 
 		if (message.type === 'data') {
-			data.rows = message.data[0]?.rows ?? [];
-			data.columns = message.data[0]?.columns ?? [];
+			const results = message.data[0];
+			data.rows = results?.rows ?? [];
+			data.columns = results?.columns ?? [];
+			data.numAffectedRows = results?.numAffectedRows;
 		}
 
 		return data;
@@ -315,6 +317,10 @@ export class SQLocal {
 			action: 'begin',
 		});
 
+		const transaction: Pick<Transaction, 'lastAffectedRows'> = {
+			lastAffectedRows: undefined,
+		};
+
 		const query = async <Result extends Record<string, any>>(
 			passStatement: StatementInput<Result>
 		): Promise<Result[]> => {
@@ -323,12 +329,13 @@ export class SQLocal {
 				this.transactionQueryKeyQueue.push(transactionKey);
 				return statement.exec();
 			}
-			const { rows, columns } = await this.exec(
+			const { rows, columns, numAffectedRows } = await this.exec(
 				statement.sql,
 				statement.params,
 				'all',
 				transactionKey
 			);
+			transaction.lastAffectedRows = numAffectedRows;
 			return convertRowsToObjects(rows, columns) as Result[];
 		};
 
@@ -367,13 +374,14 @@ export class SQLocal {
 			});
 		};
 
-		return {
+		return Object.assign(transaction, {
+			transactionKey,
 			query,
 			sql,
 			batch,
 			commit,
 			rollback,
-		};
+		});
 	};
 
 	transaction = async <Result>(

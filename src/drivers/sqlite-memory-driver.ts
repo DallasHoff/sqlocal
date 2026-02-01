@@ -209,6 +209,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	}
 
 	protected execOnDb(db: Sqlite3Db, statement: DriverStatement): RawResultData {
+		const changesBefore = db.changes(true, true);
 		const statementData: RawResultData = {
 			rows: [],
 			columns: [],
@@ -234,6 +235,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 				break;
 		}
 
+		statementData.numAffectedRows = db.changes(true, true) - changesBefore;
 		return statementData;
 	}
 

@@ -43,6 +43,8 @@ export type StatementInput<Result = unknown> =
 	| ((sql: SqlTag) => ReturningStatement<Result>);
 
 export type Transaction = {
+	transactionKey: QueryKey;
+	lastAffectedRows?: bigint;
 	query: <Result extends Record<string, any>>(
 		passStatement: StatementInput<Result>
 	) => Promise<Result[]>;
@@ -72,6 +74,7 @@ export type ReactiveQueryStatus = 'pending' | 'ok' | 'error';
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
+	numAffectedRows?: bigint;
 };
 
 // Driver
