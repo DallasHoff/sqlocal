@@ -8,7 +8,7 @@ import type { DatabaseConnection, Dialect, Driver, QueryResult } from 'kysely';
 import { SQLocal } from '../index.js';
 import type { Transaction } from '../types.js';
 import { convertRowsToObjects } from '../lib/convert-rows-to-objects.js';
-import { normalizeSql } from '../lib/normalize-sql.js';
+import { sqlTag } from '../lib/sql-tag.js';
 
 export class SQLocalKysely extends SQLocal {
 	dialect: Dialect = {
@@ -63,7 +63,7 @@ class SQLocalKyselyConnection implements DatabaseConnection {
 		let affectedRows: bigint | undefined;
 
 		if (this.transaction === null) {
-			const statement = normalizeSql(query.sql, [...query.parameters]);
+			const statement = sqlTag(query.sql, query.parameters);
 			const result = await this.client.exec(
 				statement.sql,
 				statement.params,
