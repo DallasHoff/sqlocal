@@ -24,7 +24,7 @@ The returned object contains the following properties:
 
 - **`databasePath`** (`string`) - The name of the database file. This will be identical to the value passed to the `SQLocal` constructor at initialization.
 - **`databaseSizeBytes`** (`number`) - An integer representing the current file size of the database in bytes.
-- **`storageType`** (`'memory' | 'opfs'`) - A string indicating whether the database is saved in the origin private file system or in memory. The database only falls back to being saved in memory if the OPFS cannot be used, such as when the browser does not support it.
+- **`storageType`** (`'memory' | 'local' | 'session' | 'opfs'`) - A string indicating whether the database is saved in the origin private file system, browser storage, or in memory. If set to use OPFS, the database will fall back to being saved in memory if the OPFS cannot be used, such as when the browser does not support it.
 - **`persisted`** (`boolean`) - This is `true` if the database is saved in the origin private file system _and_ the application has used [`navigator.storage.persist()`](https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist) to instruct the browser not to automatically evict the site's storage.
 
 If the `SQLocal` instance failed to initialize a database connection, these properties may be `undefined`.
