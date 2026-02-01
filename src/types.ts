@@ -43,6 +43,8 @@ export type StatementInput<Result = unknown> =
 	| ((sql: SqlTag) => ReturningStatement<Result>);
 
 export type Transaction = {
+	transactionKey: QueryKey;
+	lastAffectedRows?: bigint;
 	query: <Result extends Record<string, any>>(
 		passStatement: StatementInput<Result>
 	) => Promise<Result[]>;
@@ -50,9 +52,13 @@ export type Transaction = {
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
 	) => Promise<Result[]>;
+	batch: <Result extends Record<string, any>>(
+		passStatements: (sql: SqlTag) => Statement[]
+	) => Promise<Result[][]>;
 	commit: () => Promise<void>;
 	rollback: () => Promise<void>;
 };
+export type TransactionHandle = Pick<Transaction, 'query' | 'sql' | 'batch'>;
 
 export type ReactiveQuery<Result = unknown> = {
 	readonly value: Result[];
@@ -68,6 +74,7 @@ export type ReactiveQueryStatus = 'pending' | 'ok' | 'error';
 export type RawResultData = {
 	rows: unknown[] | unknown[][];
 	columns: string[];
+	numAffectedRows?: bigint;
 };
 
 // Driver
@@ -76,7 +83,10 @@ export interface SQLocalDriver {
 	readonly storageType: Sqlite3StorageType;
 	init: (config: DriverConfig) => Promise<void>;
 	exec: (statement: DriverStatement) => Promise<RawResultData>;
-	execBatch: (statements: DriverStatement[]) => Promise<RawResultData[]>;
+	execBatch: (
+		statements: DriverStatement[],
+		method?: 'transaction' | 'savepoint'
+	) => Promise<RawResultData[]>;
 	onWrite: (callback: (change: DataChange) => void) => () => void;
 	isDatabasePersisted: () => Promise<boolean>;
 	getDatabaseSizeBytes: () => Promise<number>;

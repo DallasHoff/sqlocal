@@ -100,14 +100,19 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 
 	it('should accept custom processors', async () => {
 		const driver = new SQLiteMemoryDriver();
-		const processor = new SQLocalProcessor(driver);
+		const processor =
+			type === 'opfs'
+				? new Worker(new URL('../src/worker', import.meta.url), {
+						type: 'module',
+					})
+				: new SQLocalProcessor(driver);
 		const db = new SQLocal({ databasePath: ':custom:', processor });
 		const info = await db.getDatabaseInfo();
 
 		expect(info).toEqual({
 			databasePath: ':custom:',
 			databaseSizeBytes: 0,
-			storageType: 'memory',
+			storageType: type === 'opfs' ? 'opfs' : 'memory',
 			persisted: false,
 		});
 	});

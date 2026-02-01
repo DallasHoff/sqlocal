@@ -36,6 +36,7 @@ export type QueryMessage = {
 export type BatchMessage = {
 	type: 'batch';
 	queryKey: QueryKey;
+	transactionKey?: QueryKey;
 	statements: {
 		sql: string;
 		params: unknown[];
@@ -108,6 +109,7 @@ export type DataMessage = {
 	data: {
 		columns: string[];
 		rows: unknown[] | unknown[][];
+		numAffectedRows?: bigint;
 	}[];
 };
 export type BufferMessage = {

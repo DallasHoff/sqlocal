@@ -7,6 +7,7 @@
 		/* Building */
 		"moduleResolution": "NodeNext",
 		"moduleDetection": "force",
+		"isolatedDeclarations": true,
 		"esModuleInterop": true,
 		"useDefineForClassFields": true,
 		"allowSyntheticDefaultImports": true,

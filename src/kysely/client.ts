@@ -7,6 +7,8 @@ import {
 import type { DatabaseConnection, Dialect, Driver, QueryResult } from 'kysely';
 import { SQLocal } from '../index.js';
 import type { Transaction } from '../types.js';
+import { convertRowsToObjects } from '../lib/convert-rows-to-objects.js';
+import { normalizeSql } from '../lib/normalize-sql.js';
 
 export class SQLocalKysely extends SQLocal {
 	dialect: Dialect = {
@@ -58,15 +60,25 @@ class SQLocalKyselyConnection implements DatabaseConnection {
 		query: CompiledQuery
 	): Promise<QueryResult<Result>> {
 		let rows;
+		let affectedRows: bigint | undefined;
 
 		if (this.transaction === null) {
-			rows = await this.client.sql(query.sql, ...query.parameters);
+			const statement = normalizeSql(query.sql, [...query.parameters]);
+			const result = await this.client.exec(
+				statement.sql,
+				statement.params,
+				'all'
+			);
+			rows = convertRowsToObjects(result.rows, result.columns);
+			affectedRows = result.numAffectedRows;
 		} else {
 			rows = await this.transaction.query(query);
+			affectedRows = this.transaction.lastAffectedRows;
 		}
 
 		return {
 			rows: rows as Result[],
+			numAffectedRows: affectedRows,
 		};
 	}
 

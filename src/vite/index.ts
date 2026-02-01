@@ -11,7 +11,7 @@ export type VitePluginConfig = {
 	coi?: boolean;
 };
 
-export default function sqlocalPlugin(
+export default function vitePluginSQLocal(
 	config: VitePluginConfig = { coi: true }
 ): Plugin<UserConfig> {
 	return {

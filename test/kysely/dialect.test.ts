@@ -90,6 +90,72 @@ describe.each(testVariation('kysely-dialect'))(
 			expect(select2).toEqual([{ name: 'white rice' }, { name: 'bread' }]);
 		});
 
+		it('should return affected rows for regular queries', async () => {
+			// Test INSERT
+			const insertResult = await db
+				.insertInto('groceries')
+				.values([{ name: 'bread' }, { name: 'milk' }, { name: 'rice' }])
+				.executeTakeFirst();
+			expect(insertResult.numInsertedOrUpdatedRows).toBe(3n);
+
+			const [insertResult2] = await db
+				.insertInto('prices')
+				.values([{ groceryId: 1, price: 1.99 }])
+				.execute();
+			expect(insertResult2.numInsertedOrUpdatedRows).toBe(1n);
+
+			// Test SELECT
+			const selectResult = await db
+				.selectFrom('groceries')
+				.selectAll()
+				.execute();
+			expect(selectResult).toEqual([
+				{ id: 1, name: 'bread' },
+				{ id: 2, name: 'milk' },
+				{ id: 3, name: 'rice' },
+			]);
+
+			// Test UPDATE
+			const updateResult = await db
+				.updateTable('groceries')
+				.set({ name: 'brown rice' })
+				.where('name', '=', 'rice')
+				.executeTakeFirst();
+			expect(updateResult.numUpdatedRows).toBe(1n);
+
+			// Test UPDATE multiple rows
+			const updateAllResult = await db
+				.updateTable('groceries')
+				.set({ name: 'updated' })
+				.executeTakeFirst();
+			expect(updateAllResult.numUpdatedRows).toBe(3n);
+
+			// Test DELETE
+			const deleteResult = await db
+				.deleteFrom('groceries')
+				.where('name', '=', 'updated')
+				.executeTakeFirst();
+			expect(deleteResult.numDeletedRows).toBe(3n);
+
+			// Verify all deleted
+			const remaining = await db.selectFrom('groceries').selectAll().execute();
+			expect(remaining.length).toBe(0);
+		});
+
+		it('should have 0 affected rows for non-data-modifying queries', async () => {
+			const insert1 = db
+				.insertInto('groceries')
+				.values({ name: 'bread' })
+				.compile();
+
+			const result = await db.executeQuery(insert1);
+			expect(result.numAffectedRows).toBe(1n);
+
+			const select1 = db.selectFrom('groceries').selectAll().compile();
+			const result2 = await db.executeQuery(select1);
+			expect(result2.numAffectedRows).toBe(0n);
+		});
+
 		it('should execute queries with relations', async () => {
 			await db
 				.insertInto('groceries')
@@ -222,6 +288,41 @@ describe.each(testVariation('kysely-dialect'))(
 
 			const data = await db.selectFrom('groceries').selectAll().execute();
 			expect(data.length).toBe(2);
+		});
+
+		it('should return affected rows in transactions using kysely way', async () => {
+			await db.transaction().execute(async (tx) => {
+				// Insert multiple rows
+				const insertResult = await tx
+					.insertInto('groceries')
+					.values([{ name: 'bread' }, { name: 'milk' }, { name: 'rice' }])
+					.executeTakeFirst();
+				expect(insertResult.numInsertedOrUpdatedRows).toBe(3n);
+
+				// Update one row
+				const updateOneResult = await tx
+					.updateTable('groceries')
+					.set({ name: 'brown rice' })
+					.where('name', '=', 'rice')
+					.executeTakeFirst();
+				expect(updateOneResult.numUpdatedRows).toBe(1n);
+
+				// Update all rows
+				const updateAllResult = await tx
+					.updateTable('groceries')
+					.set({ name: 'updated' })
+					.executeTakeFirst();
+				expect(updateAllResult.numUpdatedRows).toBe(3n);
+
+				// Delete all rows
+				const deleteResult = await tx
+					.deleteFrom('groceries')
+					.executeTakeFirst();
+				expect(deleteResult.numDeletedRows).toBe(3n);
+			});
+
+			const remaining = await db.selectFrom('groceries').selectAll().execute();
+			expect(remaining.length).toBe(0);
 		});
 
 		it('should rollback failed transaction using kysely way', async () => {

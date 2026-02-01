@@ -14,15 +14,18 @@ import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 import type { PreparedStatement } from '@sqlite.org/sqlite-wasm';
 
 export class SQLiteMemoryDriver implements SQLocalDriver {
+	protected sqlite3InitModule?: Sqlite3InitModule;
 	protected sqlite3?: Sqlite3;
 	protected db?: Sqlite3Db;
 	protected config?: DriverConfig;
 	protected pointers: number[] = [];
-	protected writeCallbacks = new Set<(change: DataChange) => void>();
+	protected writeCallbacks: Set<(change: DataChange) => void> = new Set();
 
 	readonly storageType: Sqlite3StorageType = 'memory';
 
-	constructor(protected sqlite3InitModule?: Sqlite3InitModule) {}
+	constructor(sqlite3InitModule?: Sqlite3InitModule) {
+		this.sqlite3InitModule = sqlite3InitModule;
+	}
 
 	async init(config: DriverConfig): Promise<void> {
 		const { databasePath } = config;
@@ -62,12 +65,15 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 		return this.execOnDb(this.db, statement);
 	}
 
-	async execBatch(statements: DriverStatement[]): Promise<RawResultData[]> {
+	async execBatch(
+		statements: DriverStatement[],
+		method: 'transaction' | 'savepoint' = 'transaction'
+	): Promise<RawResultData[]> {
 		if (!this.db) throw new Error('Driver not initialized');
 
 		const results: RawResultData[] = [];
 
-		this.db.transaction((tx) => {
+		this.db[method]((tx) => {
 			const prepared = new Map<string, PreparedStatement>();
 
 			try {
@@ -203,6 +209,7 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 	}
 
 	protected execOnDb(db: Sqlite3Db, statement: DriverStatement): RawResultData {
+		const changesBefore = db.changes(true, true);
 		const statementData: RawResultData = {
 			rows: [],
 			columns: [],
@@ -228,10 +235,11 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 				break;
 		}
 
+		statementData.numAffectedRows = db.changes(true, true) - changesBefore;
 		return statementData;
 	}
 
-	protected initWriteHook() {
+	protected initWriteHook(): void {
 		if (!this.config?.reactive) return;
 
 		if (!this.sqlite3 || !this.db) {

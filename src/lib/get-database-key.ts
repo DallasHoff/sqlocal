@@ -1,7 +1,10 @@
 import type { DatabasePath } from '../types.js';
 import { getQueryKey } from './get-query-key.js';
 
-export function getDatabaseKey(databasePath: DatabasePath, clientKey: string) {
+export function getDatabaseKey(
+	databasePath: DatabasePath,
+	clientKey: string
+): string {
 	switch (databasePath) {
 		case 'session':
 		case ':sessionStorage:':
