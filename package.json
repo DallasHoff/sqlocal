@@ -66,22 +66,22 @@
 		"coincident": "^1.2.3"
 	},
 	"devDependencies": {
-		"@angular/core": "^20.3.10",
-		"@types/react": "^18.3.26",
+		"@angular/core": "^21.1.2",
+		"@types/react": "^19.2.10",
 		"@vitest/browser": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
-		"drizzle-orm": "^0.44.7",
-		"kysely": "^0.28.8",
-		"prettier": "^3.6.2",
-		"react": "^18.3.1",
-		"taze": "^19.9.0",
+		"drizzle-orm": "^0.45.1",
+		"kysely": "^0.28.11",
+		"prettier": "^3.8.1",
+		"react": "^19.2.4",
+		"taze": "^19.9.2",
 		"typescript": "^5.9.3",
-		"vite": "^7.2.2",
+		"vite": "^7.3.1",
 		"vitepress": "^1.6.4",
 		"vitest": "^3.2.4",
-		"vue": "^3.5.24",
-		"webdriverio": "^9.20.0",
-		"wrangler": "^4.46.0"
+		"vue": "^3.5.27",
+		"webdriverio": "^9.23.3",
+		"wrangler": "^4.61.1"
 	},
 	"peerDependencies": {
 		"@angular/core": ">=17.0.0",

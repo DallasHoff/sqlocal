@@ -29,9 +29,8 @@ export class SQLiteKvvfsDriver
 		}
 
 		if (!this.sqlite3InitModule) {
-			const { default: sqlite3InitModule } = await import(
-				'@sqlite.org/sqlite-wasm'
-			);
+			const { default: sqlite3InitModule } =
+				await import('@sqlite.org/sqlite-wasm');
 			this.sqlite3InitModule = sqlite3InitModule;
 		}
 
