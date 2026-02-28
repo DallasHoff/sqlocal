@@ -135,7 +135,7 @@ You will also need to serve `sqlite3.wasm` from the root of your site. You can c
       "assets": [
         {
           "glob": "**/*",
-          "input": "node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm"
+          "input": "node_modules/@sqlite.org/sqlite-wasm/dist"
         },
         {
           "glob": "**/*",
