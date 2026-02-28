@@ -53,6 +53,7 @@ export async function normalizeDatabaseFile(
 			case 'callback':
 				return async () => {
 					const chunk = await reader.read();
+					if (chunk.done) reader.releaseLock();
 					return chunk.value;
 				};
 
@@ -65,6 +66,7 @@ export async function normalizeDatabaseFile(
 					if (chunk.value) chunks.push(chunk.value);
 					streamDone = chunk.done;
 				}
+				reader.releaseLock();
 
 				const arrayLength = chunks.reduce((length, chunk) => {
 					return length + chunk.length;
