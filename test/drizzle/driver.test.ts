@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SQLocalDrizzle } from '../../src/drizzle/index.js';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { int, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { desc, eq, relations, sql as dsql } from 'drizzle-orm';
+import { desc, eq, sql as dsql, defineRelations } from 'drizzle-orm';
 import { sleep } from '../test-utils/sleep.js';
 import { testVariation } from '../test-utils/test-variation.js';
 
@@ -18,26 +18,26 @@ describe.each(testVariation('drizzle-driver'))(
 			inStock: int('in_stock', { mode: 'boolean' }),
 		});
 
-		const groceriesRelations = relations(groceries, ({ many }) => ({
-			prices: many(prices),
-		}));
-
 		const prices = sqliteTable('prices', {
 			id: int('id').primaryKey({ autoIncrement: true }),
 			groceryId: int('groceryId').notNull(),
 			price: real('price').notNull(),
 		});
 
-		const pricesRelations = relations(prices, ({ one }) => ({
-			grocery: one(groceries, {
-				fields: [prices.groceryId],
-				references: [groceries.id],
-			}),
+		const schema = { groceries, prices };
+		const relations = defineRelations(schema, (r) => ({
+			prices: {
+				groceries: r.one.groceries({
+					from: r.prices.groceryId,
+					to: r.groceries.id,
+				}),
+			},
+			groceries: {
+				prices: r.many.prices(),
+			},
 		}));
 
-		const db = drizzle(driver, batchDriver, {
-			schema: { groceries, groceriesRelations, prices, pricesRelations },
-		});
+		const db = drizzle(driver, batchDriver, { schema, relations });
 
 		beforeEach(async () => {
 			await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, in_stock INTEGER)`;
