@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import llmstxt from 'vitepress-plugin-llms';
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -6,6 +7,10 @@ export default defineConfig({
 	description:
 		'SQLocal makes it easy to run SQLite3 in the browser, backed by the origin private file system.',
 	cleanUrls: true,
+	vite: {
+		// @ts-expect-error https://github.com/okineadev/vitepress-plugin-llms/issues/75
+		plugins: [llmstxt()],
+	},
 	head: [
 		['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
 		['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
