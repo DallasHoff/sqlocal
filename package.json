@@ -123,6 +123,7 @@
 		"wasm",
 		"opfs",
 		"worker",
+		"vite-plugin",
 		"drizzle",
 		"kysely"
 	],
