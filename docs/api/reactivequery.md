@@ -158,3 +158,15 @@ export class MyComponent {
 	groceries = useReactiveQuery(db, (sql) => sql`SELECT * FROM groceries`);
 }
 ```
+
+### Nano Stores
+
+Nano Stores provides an integration with SQLocal through the [`@nanostores/sql`](https://www.npmjs.com/package/@nanostores/sql) package. It uses `reactiveQuery` to create a store that can be used with Nano Store's other state management tools.
+
+```ts
+import { openDb } from '@nanostores/sql';
+import { sqlocalDriver } from '@nanostores/sql/sqlocal';
+
+const db = openDb(sqlocalDriver('database.sqlite3'));
+const $groceries = db.store`SELECT * FROM groceries`;
+```
