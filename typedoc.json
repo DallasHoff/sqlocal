@@ -1,0 +1,28 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"plugin": ["typedoc-plugin-markdown"],
+	"entryPoints": [
+		"./src/index.ts",
+		"./src/angular/index.ts",
+		"./src/drizzle/index.ts",
+		"./src/kysely/index.ts",
+		"./src/react/index.ts",
+		"./src/vite/index.ts",
+		"./src/vue/index.ts"
+	],
+	"out": "docs/reference",
+	"githubPages": false,
+	"hidePageHeader": true,
+	"headings": { "readme": false },
+	"pageTitleTemplates": { "index": "Reference" },
+	"readme": "none",
+	"entryFileName": "index",
+	"useCodeBlocks": true,
+	"expandObjects": true,
+	"parametersFormat": "table",
+	"typeDeclarationFormat": "table",
+	"typeAliasPropertiesFormat": "table",
+	"kindSortOrder": ["Class", "TypeAlias", "Enum", "Variable"],
+	"excludeInternal": true,
+	"excludeProtected": true
+}

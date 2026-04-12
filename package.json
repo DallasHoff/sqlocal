@@ -56,9 +56,9 @@
 		"benchmark": "vitest bench --browser=chrome",
 		"format": "prettier . --write",
 		"format:check": "prettier . --check",
-		"docs:dev": "vitepress dev docs",
-		"docs:build": "vitepress build docs",
-		"docs:preview": "vitepress preview docs",
+		"docs:dev": "typedoc && vitepress dev docs",
+		"docs:build": "typedoc && vitepress build docs",
+		"docs:preview": "typedoc && vitepress preview docs",
 		"prepublishOnly": "npm run build && npm run test:ci"
 	},
 	"dependencies": {
@@ -75,6 +75,8 @@
 		"prettier": "^3.8.1",
 		"react": "^19.2.4",
 		"taze": "^19.9.2",
+		"typedoc": "^0.28.19",
+		"typedoc-plugin-markdown": "^4.11.0",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
 		"vitepress": "^1.6.4",

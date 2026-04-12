@@ -783,6 +783,7 @@ export class SQLocal {
 	/**
 	 * Handles cleaning up the SQLocal client with JavaScript
 	 * Explicit Resource Management (`using`).
+	 * @internal
 	 */
 	[Symbol.dispose] = (): void => {
 		this.destroy();
@@ -791,6 +792,7 @@ export class SQLocal {
 	/**
 	 * Handles cleaning up the SQLocal client with JavaScript
 	 * Explicit Resource Management (`await using`).
+	 * @internal
 	 */
 	[Symbol.asyncDispose] = async (): Promise<void> => {
 		await this.destroy();

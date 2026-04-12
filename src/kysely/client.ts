@@ -16,6 +16,11 @@ import { sqlTag } from '../lib/sql-tag.js';
  * @see {@link https://sqlocal.dev/kysely/setup}
  */
 export class SQLocalKysely extends SQLocal {
+	/**
+	 * A Kysely dialect that implements the interface needed for
+	 * Kysely to interact with databases through SQLocal.
+	 * @see {@link https://sqlocal.dev/kysely/setup}
+	 */
 	dialect: Dialect = {
 		createAdapter: () => new SqliteAdapter(),
 		createDriver: () => new SQLocalKyselyDriver(this),

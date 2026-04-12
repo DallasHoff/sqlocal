@@ -31,9 +31,11 @@ export default defineConfig({
 			dark: '/logo-dark.png',
 		},
 		search: { provider: 'local' },
+		outline: { level: [2, 3] },
 		nav: [
 			{ text: 'Introduction', link: '/guide/introduction' },
 			{ text: 'Setup', link: '/guide/setup' },
+			{ text: 'Reference', link: '/reference' },
 			{ text: 'Shell', link: 'https://shell.sqlocal.dev/' },
 		],
 		sidebar: [

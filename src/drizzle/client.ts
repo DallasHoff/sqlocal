@@ -7,6 +7,11 @@ import type { RawResultData, Sqlite3Method } from '../types.js';
  * @see {@link https://sqlocal.dev/drizzle/setup}
  */
 export class SQLocalDrizzle extends SQLocal {
+	/**
+	 * A driver function that Drizzle can use to query
+	 * databases through SQLocal.
+	 * @see {@link https://sqlocal.dev/drizzle/setup}
+	 */
 	driver = async (
 		sql: string,
 		params: unknown[],
@@ -26,6 +31,11 @@ export class SQLocalDrizzle extends SQLocal {
 		return this.exec(sql, params, method, transactionKey);
 	};
 
+	/**
+	 * A driver function that Drizzle can use to make
+	 * batch queries to databases through SQLocal.
+	 * @see {@link https://sqlocal.dev/drizzle/setup}
+	 */
 	batchDriver = async (
 		queries: { sql: string; params: unknown[]; method: Sqlite3Method }[]
 	): Promise<RawResultData[]> => {

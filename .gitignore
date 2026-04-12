@@ -1,6 +1,7 @@
 # VitePress docs artifacts
 docs/.vitepress/dist
 docs/.vitepress/cache
+docs/reference
 
 # Logs
 logs
