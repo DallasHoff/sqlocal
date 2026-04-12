@@ -758,7 +758,7 @@ export class SQLocal {
 	};
 
 	/**
-	 * Disconnect a SQLocal client from the database and terminate
+	 * Disconnect this SQLocal client from the database and terminate
 	 * its worker thread.
 	 * @see {@link https://sqlocal.dev/api/destroy}
 	 */

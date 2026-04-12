@@ -35,11 +35,11 @@ describe.each(testVariation('transaction'))(
 
 			const newProductId = await db1.transaction(async (tx) => {
 				const [product] = await tx.sql`
-				INSERT INTO groceries (name) VALUES (${productName}) RETURNING *
-			`;
+          INSERT INTO groceries (name) VALUES (${productName}) RETURNING *
+        `;
 				await tx.sql`
-				INSERT INTO prices (groceryId, price) VALUES (${product.id}, ${productPrice})
-			`;
+          INSERT INTO prices (groceryId, price) VALUES (${product.id}, ${productPrice})
+        `;
 				return product.id;
 			});
 

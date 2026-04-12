@@ -45,11 +45,11 @@ describe.each(testVariation('create-aggregate-function'))(
 			await sql`INSERT INTO nums (num) VALUES (1), (2), (2), (2), (4), (5), (5), (6)`;
 
 			const results = await sql`
-			SELECT mod(num, 2) AS isOdd
-			FROM nums
-			GROUP BY isOdd
-			HAVING mostCommon(num) = 5
-		`;
+        SELECT mod(num, 2) AS isOdd
+        FROM nums
+        GROUP BY isOdd
+        HAVING mostCommon(num) = 5
+      `;
 
 			expect(results).toEqual([{ isOdd: 1 }]);
 		});

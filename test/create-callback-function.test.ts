@@ -29,11 +29,11 @@ describe.each(testVariation('create-callback-function'))(
 			await expect(createBadFn).rejects.toThrowError();
 
 			await sql`
-      CREATE TEMP TRIGGER groceriesInsertTrigger AFTER INSERT ON groceries
-      BEGIN
-        SELECT testCallback(new.name);
-      END
-    `;
+        CREATE TEMP TRIGGER groceriesInsertTrigger AFTER INSERT ON groceries
+        BEGIN
+          SELECT testCallback(new.name);
+        END
+      `;
 
 			await sql`INSERT INTO groceries (name) VALUES ('bread')`;
 
