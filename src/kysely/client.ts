@@ -10,6 +10,11 @@ import type { Transaction } from '../types.js';
 import { convertRowsToObjects } from '../lib/convert-rows-to-objects.js';
 import { sqlTag } from '../lib/sql-tag.js';
 
+/**
+ * A subclass of the `SQLocal` client that provides an additional property
+ * for using SQLocal as a dialect for the Kysely query builder.
+ * @see {@link https://sqlocal.dev/kysely/setup}
+ */
 export class SQLocalKysely extends SQLocal {
 	dialect: Dialect = {
 		createAdapter: () => new SqliteAdapter(),

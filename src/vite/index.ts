@@ -1,5 +1,9 @@
 import type { Plugin, UserConfig } from 'vite';
 
+/**
+ * Represents the configuration that SQLocal's Vite plugin accepts.
+ * @see {@link https://sqlocal.dev/guide/setup#vite-configuration}
+ */
 export type VitePluginConfig = {
 	/**
 	 * If set to `false`, the plugin will not add the
@@ -11,6 +15,11 @@ export type VitePluginConfig = {
 	coi?: boolean;
 };
 
+/**
+ * A Vite plugin that tweaks some Vite settings for building apps
+ * that use SQLocal.
+ * @see {@link https://sqlocal.dev/guide/setup#vite-configuration}
+ */
 export default function vitePluginSQLocal(
 	config: VitePluginConfig = { coi: true }
 ): Plugin<UserConfig> {

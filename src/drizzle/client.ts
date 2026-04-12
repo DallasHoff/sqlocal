@@ -1,6 +1,11 @@
 import { SQLocal } from '../index.js';
 import type { RawResultData, Sqlite3Method } from '../types.js';
 
+/**
+ * A subclass of the `SQLocal` client that provides additional methods
+ * for using SQLocal as a driver for Drizzle ORM.
+ * @see {@link https://sqlocal.dev/drizzle/setup}
+ */
 export class SQLocalDrizzle extends SQLocal {
 	driver = async (
 		sql: string,

@@ -10,6 +10,10 @@ import {
 import type { SQLocal } from '../client.js';
 import type { ReactiveQueryStatus, StatementInput } from '../types.js';
 
+/**
+ * A composable for using reactive SQL queries in Vue components.
+ * @see {@link https://sqlocal.dev/api/reactivequery#vue}
+ */
 export function useReactiveQuery<Result extends Record<string, any>>(
 	db: SQLocal | Ref<SQLocal>,
 	query: StatementInput<Result> | Ref<StatementInput<Result>>

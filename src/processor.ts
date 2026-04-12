@@ -29,6 +29,11 @@ import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { debounce, type DebouncedFunction } from './lib/debounce.js';
 import { getDatabaseKey } from './lib/get-database-key.js';
 
+/**
+ * The `SQLocal` client exchanges messages with a paired instance
+ * of `SQLocalProcessor` to interact with databases.
+ * @see {@link https://sqlocal.dev/guide/setup}
+ */
 export class SQLocalProcessor {
 	protected driver: SQLocalDriver;
 	protected config: ProcessorConfig = {};
@@ -43,6 +48,10 @@ export class SQLocalProcessor {
 	protected effectsChannel?: BroadcastChannel;
 	protected reinitChannel?: BroadcastChannel;
 
+	/**
+	 * After an `InputMessage` has been processed, the resulting
+	 * `OutputMessage` is emitted to the function passed to `onmessage`.
+	 */
 	onmessage?: (message: OutputMessage, transfer: Transferable[]) => void;
 
 	constructor(driver: SQLocalDriver) {
@@ -125,6 +134,10 @@ export class SQLocalProcessor {
 		}
 	};
 
+	/**
+	 * To interact with a database, an `InputMessage` is passed to
+	 * `postMessage` for processing.
+	 */
 	postMessage = async (
 		event: InputMessage | MessageEvent<InputMessage>,
 		_transfer?: Transferable

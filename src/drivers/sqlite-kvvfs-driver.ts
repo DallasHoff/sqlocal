@@ -6,6 +6,10 @@ import type {
 } from '../types.js';
 import { SQLiteMemoryDriver } from './sqlite-memory-driver.js';
 
+/**
+ * A SQLocal driver that implements the interface needed for
+ * interacting with SQLite databases in localStorage or sessionStorage.
+ */
 export class SQLiteKvvfsDriver
 	extends SQLiteMemoryDriver
 	implements SQLocalDriver

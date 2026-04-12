@@ -44,6 +44,11 @@ import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
 import { getDatabaseKey } from './lib/get-database-key.js';
 
+/**
+ * This class is your entry point for connecting to and
+ * interacting with an on-device SQLite database in the browser.
+ * @see {@link https://sqlocal.dev/guide/setup}
+ */
 export class SQLocal {
 	protected config: ClientConfig;
 	protected clientKey: QueryKey;
@@ -231,6 +236,7 @@ export class SQLocal {
 		this.reinitChannel.postMessage(message);
 	};
 
+	/** @internal */
 	exec = async (
 		sql: string,
 		params: unknown[],
@@ -283,6 +289,10 @@ export class SQLocal {
 		return data;
 	};
 
+	/**
+	 * Execute SQL queries against the database.
+	 * @see {@link https://sqlocal.dev/api/sql}
+	 */
 	sql = async <Result extends Record<string, any>>(
 		queryTemplate: TemplateStringsArray | string,
 		...params: unknown[]
@@ -296,6 +306,10 @@ export class SQLocal {
 		return convertRowsToObjects(rows, columns) as Result[];
 	};
 
+	/**
+	 * Execute a batch of SQL queries against the database in an atomic way.
+	 * @see {@link https://sqlocal.dev/api/batch}
+	 */
 	batch = async <Result extends Record<string, any>>(
 		passStatements: (sql: SqlTag) => Statement[]
 	): Promise<Result[][]> => {
@@ -307,6 +321,7 @@ export class SQLocal {
 		});
 	};
 
+	/** @internal */
 	beginTransaction = async (): Promise<Transaction> => {
 		const transactionKey = getQueryKey();
 
@@ -383,6 +398,10 @@ export class SQLocal {
 		});
 	};
 
+	/**
+	 * Execute SQL transactions against the database.
+	 * @see {@link https://sqlocal.dev/api/transaction}
+	 */
 	transaction = async <Result>(
 		transaction: (tx: TransactionHandle) => Promise<Result>
 	): Promise<Result> => {
@@ -421,6 +440,11 @@ export class SQLocal {
 		});
 	};
 
+	/**
+	 * Subscribe to a SQL query and receive the latest results
+	 * whenever the read tables change.
+	 * @see {@link https://sqlocal.dev/api/reactivequery}
+	 */
 	reactiveQuery = <Result extends Record<string, any>>(
 		passStatement: StatementInput<Result>
 	): ReactiveQuery<Result> => {
@@ -534,6 +558,11 @@ export class SQLocal {
 		};
 	};
 
+	/**
+	 * Create a SQL function that can be called from queries to
+	 * trigger a JavaScript callback.
+	 * @see {@link https://sqlocal.dev/api/createcallbackfunction}
+	 */
 	createCallbackFunction = async (
 		funcName: string,
 		func: CallbackUserFunction['func']
@@ -547,6 +576,11 @@ export class SQLocal {
 		this.userCallbacks.set(funcName, func);
 	};
 
+	/**
+	 * Create a SQL function that can be called from queries to
+	 * transform column values or to filter rows.
+	 * @see {@link https://sqlocal.dev/api/createscalarfunction}
+	 */
 	createScalarFunction = async (
 		funcName: string,
 		func: ScalarUserFunction['func']
@@ -571,6 +605,11 @@ export class SQLocal {
 		}
 	};
 
+	/**
+	 * Create a SQL function that can be called from queries to
+	 * combine multiple rows into a single result row.
+	 * @see {@link https://sqlocal.dev/api/createaggregatefunction}
+	 */
 	createAggregateFunction = async (
 		funcName: string,
 		func: AggregateUserFunction['func']
@@ -596,6 +635,10 @@ export class SQLocal {
 		}
 	};
 
+	/**
+	 * Retrieve information about the SQLite database file.
+	 * @see {@link https://sqlocal.dev/api/getdatabaseinfo}
+	 */
 	getDatabaseInfo = async (): Promise<DatabaseInfo> => {
 		const message = await this.createQuery({ type: 'getinfo' });
 
@@ -606,6 +649,11 @@ export class SQLocal {
 		}
 	};
 
+	/**
+	 * Access the SQLite database file so that it can be uploaded
+	 * to the server or allowed to be downloaded by the user.
+	 * @see {@link https://sqlocal.dev/api/getdatabasefile}
+	 */
 	getDatabaseFile = async (): Promise<File> => {
 		const message = await this.createQuery({ type: 'export' });
 
@@ -618,6 +666,10 @@ export class SQLocal {
 		}
 	};
 
+	/**
+	 * Replace the contents of the SQLite database file.
+	 * @see {@link https://sqlocal.dev/api/overwritedatabasefile}
+	 */
 	overwriteDatabaseFile = async (
 		databaseFile:
 			| File
@@ -664,6 +716,10 @@ export class SQLocal {
 		);
 	};
 
+	/**
+	 * Delete the SQLite database file.
+	 * @see {@link https://sqlocal.dev/api/deletedatabasefile}
+	 */
 	deleteDatabaseFile = async (
 		beforeUnlock?: () => void | Promise<void>
 	): Promise<void> => {
@@ -701,6 +757,11 @@ export class SQLocal {
 		);
 	};
 
+	/**
+	 * Disconnect a SQLocal client from the database and terminate
+	 * its worker thread.
+	 * @see {@link https://sqlocal.dev/api/destroy}
+	 */
 	destroy = async (): Promise<void> => {
 		await this.createQuery({ type: 'destroy' });
 
@@ -719,10 +780,18 @@ export class SQLocal {
 		this.isDestroyed = true;
 	};
 
+	/**
+	 * Handles cleaning up the SQLocal client with JavaScript
+	 * Explicit Resource Management (`using`).
+	 */
 	[Symbol.dispose] = (): void => {
 		this.destroy();
 	};
 
+	/**
+	 * Handles cleaning up the SQLocal client with JavaScript
+	 * Explicit Resource Management (`await using`).
+	 */
 	[Symbol.asyncDispose] = async (): Promise<void> => {
 		await this.destroy();
 	};

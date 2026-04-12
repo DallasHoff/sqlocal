@@ -13,6 +13,10 @@ import type {
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 import type { PreparedStatement } from '@sqlite.org/sqlite-wasm';
 
+/**
+ * A SQLocal driver that implements the interface needed for
+ * interacting with SQLite databases in memory.
+ */
 export class SQLiteMemoryDriver implements SQLocalDriver {
 	protected sqlite3InitModule?: Sqlite3InitModule;
 	protected sqlite3?: Sqlite3;

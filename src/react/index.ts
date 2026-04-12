@@ -9,6 +9,10 @@ import {
 import type { SQLocal } from '../client.js';
 import type { ReactiveQueryStatus, StatementInput } from '../types.js';
 
+/**
+ * A hook for using reactive SQL queries in React components.
+ * @see {@link https://sqlocal.dev/api/reactivequery#react}
+ */
 export function useReactiveQuery<Result extends Record<string, any>>(
 	db: SQLocal,
 	query: StatementInput<Result>

@@ -8,6 +8,10 @@ import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
 import { parseDatabasePath } from '../lib/parse-database-path.js';
 import { SQLiteMemoryDriver } from './sqlite-memory-driver.js';
 
+/**
+ * A SQLocal driver that implements the interface needed for
+ * interacting with SQLite databases in the origin private file system.
+ */
 export class SQLiteOpfsDriver
 	extends SQLiteMemoryDriver
 	implements SQLocalDriver
