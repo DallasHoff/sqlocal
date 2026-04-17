@@ -78,10 +78,12 @@ export type ExportMessage = {
 export type DeleteMessage = {
 	type: 'delete';
 	queryKey: QueryKey;
+	destroy: boolean;
 };
 export type DestroyMessage = {
 	type: 'destroy';
 	queryKey: QueryKey;
+	skipOptimize: boolean;
 };
 
 // Output messages

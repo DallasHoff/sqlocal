@@ -441,7 +441,7 @@ export class SQLocalProcessor {
 	};
 
 	protected deleteDb = async (message: DeleteMessage): Promise<void> => {
-		const { queryKey } = message;
+		const { queryKey, destroy } = message;
 		let errored = false;
 
 		try {
@@ -454,7 +454,9 @@ export class SQLocalProcessor {
 			});
 			errored = true;
 		} finally {
-			await this.init('delete');
+			if (!destroy) {
+				await this.init('delete');
+			}
 		}
 
 		if (!errored) {
@@ -466,7 +468,10 @@ export class SQLocalProcessor {
 	};
 
 	protected destroy = async (message?: DestroyMessage): Promise<void> => {
-		await this.driver.exec({ sql: 'PRAGMA optimize' });
+		if (!message?.skipOptimize) {
+			await this.driver.exec({ sql: 'PRAGMA optimize' });
+		}
+
 		await this.driver.destroy();
 
 		if (this.effectsChannel) {

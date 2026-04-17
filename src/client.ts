@@ -721,7 +721,8 @@ export class SQLocal {
 	 * @see {@link https://sqlocal.dev/api/deletedatabasefile}
 	 */
 	deleteDatabaseFile = async (
-		beforeUnlock?: () => void | Promise<void>
+		beforeUnlock?: () => void | Promise<void>,
+		destroy: boolean = false
 	): Promise<void> => {
 		await mutationLock(
 			{
@@ -738,6 +739,7 @@ export class SQLocal {
 
 					await this.createQuery({
 						type: 'delete',
+						destroy,
 					});
 
 					if (typeof beforeUnlock === 'function') {
@@ -755,6 +757,10 @@ export class SQLocal {
 				}
 			}
 		);
+
+		if (destroy) {
+			await this.destroy(true);
+		}
 	};
 
 	/**
@@ -762,8 +768,8 @@ export class SQLocal {
 	 * its worker thread.
 	 * @see {@link https://sqlocal.dev/api/destroy}
 	 */
-	destroy = async (): Promise<void> => {
-		await this.createQuery({ type: 'destroy' });
+	destroy = async (skipOptimize: boolean = false): Promise<void> => {
+		await this.createQuery({ type: 'destroy', skipOptimize });
 
 		if (
 			typeof globalThis.Worker !== 'undefined' &&
