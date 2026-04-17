@@ -94,6 +94,10 @@ export default defineConfig({
 						link: '/api/createaggregatefunction',
 					},
 					{
+						text: 'createWindowFunction',
+						link: '/api/createwindowfunction',
+					},
+					{
 						text: 'destroy',
 						link: '/api/destroy',
 					},
