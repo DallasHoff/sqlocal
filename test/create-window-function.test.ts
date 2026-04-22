@@ -56,20 +56,20 @@ describe.each(testVariation('create-window-function'))(
           value,
           range(value) OVER (
             ORDER BY sample
-            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
-          ) AS rangeOverLast3
+            ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING
+          ) AS rangeOver3
         FROM graph;
       `;
 
 			expect(results).toEqual([
-				{ value: 3, rangeOverLast3: 0 },
-				{ value: 5, rangeOverLast3: 2 },
-				{ value: 1, rangeOverLast3: 4 },
-				{ value: 9, rangeOverLast3: 8 },
-				{ value: 7, rangeOverLast3: 8 },
-				{ value: 6, rangeOverLast3: 3 },
-				{ value: 2, rangeOverLast3: 5 },
-				{ value: 0, rangeOverLast3: 6 },
+				{ value: 3, rangeOver3: 2 },
+				{ value: 5, rangeOver3: 4 },
+				{ value: 1, rangeOver3: 8 },
+				{ value: 9, rangeOver3: 8 },
+				{ value: 7, rangeOver3: 3 },
+				{ value: 6, rangeOver3: 5 },
+				{ value: 2, rangeOver3: 6 },
+				{ value: 0, rangeOver3: 2 },
 			]);
 		});
 
