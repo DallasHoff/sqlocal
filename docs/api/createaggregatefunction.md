@@ -14,7 +14,7 @@ const { createAggregateFunction } = new SQLocal('database.sqlite3');
 
 <!-- @include: ../.partials/initialization-note.md -->
 
-This method takes a string to name a custom SQL function as its first argument and an object containing two functions (`step` and `final`) as its second argument. After running `createAggregateFunction`, the aggregate function that you defined can be called from subsequent SQL queries. Arguments passed to the function in the SQL query will be passed to the JavaScript `step` function. The `step` function will run for every row in the SQL query. After each row is processed, the `final` function will run, and its return value will be passed back to SQLite to use to complete the query.
+This method takes a string to name a custom SQL function as its first argument and an object containing two callbacks (`step` and `final`) as its second argument. After running `createAggregateFunction`, the aggregate function that you defined can be called from subsequent SQL queries. Arguments passed to the function in the SQL query will be passed to the JavaScript `step` callback. The `step` callback will run for every row in the SQL query. After every row is processed, the `final` callback will run, and its return value will be passed back to SQLite to use to complete the query.
 
 This can be used to combine rows together in a query based on some custom logic. For example, the below aggregate function can be used to find the most common value for a column, such as the most common category used in a table of tasks.
 
