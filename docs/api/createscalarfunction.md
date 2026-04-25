@@ -26,7 +26,7 @@ await createScalarFunction('toFahrenheit', (celsius) => {
 await sql`SELECT celsius, toFahrenheit(celsius) AS fahrenheit FROM temperatures`;
 ```
 
-Scalar functions can also be used in a query's WHERE clause to filter rows.
+Scalar functions can also be used in a query's `WHERE` clause to filter rows.
 
 ```javascript
 await createScalarFunction('isEven', (num) => num % 2 === 0);

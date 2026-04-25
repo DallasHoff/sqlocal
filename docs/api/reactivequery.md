@@ -54,7 +54,7 @@ To stop receiving updates and clean up the subscription, call `unsubscribe` on t
 subscription.unsubscribe();
 ```
 
-Note that mutations that happen inside a [transaction](transaction.md) will not trigger reactive queries until the transaction is committed. This ensures your data does not get out of sync in the case that the transaction is rolled back. Also, because of [SQLite's "Truncate Optimization"](https://sqlite.org/lang_delete.html#truncateopt), reactive queries will not be triggered by DELETE statements that have no WHERE clause, RETURNING clause, or table triggers.
+Note that mutations that happen inside a [transaction](transaction.md) will not trigger reactive queries until the transaction is committed. This ensures your data does not get out of sync in the case that the transaction is rolled back. Also, because of [SQLite's "Truncate Optimization"](https://sqlite.org/lang_delete.html#truncateopt), reactive queries will not be triggered by `DELETE` statements that have no `WHERE` clause, `RETURNING` clause, or table triggers.
 
 ## Query Builders
 

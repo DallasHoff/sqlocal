@@ -38,7 +38,7 @@ await createAggregateFunction('mostCommon', {
 await sql`SELECT mostCommon(category) AS mostCommonCategory FROM tasks`;
 ```
 
-Aggregate functions can also be used in a query's HAVING clause to filter groups of rows. Here, we use the `mostCommon` function that we created in the previous example to find which days of the week have "Cleaning" as the most common category of task.
+Aggregate functions can also be used in a query's `HAVING` clause to filter groups of rows. Here, we use the `mostCommon` function that we created in the previous example to find which days of the week have "Cleaning" as the most common category of task.
 
 ```javascript
 await sql`
