@@ -14,16 +14,16 @@ const { destroy } = new SQLocal('database.sqlite3');
 
 <!-- @include: ../.partials/initialization-note.md -->
 
-The `destroy` method takes no arguments. It will return a `Promise` to close the connection to the SQLite database file and then terminate the web worker that the `SQLocal` client uses internally to run queries.
+The `destroy` method will return a `Promise` to close the connection to the SQLite database file and terminate the web worker that the `SQLocal` client uses internally to run queries.
 
-It will also execute [`PRAGMA optimize`](https://www.sqlite.org/pragma.html#pragma_optimize) on the database before closing the connection.
+By default, it will also execute [`PRAGMA optimize`](https://www.sqlite.org/pragma.html#pragma_optimize) on the database before closing the connection. This can be skipped by passing `true` to the method call.
 
-Call `destroy` if you want to clean up an `SQLocal` instance because you are finished querying its associated database for the remainder of the session. **Avoid** calling `destroy` after each query and then initializing a new `SQLocal` instance for the next query.
+Call `destroy` if you want to clean up a `SQLocal` instance because you are finished querying its associated database for the remainder of the session. **Avoid** calling `destroy` after each query and then initializing a new `SQLocal` instance for the next query.
 
 ```javascript
 await destroy();
 ```
 
 ::: warning
-Once the `destroy` method is called on an `SQLocal` instance, any subsequent attempts to make queries through that instance will throw an error. You will need to initialize a new instance of `SQLocal` to make new queries.
+Once the `destroy` method is called on a `SQLocal` instance, any subsequent attempts to make queries through that instance will throw an error. You will need to initialize a new instance of `SQLocal` to make new queries.
 :::

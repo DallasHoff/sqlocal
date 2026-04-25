@@ -14,9 +14,9 @@ const { transaction } = new SQLocal('database.sqlite3');
 
 <!-- @include: ../.partials/initialization-note.md -->
 
-The `transaction` method provides a way to execute a transaction on the database, ensuring atomicity and isolation of the SQL queries executed within it. `transaction` takes a callback that is passed a `tx` object containing a `sql` tagged template for executing SQL within the transaction.
+The `transaction` method provides a way to execute a transaction on the database, ensuring atomicity and isolation of the SQL queries executed within it. `transaction` takes a callback that is passed a `tx` object containing a `sql` tagged template and `batch` function for executing SQL within the transaction.
 
-This `sql` tag function passed in the `tx` object works similarly to the [`sql` tag function used for single queries](sql.md), but it ensures that the queries are executed in the context of the open transaction. Any logic can be carried out in the callback between the queries as needed.
+The `sql` tag function and `batch` function in the `tx` object work similarly to the [`sql` tag function used for single queries](sql.md) and the [`batch` method](batch.md) respectively, but they ensure that the queries are executed in the context of the open transaction. Any logic can be carried out in the callback between the queries as needed.
 
 If any of the queries fail or any other error is thrown within the callback, `transaction` will throw an error and the transaction will be rolled back automatically. If the callback completes successfully, the transaction will be committed.
 
@@ -37,7 +37,9 @@ const newProductId = await transaction(async (tx) => {
 });
 ```
 
-## Drizzle
+## Query Builders
+
+### Drizzle
 
 Drizzle queries can also be used with `transaction` by passing them to the `tx` object's `query` function. `query` will execute the Drizzle query as part of the transaction and its return value will be typed according to Drizzle.
 
@@ -58,7 +60,7 @@ const newProductId = await transaction(async (tx) => {
 });
 ```
 
-## Kysely
+### Kysely
 
 Kysely queries can be used with `transaction` by calling Kysely's `compile` method on the queries and passing them to the `tx` object's `query` function. `query` will execute the Kysely query as part of the transaction and its return value will be typed according to Kysely.
 
