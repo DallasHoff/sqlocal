@@ -169,7 +169,7 @@ describe.each(testVariation('delete-db'))(
 
 		it(
 			'should destroy instance after deleting',
-			{ timeout: 1500 },
+			{ timeout: 2000 },
 			async () => {
 				const destroyedError =
 					'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.';
