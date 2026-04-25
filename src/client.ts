@@ -15,6 +15,8 @@ import type {
 	ReactiveQuery,
 	SqlTag,
 	TransactionHandle,
+	WindowUserFunction,
+	UserFunction,
 } from './types.js';
 import type {
 	BatchMessage,
@@ -558,6 +560,42 @@ export class SQLocal {
 		};
 	};
 
+	protected createFunction = async (fn: UserFunction): Promise<void> => {
+		const key = `_sqlocal_func_${fn.name}`;
+
+		const attachFunction = () => {
+			if (fn.type === 'scalar') {
+				this.proxy[key] = fn.func;
+			}
+			if (fn.type === 'aggregate' || fn.type === 'window') {
+				this.proxy[`${key}_step`] = fn.func.step;
+				this.proxy[`${key}_final`] = fn.func.final;
+			}
+			if (fn.type === 'window') {
+				this.proxy[`${key}_value`] = fn.func.value;
+				this.proxy[`${key}_inverse`] = fn.func.inverse;
+			}
+		};
+
+		if (fn.type !== 'callback' && this.proxy === globalThis) {
+			attachFunction();
+		}
+
+		await this.createQuery({
+			type: 'function',
+			functionName: fn.name,
+			functionType: fn.type,
+		});
+
+		if (fn.type !== 'callback' && this.proxy !== globalThis) {
+			attachFunction();
+		}
+
+		if (fn.type === 'callback') {
+			this.userCallbacks.set(fn.name, fn.func);
+		}
+	};
+
 	/**
 	 * Create a SQL function that can be called from queries to
 	 * trigger a JavaScript callback.
@@ -567,13 +605,7 @@ export class SQLocal {
 		funcName: string,
 		func: CallbackUserFunction['func']
 	): Promise<void> => {
-		await this.createQuery({
-			type: 'function',
-			functionName: funcName,
-			functionType: 'callback',
-		});
-
-		this.userCallbacks.set(funcName, func);
+		await this.createFunction({ name: funcName, type: 'callback', func });
 	};
 
 	/**
@@ -585,24 +617,7 @@ export class SQLocal {
 		funcName: string,
 		func: ScalarUserFunction['func']
 	): Promise<void> => {
-		const key = `_sqlocal_func_${funcName}`;
-		const attachFunction = () => {
-			this.proxy[key] = func;
-		};
-
-		if (this.proxy === globalThis) {
-			attachFunction();
-		}
-
-		await this.createQuery({
-			type: 'function',
-			functionName: funcName,
-			functionType: 'scalar',
-		});
-
-		if (this.proxy !== globalThis) {
-			attachFunction();
-		}
+		await this.createFunction({ name: funcName, type: 'scalar', func });
 	};
 
 	/**
@@ -614,25 +629,19 @@ export class SQLocal {
 		funcName: string,
 		func: AggregateUserFunction['func']
 	): Promise<void> => {
-		const key = `_sqlocal_func_${funcName}`;
-		const attachFunction = () => {
-			this.proxy[`${key}_step`] = func.step;
-			this.proxy[`${key}_final`] = func.final;
-		};
+		await this.createFunction({ name: funcName, type: 'aggregate', func });
+	};
 
-		if (this.proxy === globalThis) {
-			attachFunction();
-		}
-
-		await this.createQuery({
-			type: 'function',
-			functionName: funcName,
-			functionType: 'aggregate',
-		});
-
-		if (this.proxy !== globalThis) {
-			attachFunction();
-		}
+	/**
+	 * Create a SQL function that can be called from queries to
+	 * perform calculations for rows using data from related rows.
+	 * @see {@link https://sqlocal.dev/api/createwindowfunction}
+	 */
+	createWindowFunction = async (
+		funcName: string,
+		func: WindowUserFunction['func']
+	): Promise<void> => {
+		await this.createFunction({ name: funcName, type: 'window', func });
 	};
 
 	/**

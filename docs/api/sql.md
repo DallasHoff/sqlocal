@@ -22,7 +22,7 @@ const quantity = 2;
 await sql`INSERT INTO groceries (name, quantity) VALUES (${item}, ${quantity})`;
 ```
 
-SELECT queries and queries with the RETURNING clause will return the matched records as an array of objects.
+`SELECT` queries and queries with the `RETURNING` clause will return the matched records as an array of objects.
 
 ```javascript
 const data = await sql`SELECT * FROM groceries`;

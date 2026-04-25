@@ -363,6 +363,18 @@ export class SQLocalProcessor {
 					},
 				};
 				break;
+			case 'window':
+				fn = {
+					type,
+					name,
+					func: {
+						step: this.proxy[`_sqlocal_func_${name}_step`],
+						value: this.proxy[`_sqlocal_func_${name}_value`],
+						inverse: this.proxy[`_sqlocal_func_${name}_inverse`],
+						final: this.proxy[`_sqlocal_func_${name}_final`],
+					},
+				};
+				break;
 		}
 
 		try {

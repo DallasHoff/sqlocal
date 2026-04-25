@@ -168,7 +168,8 @@ export type DataChange = {
 export type UserFunction =
 	| CallbackUserFunction
 	| ScalarUserFunction
-	| AggregateUserFunction;
+	| AggregateUserFunction
+	| WindowUserFunction;
 export type CallbackUserFunction = {
 	type: 'callback';
 	name: string;
@@ -184,6 +185,16 @@ export type AggregateUserFunction = {
 	name: string;
 	func: {
 		step: (...args: any[]) => void;
+		final: (...args: any[]) => any;
+	};
+};
+export type WindowUserFunction = {
+	type: 'window';
+	name: string;
+	func: {
+		step: (...args: any[]) => void;
+		value: (...args: any[]) => any;
+		inverse: (...args: any[]) => void;
 		final: (...args: any[]) => any;
 	};
 };

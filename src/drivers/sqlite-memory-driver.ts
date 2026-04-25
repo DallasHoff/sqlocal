@@ -153,6 +153,16 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 					arity: -1,
 				});
 				break;
+			case 'window':
+				this.db.createFunction({
+					name: fn.name,
+					xStep: (_: number, ...args: any[]) => fn.func.step(...args),
+					xValue: (_: number, ...args: any[]) => fn.func.value(...args),
+					xInverse: (_: number, ...args: any[]) => fn.func.inverse(...args),
+					xFinal: (_: number, ...args: any[]) => fn.func.final(...args),
+					arity: -1,
+				});
+				break;
 		}
 	}
 
