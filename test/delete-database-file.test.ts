@@ -7,7 +7,7 @@ import { testVariation } from './test-utils/test-variation.js';
 describe.each(testVariation('delete-db'))(
 	'deleteDatabaseFile ($type)',
 	({ path, type }) => {
-		it('should delete the database file', async () => {
+		it('should delete the database file', { timeout: 1500 }, async () => {
 			let onConnectReason: ConnectReason | null = null;
 			let beforeUnlockCalled = false;
 
@@ -47,7 +47,7 @@ describe.each(testVariation('delete-db'))(
 
 		it(
 			'should or should not notify other instances of a delete',
-			{ timeout: type === 'opfs' ? 2000 : undefined },
+			{ timeout: 2000 },
 			async () => {
 				let onConnectReason1: ConnectReason | null = null;
 				let onConnectReason2: ConnectReason | null = null;
@@ -136,7 +136,7 @@ describe.each(testVariation('delete-db'))(
 
 		it(
 			'should run onInit statements before other queries after deletion',
-			{ timeout: type === 'opfs' ? 1500 : undefined },
+			{ timeout: 1500 },
 			async () => {
 				const databasePath = path;
 				const onInit: ClientConfig['onInit'] = (sql) => {
@@ -167,54 +167,66 @@ describe.each(testVariation('delete-db'))(
 			}
 		);
 
-		it('should destroy instance after deleting', async () => {
-			const destroyedError =
-				'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.';
-			const opfs =
-				type === 'opfs' ? await navigator.storage.getDirectory() : null;
+		it(
+			'should destroy instance after deleting',
+			{ timeout: 1500 },
+			async () => {
+				const destroyedError =
+					'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.';
+				const opfs =
+					type === 'opfs' ? await navigator.storage.getDirectory() : null;
 
-			// Destroy: file should not exist
+				// Destroy: file should not exist
 
-			const client1 = new SQLocal(path);
-			await expect(client1.sql`SELECT 1 as num`).resolves.toEqual([{ num: 1 }]);
-			await client1.deleteDatabaseFile(undefined, true);
-			await expect(client1.sql`SELECT 1 as num`).rejects.toThrowError(
-				destroyedError
-			);
-
-			if (type === 'opfs') {
-				await expect(opfs?.getFileHandle(path)).rejects.toThrowError();
-			}
-
-			// Do not destroy: file should still exist
-
-			const client2 = new SQLocal(path);
-			await expect(client2.sql`SELECT 2 as num`).resolves.toEqual([{ num: 2 }]);
-			await client2.deleteDatabaseFile(undefined, false);
-			await expect(client2.sql`SELECT 2 as num`).resolves.toEqual([{ num: 2 }]);
-
-			if (type === 'opfs') {
-				await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
-					FileSystemFileHandle
+				const client1 = new SQLocal(path);
+				await expect(client1.sql`SELECT 1 as num`).resolves.toEqual([
+					{ num: 1 },
+				]);
+				await client1.deleteDatabaseFile(undefined, true);
+				await expect(client1.sql`SELECT 1 as num`).rejects.toThrowError(
+					destroyedError
 				);
-			}
 
-			// Destroy second client: file should still exist because of other client
+				if (type === 'opfs') {
+					await expect(opfs?.getFileHandle(path)).rejects.toThrowError();
+				}
 
-			const client3 = new SQLocal(path);
-			await expect(client3.sql`SELECT 3 as num`).resolves.toEqual([{ num: 3 }]);
-			await client3.deleteDatabaseFile(undefined, true);
-			await expect(client3.sql`SELECT 3 as num`).rejects.toThrowError(
-				destroyedError
-			);
+				// Do not destroy: file should still exist
 
-			if (type === 'opfs') {
-				await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
-					FileSystemFileHandle
+				const client2 = new SQLocal(path);
+				await expect(client2.sql`SELECT 2 as num`).resolves.toEqual([
+					{ num: 2 },
+				]);
+				await client2.deleteDatabaseFile(undefined, false);
+				await expect(client2.sql`SELECT 2 as num`).resolves.toEqual([
+					{ num: 2 },
+				]);
+
+				if (type === 'opfs') {
+					await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
+						FileSystemFileHandle
+					);
+				}
+
+				// Destroy second client: file should still exist because of other client
+
+				const client3 = new SQLocal(path);
+				await expect(client3.sql`SELECT 3 as num`).resolves.toEqual([
+					{ num: 3 },
+				]);
+				await client3.deleteDatabaseFile(undefined, true);
+				await expect(client3.sql`SELECT 3 as num`).rejects.toThrowError(
+					destroyedError
 				);
-			}
 
-			await client2.destroy();
-		});
+				if (type === 'opfs') {
+					await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
+						FileSystemFileHandle
+					);
+				}
+
+				await client2.destroy();
+			}
+		);
 	}
 );
