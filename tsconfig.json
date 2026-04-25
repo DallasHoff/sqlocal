@@ -8,14 +8,11 @@
 		"moduleResolution": "NodeNext",
 		"moduleDetection": "force",
 		"isolatedDeclarations": true,
-		"esModuleInterop": true,
 		"useDefineForClassFields": true,
-		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"sourceMap": true,
 		"declaration": true,
-		"outDir": "./dist",
 
 		/* Linting */
 		"strict": true,
