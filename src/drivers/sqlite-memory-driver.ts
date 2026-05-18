@@ -208,6 +208,10 @@ export class SQLiteMemoryDriver implements SQLocalDriver {
 
 	async clear(): Promise<void> {}
 
+	async purgeOrphans(): Promise<string[]> {
+		return [];
+	}
+
 	async destroy(): Promise<void> {
 		this.closeDb();
 		this.pointers.forEach((pointer) => this.sqlite3?.wasm.dealloc(pointer));

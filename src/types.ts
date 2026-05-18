@@ -102,6 +102,7 @@ export interface SQLocalDriver {
 		data: ArrayBuffer | Uint8Array<ArrayBuffer>;
 	}>;
 	clear: () => Promise<void>;
+	purgeOrphans: () => Promise<string[]>;
 	destroy: () => Promise<void>;
 }
 
@@ -136,6 +137,11 @@ export type ClientConfig = {
 	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
+	/**
+	 * Call `destroy()` on `pagehide` / `beforeunload` to release the OPFS
+	 * sync-access-handle. Defaults to `false`.
+	 */
+	releaseOnUnload?: boolean;
 	onInit?: (sql: SqlTag) => void | Statement[];
 	onConnect?: (reason: ConnectReason) => void;
 	processor?: SQLocalProcessor | Worker;

@@ -31,6 +31,7 @@ import type {
 	ImportMessage,
 	OmitQueryKey,
 	OutputMessage,
+	PurgeOrphansMessage,
 	QueryMessage,
 	TransactionMessage,
 	WorkerProxy,
@@ -71,13 +72,20 @@ export class SQLocal {
 	protected proxy: WorkerProxy;
 	protected reinitChannel: BroadcastChannel;
 	protected effectsChannel?: BroadcastChannel;
+	protected unloadListener?: () => void;
 
 	constructor(databasePath: DatabasePath);
 	constructor(config: ClientConfig);
 	constructor(config: DatabasePath | ClientConfig) {
 		const clientConfig =
 			typeof config === 'string' ? { databasePath: config } : config;
-		const { onInit, onConnect, processor, ...commonConfig } = clientConfig;
+		const {
+			onInit,
+			onConnect,
+			processor,
+			releaseOnUnload: _releaseOnUnload,
+			...commonConfig
+		} = clientConfig;
 		const { databasePath } = commonConfig;
 
 		this.config = clientConfig;
@@ -129,6 +137,15 @@ export class SQLocal {
 				onInitStatements: onInit?.(sqlTag) ?? [],
 			},
 		} satisfies ConfigMessage);
+
+		if (
+			clientConfig.releaseOnUnload === true &&
+			typeof globalThis.addEventListener === 'function'
+		) {
+			this.unloadListener = () => void this.destroy(true).catch(() => {});
+			globalThis.addEventListener('pagehide', this.unloadListener, { once: true });
+			globalThis.addEventListener('beforeunload', this.unloadListener, { once: true });
+		}
 	}
 
 	protected processMessageEvent = (
@@ -142,6 +159,7 @@ export class SQLocal {
 			case 'data':
 			case 'buffer':
 			case 'info':
+			case 'purgeOrphans':
 			case 'error':
 				if (message.queryKey && queries.has(message.queryKey)) {
 					const [resolve, reject] = queries.get(message.queryKey)!;
@@ -180,6 +198,7 @@ export class SQLocal {
 			| ImportMessage
 			| ExportMessage
 			| DeleteMessage
+			| PurgeOrphansMessage
 			| DestroyMessage
 		>
 	): Promise<OutputMessage> => {
@@ -190,7 +209,8 @@ export class SQLocal {
 				bypass:
 					this.bypassMutationLock ||
 					message.type === 'import' ||
-					message.type === 'delete',
+					message.type === 'delete' ||
+					message.type === 'purgeOrphans',
 			},
 			async () => {
 				if (this.isDestroyed === true) {
@@ -223,6 +243,7 @@ export class SQLocal {
 							| GetInfoMessage
 							| ExportMessage
 							| DeleteMessage
+							| PurgeOrphansMessage
 							| DestroyMessage);
 						break;
 				}
@@ -773,6 +794,34 @@ export class SQLocal {
 	};
 
 	/**
+	 * Remove every OPFS entry that belongs to this database (main file,
+	 * sidecars, and `backup-*` orphans). Terminal: the client is destroyed
+	 * afterward. No-op for non-OPFS drivers.
+	 * @see {@link https://sqlocal.dev/api/purgeorphans}
+	 */
+	purgeOrphans = async (): Promise<string[]> => {
+		const removed = await mutationLock(
+			{
+				mode: 'exclusive',
+				bypass: false,
+				key: getDatabaseKey(this.config.databasePath, this.clientKey),
+			},
+			async () => {
+				this.broadcast({ type: 'close', clientKey: this.clientKey });
+				const message = await this.createQuery({ type: 'purgeOrphans' });
+				this.broadcast({
+					type: 'reinit',
+					clientKey: this.clientKey,
+					reason: 'delete',
+				});
+				return message.type === 'purgeOrphans' ? message.removed : [];
+			}
+		);
+		await this.destroy(true);
+		return removed;
+	};
+
+	/**
 	 * Disconnect this SQLocal client from the database and terminate
 	 * its worker thread.
 	 * @see {@link https://sqlocal.dev/api/destroy}
@@ -786,6 +835,15 @@ export class SQLocal {
 		) {
 			this.processor.removeEventListener('message', this.processMessageEvent);
 			this.processor.terminate();
+		}
+
+		if (
+			this.unloadListener &&
+			typeof globalThis.removeEventListener === 'function'
+		) {
+			globalThis.removeEventListener('pagehide', this.unloadListener);
+			globalThis.removeEventListener('beforeunload', this.unloadListener);
+			this.unloadListener = undefined;
 		}
 
 		this.queriesInProgress.clear();

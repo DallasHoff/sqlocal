@@ -20,6 +20,7 @@ import type {
 	ImportMessage,
 	InputMessage,
 	OutputMessage,
+	PurgeOrphansMessage,
 	QueryMessage,
 	TransactionMessage,
 	WorkerProxy,
@@ -169,6 +170,9 @@ export class SQLocalProcessor {
 				break;
 			case 'delete':
 				this.deleteDb(message);
+				break;
+			case 'purgeOrphans':
+				this.purgeOrphans(message);
 				break;
 			case 'destroy':
 				this.destroy(message);
@@ -476,6 +480,18 @@ export class SQLocalProcessor {
 				type: 'success',
 				queryKey,
 			});
+		}
+	};
+
+	protected purgeOrphans = async (
+		message: PurgeOrphansMessage
+	): Promise<void> => {
+		const { queryKey } = message;
+		try {
+			const removed = await this.driver.purgeOrphans();
+			this.emitMessage({ type: 'purgeOrphans', queryKey, removed });
+		} catch (error) {
+			this.emitMessage({ type: 'error', error, queryKey });
 		}
 	};
 

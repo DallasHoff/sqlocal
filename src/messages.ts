@@ -24,6 +24,7 @@ export type InputMessage =
 	| ImportMessage
 	| ExportMessage
 	| DeleteMessage
+	| PurgeOrphansMessage
 	| DestroyMessage;
 export type QueryMessage = {
 	type: 'query';
@@ -80,6 +81,10 @@ export type DeleteMessage = {
 	queryKey: QueryKey;
 	destroy: boolean;
 };
+export type PurgeOrphansMessage = {
+	type: 'purgeOrphans';
+	queryKey: QueryKey;
+};
 export type DestroyMessage = {
 	type: 'destroy';
 	queryKey: QueryKey;
@@ -95,6 +100,7 @@ export type OutputMessage =
 	| BufferMessage
 	| CallbackMessage
 	| InfoMessage
+	| PurgeOrphansResponseMessage
 	| EventMessage;
 export type SuccessMessage = {
 	type: 'success';
@@ -129,6 +135,11 @@ export type InfoMessage = {
 	type: 'info';
 	queryKey: QueryKey;
 	info: DatabaseInfo;
+};
+export type PurgeOrphansResponseMessage = {
+	type: 'purgeOrphans';
+	queryKey: QueryKey;
+	removed: string[];
 };
 export type EventMessage = {
 	type: 'event';

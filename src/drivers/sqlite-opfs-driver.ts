@@ -101,6 +101,10 @@ export class SQLiteOpfsDriver
 	}
 
 	override async clear(): Promise<void> {
+		await this.purgeOrphans();
+	}
+
+	override async purgeOrphans(): Promise<string[]> {
 		if (!this.config?.databasePath) throw new Error('Driver not initialized');
 
 		await this.destroy();
@@ -109,17 +113,25 @@ export class SQLiteOpfsDriver
 			this.config.databasePath
 		);
 		const dirHandle = await getDirectoryHandle();
-		const fileNames = [fileName, ...tempFileNames];
+		const sidecars = new Set(tempFileNames);
+		const backupSuffix = `--${fileName}`;
+		const removed: string[] = [];
 
-		await Promise.all(
-			fileNames.map(async (name) => {
-				return dirHandle.removeEntry(name).catch((err) => {
-					if (!(err instanceof DOMException && err.name === 'NotFoundError')) {
-						throw err;
-					}
-				});
-			})
-		);
+		for await (const name of dirHandle.keys()) {
+			const isBackup =
+				name.startsWith('backup-') && name.endsWith(backupSuffix);
+			if (name !== fileName && !sidecars.has(name) && !isBackup) continue;
+			try {
+				await dirHandle.removeEntry(name);
+				removed.push(name);
+			} catch (err) {
+				if (!(err instanceof DOMException && err.name === 'NotFoundError')) {
+					throw err;
+				}
+			}
+		}
+
+		return removed;
 	}
 
 	override async destroy(): Promise<void> {
