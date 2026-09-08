@@ -12,7 +12,7 @@ export type VitePluginConfig = {
 	 * to the Vite development server.
 	 * @default true
 	 */
-	coi?: boolean;
+	coi?: boolean | 'require-corp' | 'credentialless';
 };
 
 /**
@@ -45,8 +45,11 @@ export default function vitePluginSQLocal(
 		configureServer(server): void {
 			if (config.coi !== false) {
 				server.middlewares.use((_, res, next) => {
-					res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-					res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+					const coep =
+						config.coi === 'credentialless' ? 'credentialless' : 'require-corp';
+					const coop = 'same-origin';
+					res.setHeader('Cross-Origin-Embedder-Policy', coep);
+					res.setHeader('Cross-Origin-Opener-Policy', coop);
 					next();
 				});
 			}
