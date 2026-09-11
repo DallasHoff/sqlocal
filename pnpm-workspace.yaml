@@ -1,0 +1,7 @@
+minimumReleaseAgeStrict: true
+allowBuilds:
+  edgedriver: true
+  esbuild: true
+  geckodriver: true
+  sharp: true
+  workerd: true
