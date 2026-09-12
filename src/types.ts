@@ -14,11 +14,7 @@ export type Sqlite3InitModule = () => Promise<Sqlite3>;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type Sqlite3StorageType =
-	| (string & {})
-	| 'memory'
-	| 'opfs'
-	| 'local'
-	| 'session';
+	(string & {}) | 'memory' | 'opfs' | 'local' | 'session';
 
 // Queries
 
@@ -39,8 +35,7 @@ export type ReturningStatement<Result = unknown> =
 
 export type SqlTag = typeof sqlTag;
 export type StatementInput<Result = unknown> =
-	| ReturningStatement<Result>
-	| ((sql: SqlTag) => ReturningStatement<Result>);
+	ReturningStatement<Result> | ((sql: SqlTag) => ReturningStatement<Result>);
 
 export type Transaction = {
 	transactionKey: QueryKey;
