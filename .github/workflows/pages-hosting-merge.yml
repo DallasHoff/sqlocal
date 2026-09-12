@@ -11,11 +11,17 @@ jobs:
       deployments: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+      - name: Install pnpm and Node.js
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b
+        with:
+          runtime: node@24
+          version: 11
+          cache: false
       - name: Build
-        run: 'npm ci && npm run docs:build'
+        run: 'pnpm run docs:build'
       - name: Publish
-        uses: cloudflare/pages-action@1
+        uses: cloudflare/pages-action@df669237a4d8f43d1725c6377f25fd69c08ab1f1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
