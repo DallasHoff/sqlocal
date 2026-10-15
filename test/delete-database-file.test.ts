@@ -220,9 +220,12 @@ describe.each(testVariation('delete-db'))(
 				);
 
 				if (type === 'opfs') {
-					await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
-						FileSystemFileHandle
-					);
+					// client2 recreates the file asynchronously after the delete broadcast.
+					await vi.waitFor(async () => {
+						await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
+							FileSystemFileHandle
+						);
+					});
 				}
 
 				await client2.destroy();
