@@ -450,5 +450,140 @@ describe.each(testVariation('reactive-query'))(
 			expect(callback).not.toHaveBeenCalled();
 			expect(errors.every((err) => err instanceof Error)).toBe(true);
 		});
+
+		it('should watch a table read through a covering index', async () => {
+			// SQLite answers both statements from the index alone, so
+			// `tables_used` reports the index instead of the table.
+			await db1.sql`CREATE TABLE IF NOT EXISTS indexed_columns (a TEXT NOT NULL, b TEXT NOT NULL, UNIQUE (a, b))`;
+
+			try {
+				await db1.sql`INSERT INTO indexed_columns (a, b) VALUES ('x', '1')`;
+
+				const errors: Error[] = [];
+				let list: Record<string, any>[] = [];
+				const callback = vi.fn((data: Record<string, any>[]) => {
+					list = data;
+				});
+
+				const { unsubscribe } = db1
+					.reactiveQuery(
+						(sql) => sql`SELECT a, b FROM indexed_columns WHERE a = 'x'`
+					)
+					.subscribe(callback, (err) => errors.push(err));
+				await vi.waitUntil(
+					() => callback.mock.calls.length > 0 || errors.length > 0
+				);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([{ a: 'x', b: '1' }]);
+
+				// A write to the table must still invalidate the read
+				await db1.sql`INSERT INTO indexed_columns (a, b) VALUES ('x', '2')`;
+				await vi.waitUntil(() => list.length === 2);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([
+					{ a: 'x', b: '1' },
+					{ a: 'x', b: '2' },
+				]);
+
+				await db1.sql`DELETE FROM indexed_columns WHERE a = 'x' AND b = '1'`;
+				await vi.waitUntil(() => list.length === 1);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([{ a: 'x', b: '2' }]);
+
+				unsubscribe();
+			} finally {
+				await db1.sql`DROP TABLE IF EXISTS indexed_columns`;
+			}
+		});
+
+		it('should watch a table read through a covering index when ordered by the index', async () => {
+			await db1.sql`CREATE TABLE IF NOT EXISTS ordered_columns (a TEXT NOT NULL, b TEXT NOT NULL, UNIQUE (a, b))`;
+
+			try {
+				await db1.sql`INSERT INTO ordered_columns (a, b) VALUES ('c', '3'), ('a', '1')`;
+
+				const errors: Error[] = [];
+				let list: Record<string, any>[] = [];
+				const callback = vi.fn((data: Record<string, any>[]) => {
+					list = data;
+				});
+
+				const { unsubscribe } = db1
+					.reactiveQuery(
+						(sql) => sql`SELECT a, b FROM ordered_columns ORDER BY a`
+					)
+					.subscribe(callback, (err) => errors.push(err));
+				await vi.waitUntil(
+					() => callback.mock.calls.length > 0 || errors.length > 0
+				);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([
+					{ a: 'a', b: '1' },
+					{ a: 'c', b: '3' },
+				]);
+
+				await db1.sql`INSERT INTO ordered_columns (a, b) VALUES ('b', '2')`;
+				await vi.waitUntil(() => list.length === 3);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([
+					{ a: 'a', b: '1' },
+					{ a: 'b', b: '2' },
+					{ a: 'c', b: '3' },
+				]);
+
+				unsubscribe();
+			} finally {
+				await db1.sql`DROP TABLE IF EXISTS ordered_columns`;
+			}
+		});
+
+		it('should watch a covering-index read in an attached database', async () => {
+			// The schema name is quoted into the catalog lookup, so it must also
+			// survive a name that needs escaping.
+			await db1.sql`ATTACH DATABASE ':memory:' AS "attached""db"`;
+
+			try {
+				await db1.sql`CREATE TABLE IF NOT EXISTS "attached""db".indexed_columns (a TEXT NOT NULL, b TEXT NOT NULL, UNIQUE (a, b))`;
+				await db1.sql`INSERT INTO "attached""db".indexed_columns (a, b) VALUES ('x', '1')`;
+
+				const errors: Error[] = [];
+				let list: Record<string, any>[] = [];
+				const callback = vi.fn((data: Record<string, any>[]) => {
+					list = data;
+				});
+
+				const { unsubscribe } = db1
+					.reactiveQuery(
+						(sql) =>
+							sql`SELECT a, b FROM "attached""db".indexed_columns WHERE a = 'x'`
+					)
+					.subscribe(callback, (err) => errors.push(err));
+				await vi.waitUntil(
+					() => callback.mock.calls.length > 0 || errors.length > 0
+				);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([{ a: 'x', b: '1' }]);
+
+				await db1.sql`INSERT INTO "attached""db".indexed_columns (a, b) VALUES ('x', '2')`;
+				await vi.waitUntil(() => list.length === 2);
+
+				expect(errors).toEqual([]);
+				expect(list).toEqual([
+					{ a: 'x', b: '1' },
+					{ a: 'x', b: '2' },
+				]);
+
+				unsubscribe();
+			} finally {
+				await db1.sql`DROP TABLE IF EXISTS "attached""db".indexed_columns`;
+				await db1.sql`DETACH DATABASE "attached""db"`;
+			}
+		});
 	}
 );

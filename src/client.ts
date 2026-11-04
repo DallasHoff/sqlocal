@@ -45,6 +45,10 @@ import { normalizeDatabaseFile } from './lib/normalize-database-file.js';
 import { SQLiteMemoryDriver } from './drivers/sqlite-memory-driver.js';
 import { SQLiteKvvfsDriver } from './drivers/sqlite-kvvfs-driver.js';
 import { getDatabaseKey } from './lib/get-database-key.js';
+import { quoteIdentifier } from './lib/quote-identifier.js';
+
+/** A row of SQLite's `tables_used` output, mapped to a table name. */
+type UsedTable = { name: string; wr: number | bigint };
 
 /**
  * This class is your entry point for connecting to and
@@ -443,6 +447,46 @@ export class SQLocal {
 	};
 
 	/**
+	 * The tables a statement reads or writes, from SQLite's `tables_used`.
+	 *
+	 * When SQLite can answer a statement from a covering index without opening
+	 * the table, `tables_used` reports the index (`type = 'index'`) instead of
+	 * the table it belongs to. That index is still invalidated by writes to the
+	 * table, so those rows are mapped back to the table — otherwise an
+	 * index-only read looks like it does not read any tables at all.
+	 *
+	 * Indexes are resolved against the catalog of each database in the
+	 * connection (main, temp, and attached), since `tables_used` reports the
+	 * schema an index was found in.
+	 */
+	protected getUsedTables = async (sql: string): Promise<UsedTable[]> => {
+		const schemas = (
+			await this.sql<{ name: string }>('SELECT name FROM pragma_database_list')
+		).map(({ name }) => name);
+
+		const indexCatalogs = schemas
+			.map(
+				(name) =>
+					`SELECT ? AS schema, name, tbl_name FROM ${quoteIdentifier(
+						name
+					)}.sqlite_master WHERE type = 'index'`
+			)
+			.join(' UNION ALL ');
+
+		return this.sql<UsedTable>(
+			`SELECT COALESCE(indexes.tbl_name, used.name) AS name, used.wr AS wr
+			FROM tables_used(?) AS used
+			LEFT JOIN (${indexCatalogs}) AS indexes
+				ON used.type = 'index'
+				AND indexes.schema = used.schema
+				AND indexes.name = used.name
+			WHERE used.type = 'table' OR indexes.tbl_name IS NOT NULL`,
+			sql,
+			...schemas
+		);
+	};
+
+	/**
 	 * Subscribe to a SQL query and receive the latest results
 	 * whenever the read tables change.
 	 * @see {@link https://sqlocal.dev/api/reactivequery}
@@ -465,10 +509,7 @@ export class SQLocal {
 				const updateOrder = ++updateCount;
 
 				if (watchedTables.size === 0) {
-					const usedTables = await this.sql(
-						"SELECT name, wr FROM tables_used(?) WHERE type = 'table'",
-						statement.sql
-					);
+					const usedTables = await this.getUsedTables(statement.sql);
 					const readTables = new Set<string>();
 					const writtenTables = new Set<string>();
 
