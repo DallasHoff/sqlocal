@@ -4,8 +4,11 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('create-aggregate-function'))(
 	'createAggregateFunction ($type)',
-	({ path }) => {
-		const { sql, createAggregateFunction } = new SQLocal(path);
+	({ path, vfs }) => {
+		const { sql, createAggregateFunction } = new SQLocal({
+			databasePath: path,
+			vfs,
+		});
 
 		beforeAll(async () => {
 			const values = new Map<unknown, number>();

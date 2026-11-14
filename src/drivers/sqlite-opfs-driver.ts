@@ -1,7 +1,7 @@
 import type {
 	DriverConfig,
+	OpfsVfsType,
 	Sqlite3InitModule,
-	Sqlite3StorageType,
 	SQLocalDriver,
 } from '../types.js';
 import { normalizeDatabaseFile } from '../lib/normalize-database-file.js';
@@ -16,18 +16,22 @@ export class SQLiteOpfsDriver
 	extends SQLiteMemoryDriver
 	implements SQLocalDriver
 {
-	override readonly storageType: Sqlite3StorageType = 'opfs';
+	override storageType: OpfsVfsType = 'opfs';
 
 	constructor(sqlite3InitModule?: Sqlite3InitModule) {
 		super(sqlite3InitModule);
 	}
 
 	override async init(config: DriverConfig): Promise<void> {
-		const { databasePath } = config;
+		const { databasePath, vfs } = config;
 		const flags = this.getFlags(config);
 
 		if (!databasePath) {
 			throw new Error('No databasePath specified');
+		}
+
+		if (vfs) {
+			this.storageType = vfs;
 		}
 
 		if (!this.sqlite3InitModule) {
@@ -40,7 +44,12 @@ export class SQLiteOpfsDriver
 			this.sqlite3 = await this.sqlite3InitModule();
 		}
 
-		if (!('OpfsDb' in this.sqlite3.oo1)) {
+		const OpfsDatabase =
+			this.storageType === 'opfs-wl'
+				? this.sqlite3.oo1.OpfsWlDb
+				: this.sqlite3.oo1.OpfsDb;
+
+		if (!OpfsDatabase) {
 			throw new Error('OPFS not available');
 		}
 
@@ -48,7 +57,10 @@ export class SQLiteOpfsDriver
 			await this.destroy();
 		}
 
-		this.db = new this.sqlite3.oo1.OpfsDb(databasePath, flags);
+		this.db = new OpfsDatabase(databasePath, flags);
+		if (this.storageType === 'opfs-wl') {
+			this.sqlite3.capi.sqlite3_busy_timeout(this.db, 10000);
+		}
 		this.config = config;
 		this.initWriteHook();
 	}
@@ -67,10 +79,19 @@ export class SQLiteOpfsDriver
 			throw new Error('Driver not initialized');
 		}
 
+		const OpfsDatabase =
+			this.storageType === 'opfs-wl'
+				? this.sqlite3.oo1.OpfsWlDb
+				: this.sqlite3.oo1.OpfsDb;
+
+		if (!OpfsDatabase) {
+			throw new Error('OPFS not available');
+		}
+
 		await this.destroy();
 
 		const data = await normalizeDatabaseFile(database, 'callback');
-		await this.sqlite3.oo1.OpfsDb.importDb(this.config.databasePath, data);
+		await OpfsDatabase.importDb(this.config.databasePath, data);
 	}
 
 	override async export(): Promise<{

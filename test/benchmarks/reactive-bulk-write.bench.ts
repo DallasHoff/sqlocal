@@ -4,10 +4,11 @@ import { testVariation } from '../test-utils/test-variation.js';
 
 describe.each(testVariation('reactive-bulk-write-bench'))(
 	'reactive bulk write ($type)',
-	async ({ path }) => {
+	async ({ path, vfs }) => {
 		bench('query after bulk write with reactive queries enabled', async () => {
 			const db = new SQLocal({
 				databasePath: path,
+				vfs,
 				reactive: true,
 			});
 

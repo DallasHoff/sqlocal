@@ -7,9 +7,9 @@ import { testVariation } from '../test-utils/test-variation.js';
 
 describe.each(testVariation('drizzle-driver'))(
 	'drizzle driver ($type)',
-	({ path }) => {
+	({ path, vfs }) => {
 		const { sql, driver, batchDriver, transaction, reactiveQuery } =
-			new SQLocalDrizzle({ databasePath: path, reactive: true });
+			new SQLocalDrizzle({ databasePath: path, vfs, reactive: true });
 
 		const groceries = sqliteTable('groceries', {
 			id: int('id').primaryKey({ autoIncrement: true }),

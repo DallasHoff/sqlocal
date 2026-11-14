@@ -6,7 +6,9 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('overwrite-db'))(
 	'overwriteDatabaseFile ($type)',
-	({ path, type }) => {
+	({ path, type, vfs }) => {
+		const isOpfs = ['opfs', 'opfs-wl'].includes(type);
+
 		it('should replace the contents of a database', async () => {
 			const eventValues = new Set<string>();
 			const isKvvfs = ['local', 'session'].includes(type);
@@ -16,11 +18,13 @@ describe.each(testVariation('overwrite-db'))(
 			if (isKvvfs) return;
 
 			const db1 = new SQLocal({
-				databasePath: type === 'opfs' ? 'overwrite-test-db1.sqlite3' : path,
+				databasePath: isOpfs ? `overwrite-test-db1-${type}.sqlite3` : path,
+				vfs,
 				onConnect: (reason) => eventValues.add(`connect1(${reason})`),
 			});
 			const db2 = new SQLocal({
-				databasePath: type === 'opfs' ? 'overwrite-test-db2.sqlite3' : path,
+				databasePath: isOpfs ? `overwrite-test-db2-${type}.sqlite3` : path,
+				vfs,
 				onConnect: (reason) => eventValues.add(`connect2(${reason})`),
 			});
 
@@ -91,15 +95,17 @@ describe.each(testVariation('overwrite-db'))(
 
 		it(
 			'should or should not notify other instances of an overwrite',
-			{ timeout: type === 'opfs' ? 2000 : undefined },
+			{ timeout: isOpfs ? 2000 : undefined },
 			async () => {
 				const eventValues = new Set<string>();
 				const db1 = new SQLocal({
 					databasePath: path,
+					vfs,
 					onConnect: (reason) => eventValues.add(`connect1(${reason})`),
 				});
 				const db2 = new SQLocal({
 					databasePath: path,
+					vfs,
 					onConnect: (reason) => eventValues.add(`connect2(${reason})`),
 				});
 
@@ -152,7 +158,7 @@ describe.each(testVariation('overwrite-db'))(
 		);
 
 		it('should restore user functions', async () => {
-			const db = new SQLocal(path);
+			const db = new SQLocal({ databasePath: path, vfs });
 			await db.createScalarFunction('double', (num: number) => num * 2);
 
 			const num1 = await db.sql`SELECT double(1) AS num`;
@@ -177,7 +183,7 @@ describe.each(testVariation('overwrite-db'))(
 				overwriteDatabaseFile,
 				deleteDatabaseFile,
 				destroy,
-			} = new SQLocal(path);
+			} = new SQLocal({ databasePath: path, vfs });
 
 			const order: number[] = [];
 
@@ -210,7 +216,7 @@ describe.each(testVariation('overwrite-db'))(
 
 		it(
 			'should run onInit statements before other queries after overwrite',
-			{ timeout: type === 'opfs' ? 2000 : undefined },
+			{ timeout: isOpfs ? 2000 : undefined },
 			async () => {
 				const databasePath = path;
 				const onInit: ClientConfig['onInit'] = (sql) => {
@@ -219,8 +225,8 @@ describe.each(testVariation('overwrite-db'))(
 
 				const results: number[] = [];
 
-				const db1 = new SQLocal({ databasePath, onInit });
-				const db2 = new SQLocal({ databasePath, onInit });
+				const db1 = new SQLocal({ databasePath, vfs, onInit });
+				const db2 = new SQLocal({ databasePath, vfs, onInit });
 
 				const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
 				results.push(result1);
