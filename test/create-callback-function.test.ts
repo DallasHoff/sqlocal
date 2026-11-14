@@ -4,8 +4,11 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('create-callback-function'))(
 	'createCallbackFunction ($type)',
-	({ path }) => {
-		const { sql, createCallbackFunction } = new SQLocal(path);
+	({ path, vfs }) => {
+		const { sql, createCallbackFunction } = new SQLocal({
+			databasePath: path,
+			vfs,
+		});
 
 		beforeEach(async () => {
 			await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;

@@ -11,8 +11,12 @@ import { SQLocal, SQLocalProcessor } from '../src/index.js';
 import { SQLiteMemoryDriver } from '../src/drivers/sqlite-memory-driver.js';
 import { testVariation } from './test-utils/test-variation.js';
 
-describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
-	const { sql, deleteDatabaseFile } = new SQLocal(path);
+describe.each(testVariation('init'))('init ($type)', ({ path, type, vfs }) => {
+	const isOpfs = ['opfs', 'opfs-wl'].includes(type);
+	const { sql, deleteDatabaseFile } = new SQLocal({
+		databasePath: path,
+		vfs,
+	});
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
@@ -34,7 +38,7 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 	it('should or should not create a file in the OPFS', async () => {
 		const opfs = await navigator.storage.getDirectory();
 
-		if (type === 'opfs') {
+		if (isOpfs) {
 			const fileHandle = await opfs.getFileHandle(path);
 			const file = await fileHandle.getFile();
 			expect(file.size).toBeGreaterThan(0);
@@ -49,6 +53,7 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 
 		const { sql, destroy } = new SQLocal({
 			databasePath: path,
+			vfs,
 			onInit: (sql) => {
 				onInitCalled = true;
 				return [sql`PRAGMA foreign_keys = ON`];
@@ -70,6 +75,7 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 	it('should enable read-only mode', async () => {
 		const { sql, getDatabaseInfo, destroy } = new SQLocal({
 			databasePath: path,
+			vfs,
 			readOnly: true,
 		});
 		const { storageType } = await getDatabaseInfo();
@@ -100,19 +106,18 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 
 	it('should accept custom processors', async () => {
 		const driver = new SQLiteMemoryDriver();
-		const processor =
-			type === 'opfs'
-				? new Worker(new URL('../src/worker', import.meta.url), {
-						type: 'module',
-					})
-				: new SQLocalProcessor(driver);
-		const db = new SQLocal({ databasePath: ':custom:', processor });
+		const processor = isOpfs
+			? new Worker(new URL('../src/worker', import.meta.url), {
+					type: 'module',
+				})
+			: new SQLocalProcessor(driver);
+		const db = new SQLocal({ databasePath: ':custom:', vfs, processor });
 		const info = await db.getDatabaseInfo();
 
 		expect(info).toEqual({
 			databasePath: ':custom:',
 			databaseSizeBytes: 0,
-			storageType: type === 'opfs' ? 'opfs' : 'memory',
+			storageType: isOpfs ? type : 'memory',
 			persisted: false,
 		});
 	});
@@ -122,7 +127,7 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 
 		// asynchronous syntax
 		{
-			await using db = new SQLocal(path);
+			await using db = new SQLocal({ databasePath: path, vfs });
 			asyncSpy = vi.spyOn(db, 'destroy');
 			expect(asyncSpy).toHaveBeenCalledTimes(0);
 		}
@@ -131,7 +136,7 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 
 		// synchronous syntax
 		{
-			using db = new SQLocal(path);
+			using db = new SQLocal({ databasePath: path, vfs });
 			syncSpy = vi.spyOn(db, 'destroy');
 			expect(syncSpy).toHaveBeenCalledTimes(0);
 		}
@@ -140,7 +145,7 @@ describe.each(testVariation('init'))('init ($type)', ({ path, type }) => {
 
 		// traditional syntax
 		{
-			const db = new SQLocal(path);
+			const db = new SQLocal({ databasePath: path, vfs });
 			controlSpy = vi.spyOn(db, 'destroy');
 			expect(controlSpy).toHaveBeenCalledTimes(0);
 		}

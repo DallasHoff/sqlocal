@@ -4,8 +4,11 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('create-window-function'))(
 	'createWindowFunction ($type)',
-	({ path }) => {
-		const { sql, createWindowFunction } = new SQLocal(path);
+	({ path, vfs }) => {
+		const { sql, createWindowFunction } = new SQLocal({
+			databasePath: path,
+			vfs,
+		});
 
 		beforeAll(async () => {
 			let values: number[] = [];

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SQLocal } from '../src/index.js';
 import { testVariation } from './test-utils/test-variation.js';
 
-describe.each(testVariation('sql'))('sql ($type)', ({ path }) => {
-	const { sql } = new SQLocal(path);
+describe.each(testVariation('sql'))('sql ($type)', ({ path, vfs }) => {
+	const { sql } = new SQLocal({ databasePath: path, vfs });
 
 	beforeEach(async () => {
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)`;

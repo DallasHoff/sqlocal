@@ -8,9 +8,10 @@ import { testVariation } from '../test-utils/test-variation.js';
 
 describe.each(testVariation('kysely-dialect'))(
 	'kysely dialect ($type)',
-	({ path }) => {
+	({ path, vfs }) => {
 		const { dialect, transaction, reactiveQuery } = new SQLocalKysely({
 			databasePath: path,
+			vfs,
 			reactive: true,
 		});
 		const db = new Kysely<DB>({

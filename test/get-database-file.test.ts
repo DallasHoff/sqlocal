@@ -4,8 +4,9 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('get-db-file'))(
 	'getDatabaseFile ($type)',
-	({ path, type }) => {
-		const fileName = type !== 'opfs' ? 'database.sqlite3' : path;
+	({ path, type, vfs }) => {
+		const isOpfs = ['opfs', 'opfs-wl'].includes(type);
+		const fileName = !isOpfs ? 'database.sqlite3' : path;
 		const paths = [[], [''], ['top'], ['one', 'two']];
 
 		it(
@@ -14,9 +15,10 @@ describe.each(testVariation('get-db-file'))(
 			async () => {
 				for (let path of paths) {
 					const databasePath = [...path, fileName].join('/');
-					const { sql, getDatabaseFile, deleteDatabaseFile } = new SQLocal(
-						databasePath
-					);
+					const { sql, getDatabaseFile, deleteDatabaseFile } = new SQLocal({
+						databasePath,
+						vfs,
+					});
 
 					await sql`CREATE TABLE nums (num REAL NOT NULL)`;
 					const file = await getDatabaseFile();
@@ -34,8 +36,8 @@ describe.each(testVariation('get-db-file'))(
 		);
 
 		it('should not throw when requested database has not been created', async () => {
-			const databasePath = type === 'opfs' ? 'new.sqlite3' : path;
-			const { getDatabaseFile } = new SQLocal(databasePath);
+			const databasePath = isOpfs ? `new-${type}.sqlite3` : path;
+			const { getDatabaseFile } = new SQLocal({ databasePath, vfs });
 			await expect(getDatabaseFile()).resolves.not.toThrow();
 		});
 	}

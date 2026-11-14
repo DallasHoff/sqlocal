@@ -5,8 +5,11 @@ import { testVariation } from '../test-utils/test-variation.js';
 
 describe.each(testVariation('kysely-migrations'))(
 	'kysely migrations ($type)',
-	({ path }) => {
-		const { dialect, deleteDatabaseFile } = new SQLocalKysely(path);
+	({ path, vfs }) => {
+		const { dialect, deleteDatabaseFile } = new SQLocalKysely({
+			databasePath: path,
+			vfs,
+		});
 		const db = new Kysely({ dialect });
 
 		const migrator = new Migrator({

@@ -13,9 +13,9 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('reactive-query'))(
 	'reactiveQuery ($type)',
-	async ({ path, type }) => {
-		const db1 = new SQLocal({ databasePath: path, reactive: true });
-		const db2 = new SQLocal({ databasePath: path, reactive: true });
+	async ({ path, type, vfs }) => {
+		const db1 = new SQLocal({ databasePath: path, vfs, reactive: true });
+		const db2 = new SQLocal({ databasePath: path, vfs, reactive: true });
 
 		beforeEach(async () => {
 			for (let db of [db1, db2]) {
@@ -419,7 +419,7 @@ describe.each(testVariation('reactive-query'))(
 		});
 
 		it('should require the reactive setting to be true', async () => {
-			const db = new SQLocal({ databasePath: path });
+			const db = new SQLocal({ databasePath: path, vfs });
 			const reactive = db.reactiveQuery((sql) => sql`SELECT * FROM foo`);
 
 			expect(() => reactive.subscribe(() => {})).toThrowError();
