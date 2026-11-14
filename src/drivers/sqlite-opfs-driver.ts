@@ -40,7 +40,7 @@ export class SQLiteOpfsDriver
 			this.sqlite3 = await this.sqlite3InitModule();
 		}
 
-		if (!('opfs' in this.sqlite3)) {
+		if (!('OpfsDb' in this.sqlite3.oo1)) {
 			throw new Error('OPFS not available');
 		}
 
