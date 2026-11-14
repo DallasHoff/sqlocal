@@ -5,9 +5,9 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('transaction'))(
 	'transaction ($type)',
-	({ path, type }) => {
-		const db1 = new SQLocal(path);
-		const db2 = new SQLocal(path);
+	({ path, type, vfs }) => {
+		const db1 = new SQLocal({ databasePath: path, vfs });
+		const db2 = new SQLocal({ databasePath: path, vfs });
 
 		beforeEach(async () => {
 			for (let db of [db1, db2]) {
@@ -235,7 +235,7 @@ describe.each(testVariation('transaction'))(
 				type !== 'memory' ? [{ name: 'a' }, { name: 'b' }] : [{ name: 'a' }]
 			);
 			expect(order).toEqual(
-				['memory', 'opfs'].includes(type) ? [1, 2, 3] : [1, 3, 2]
+				['memory', 'opfs', 'opfs-wl'].includes(type) ? [1, 2, 3] : [1, 3, 2]
 			);
 		});
 	}

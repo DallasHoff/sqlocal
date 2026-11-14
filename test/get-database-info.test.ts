@@ -4,8 +4,11 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('get-db-info'))(
 	'getDatabaseInfo ($type)',
-	({ type, path }) => {
-		const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal(path);
+	({ type, path, vfs }) => {
+		const { sql, getDatabaseInfo, deleteDatabaseFile } = new SQLocal({
+			databasePath: path,
+			vfs,
+		});
 
 		beforeEach(async () => {
 			await deleteDatabaseFile();

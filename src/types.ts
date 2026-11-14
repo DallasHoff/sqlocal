@@ -14,7 +14,13 @@ export type Sqlite3InitModule = () => Promise<Sqlite3>;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type Sqlite3StorageType =
-	(string & {}) | 'memory' | 'opfs' | 'local' | 'session';
+	| (string & {})
+	| 'memory'
+	| 'opfs'
+	| 'opfs-wl'
+	| 'local'
+	| 'session';
+export type OpfsVfsType = 'opfs' | 'opfs-wl';
 
 // Queries
 
@@ -105,6 +111,7 @@ export type DriverConfig = {
 	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
+	vfs?: OpfsVfsType;
 };
 
 export type DriverStatement = {
@@ -131,6 +138,7 @@ export type ClientConfig = {
 	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
+	vfs?: OpfsVfsType;
 	onInit?: (sql: SqlTag) => void | Statement[];
 	onConnect?: (reason: ConnectReason) => void;
 	processor?: SQLocalProcessor | Worker;
@@ -141,6 +149,7 @@ export type ProcessorConfig = {
 	reactive?: boolean;
 	readOnly?: boolean;
 	verbose?: boolean;
+	vfs?: OpfsVfsType;
 	clientKey?: QueryKey;
 	onInitStatements?: Statement[];
 };

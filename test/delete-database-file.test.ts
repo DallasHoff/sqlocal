@@ -6,13 +6,16 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('delete-db'))(
 	'deleteDatabaseFile ($type)',
-	({ path, type }) => {
+	({ path, type, vfs }) => {
+		const isOpfs = ['opfs', 'opfs-wl'].includes(type);
+
 		it('should delete the database file', { timeout: 1500 }, async () => {
 			let onConnectReason: ConnectReason | null = null;
 			let beforeUnlockCalled = false;
 
 			const { sql, deleteDatabaseFile, destroy } = new SQLocal({
 				databasePath: path,
+				vfs,
 				onConnect: (reason) => (onConnectReason = reason),
 			});
 
@@ -54,10 +57,12 @@ describe.each(testVariation('delete-db'))(
 
 				const db1 = new SQLocal({
 					databasePath: path,
+					vfs,
 					onConnect: (reason) => (onConnectReason1 = reason),
 				});
 				const db2 = new SQLocal({
 					databasePath: path,
+					vfs,
 					onConnect: (reason) => (onConnectReason2 = reason),
 				});
 
@@ -84,7 +89,7 @@ describe.each(testVariation('delete-db'))(
 		);
 
 		it('should restore user functions', async () => {
-			const db = new SQLocal(path);
+			const db = new SQLocal({ databasePath: path, vfs });
 			await db.createScalarFunction('double', (num: number) => num * 2);
 
 			const num1 = await db.sql`SELECT double(1) AS num`;
@@ -99,9 +104,10 @@ describe.each(testVariation('delete-db'))(
 		});
 
 		it('should not interrupt a transaction with database deletion', async () => {
-			const { sql, transaction, deleteDatabaseFile, destroy } = new SQLocal(
-				path
-			);
+			const { sql, transaction, deleteDatabaseFile, destroy } = new SQLocal({
+				databasePath: path,
+				vfs,
+			});
 			const createTable = async () => {
 				await sql`CREATE TABLE nums (num INTEGER NOT NULL)`;
 			};
@@ -145,8 +151,8 @@ describe.each(testVariation('delete-db'))(
 
 				const results: number[] = [];
 
-				const db1 = new SQLocal({ databasePath, onInit });
-				const db2 = new SQLocal({ databasePath, onInit });
+				const db1 = new SQLocal({ databasePath, vfs, onInit });
+				const db2 = new SQLocal({ databasePath, vfs, onInit });
 
 				const [{ foreign_keys: result1 }] = await db1.sql`PRAGMA foreign_keys`;
 				results.push(result1);
@@ -173,12 +179,11 @@ describe.each(testVariation('delete-db'))(
 			async () => {
 				const destroyedError =
 					'This SQLocal client has been destroyed. You will need to initialize a new client in order to make further queries.';
-				const opfs =
-					type === 'opfs' ? await navigator.storage.getDirectory() : null;
+				const opfs = isOpfs ? await navigator.storage.getDirectory() : null;
 
 				// Destroy: file should not exist
 
-				const client1 = new SQLocal(path);
+				const client1 = new SQLocal({ databasePath: path, vfs });
 				await expect(client1.sql`SELECT 1 as num`).resolves.toEqual([
 					{ num: 1 },
 				]);
@@ -187,13 +192,13 @@ describe.each(testVariation('delete-db'))(
 					destroyedError
 				);
 
-				if (type === 'opfs') {
+				if (isOpfs) {
 					await expect(opfs?.getFileHandle(path)).rejects.toThrowError();
 				}
 
 				// Do not destroy: file should still exist
 
-				const client2 = new SQLocal(path);
+				const client2 = new SQLocal({ databasePath: path, vfs });
 				await expect(client2.sql`SELECT 2 as num`).resolves.toEqual([
 					{ num: 2 },
 				]);
@@ -202,7 +207,7 @@ describe.each(testVariation('delete-db'))(
 					{ num: 2 },
 				]);
 
-				if (type === 'opfs') {
+				if (isOpfs) {
 					await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
 						FileSystemFileHandle
 					);
@@ -210,7 +215,7 @@ describe.each(testVariation('delete-db'))(
 
 				// Destroy second client: file should still exist because of other client
 
-				const client3 = new SQLocal(path);
+				const client3 = new SQLocal({ databasePath: path, vfs });
 				await expect(client3.sql`SELECT 3 as num`).resolves.toEqual([
 					{ num: 3 },
 				]);
@@ -219,7 +224,7 @@ describe.each(testVariation('delete-db'))(
 					destroyedError
 				);
 
-				if (type === 'opfs') {
+				if (isOpfs) {
 					await expect(opfs?.getFileHandle(path)).resolves.instanceOf(
 						FileSystemFileHandle
 					);

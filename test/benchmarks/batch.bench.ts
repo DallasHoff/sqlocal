@@ -4,8 +4,8 @@ import { testVariation } from '../test-utils/test-variation.js';
 
 describe.each(testVariation('batch-bench'))(
 	'batch ($type)',
-	async ({ path }) => {
-		const { sql, batch } = new SQLocal(path);
+	async ({ path, vfs }) => {
+		const { sql, batch } = new SQLocal({ databasePath: path, vfs });
 
 		await sql`DROP TABLE IF EXISTS groceries`;
 		await sql`CREATE TABLE groceries (id INTEGER PRIMARY KEY, name TEXT NOT NULL, num INTEGER NOT NULL)`;

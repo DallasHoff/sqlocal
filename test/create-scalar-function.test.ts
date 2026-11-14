@@ -4,8 +4,11 @@ import { testVariation } from './test-utils/test-variation.js';
 
 describe.each(testVariation('create-scalar-function'))(
 	'createScalarFunction ($type)',
-	({ path, type }) => {
-		const { sql, createScalarFunction } = new SQLocal(path);
+	({ path, type, vfs }) => {
+		const { sql, createScalarFunction } = new SQLocal({
+			databasePath: path,
+			vfs,
+		});
 
 		beforeEach(async () => {
 			await sql`CREATE TABLE nums (num REAL NOT NULL)`;
@@ -70,8 +73,15 @@ describe.each(testVariation('create-scalar-function'))(
 		});
 
 		it('should not overwrite a function from a different client instance', async () => {
-			const db1 = new SQLocal(type === 'opfs' ? 'dupe-fn-db1.sqlite3' : path);
-			const db2 = new SQLocal(type === 'opfs' ? 'dupe-fn-db2.sqlite3' : path);
+			const isOpfs = ['opfs', 'opfs-wl'].includes(type);
+			const db1 = new SQLocal({
+				databasePath: isOpfs ? `dupe-fn-db1-${type}.sqlite3` : path,
+				vfs,
+			});
+			const db2 = new SQLocal({
+				databasePath: isOpfs ? `dupe-fn-db2-${type}.sqlite3` : path,
+				vfs,
+			});
 
 			await db1.createScalarFunction('addTax', (num: number) => num * 1.06);
 			await db2.createScalarFunction('addTax', (num: number) => num * 1.07);
