@@ -433,6 +433,7 @@ export class SQLocalProcessor {
 
 		try {
 			const { name, data } = await this.driver.export();
+			const transfer = data instanceof ArrayBuffer ? data : data.buffer;
 
 			this.emitMessage(
 				{
@@ -441,7 +442,7 @@ export class SQLocalProcessor {
 					bufferName: name,
 					buffer: data,
 				},
-				[data]
+				[transfer]
 			);
 		} catch (error) {
 			this.emitMessage({

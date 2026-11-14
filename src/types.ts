@@ -14,12 +14,7 @@ export type Sqlite3InitModule = () => Promise<Sqlite3>;
 export type Sqlite3Db = Database;
 export type Sqlite3Method = 'get' | 'all' | 'run' | 'values';
 export type Sqlite3StorageType =
-	| (string & {})
-	| 'memory'
-	| 'opfs'
-	| 'opfs-wl'
-	| 'local'
-	| 'session';
+	(string & {}) | 'memory' | 'opfs' | 'opfs-wl' | 'local' | 'session';
 export type OpfsVfsType = 'opfs' | 'opfs-wl';
 
 // Queries

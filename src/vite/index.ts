@@ -33,6 +33,7 @@ export default function vitePluginSQLocal(
 					exclude: [
 						...(config.optimizeDeps?.exclude ?? []),
 						'sqlocal',
+						'@hearthlog/sqlocal',
 						'@sqlite.org/sqlite-wasm',
 					],
 				},

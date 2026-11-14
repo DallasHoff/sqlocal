@@ -1,6 +1,6 @@
 {
-	"name": "sqlocal",
-	"version": "0.18.0",
+	"name": "@hearthlog/sqlocal",
+	"version": "0.19.0",
 	"type": "module",
 	"types": "./dist/index.d.ts",
 	"browser": "./dist/index.js",
@@ -131,7 +131,11 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/DallasHoff/sqlocal.git"
+		"url": "git+https://github.com/jansuchomel/sqlocal.git"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
 	},
 	"homepage": "https://sqlocal.dev",
 	"funding": {
